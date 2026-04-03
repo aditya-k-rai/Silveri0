@@ -23,6 +23,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Skip admin layout for login page — it has its own full-screen layout
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
