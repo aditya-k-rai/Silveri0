@@ -47,16 +47,44 @@ export default function AdminLoginPage() {
 
     setSubmitting(true);
     try {
-      const firebaseUser = await signInWithEmail(email, password);
-
-      if (!db) {
-        setError('Database not connected');
+      let firebaseUser;
+      try {
+        firebaseUser = await signInWithEmail(email, password);
+      } catch (authErr: unknown) {
+        const msg = authErr instanceof Error ? authErr.message : 'Login failed';
+        if (msg.includes('too-many-requests')) {
+          setError('Too many login attempts. Please wait 15–30 minutes before trying again.');
+        } else if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
+          setError('Invalid email or password');
+        } else {
+          setError(msg);
+        }
         setSubmitting(false);
         return;
       }
 
-      const userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-      if (!userDocSnap.exists() || userDocSnap.data().role !== 'admin') {
+      if (!db) {
+        setError('Database not connected. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
+      let userDocSnap;
+      try {
+        userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+      } catch (dbErr: unknown) {
+        setError('Failed to verify admin role: ' + (dbErr instanceof Error ? dbErr.message : 'Database error'));
+        setSubmitting(false);
+        return;
+      }
+
+      if (!userDocSnap.exists()) {
+        setError('No user profile found. Please register first.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (userDocSnap.data().role !== 'admin') {
         setError('Access denied. This account does not have admin privileges.');
         setSubmitting(false);
         return;
@@ -64,14 +92,7 @@ export default function AdminLoginPage() {
 
       window.location.href = '/admin';
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Login failed';
-      if (msg.includes('too-many-requests')) {
-        setError('Too many login attempts. Please wait 15–30 minutes before trying again.');
-      } else if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-        setError('Invalid email or password');
-      } else {
-        setError(msg);
-      }
+      setError('Unexpected error: ' + (err instanceof Error ? err.message : String(err)));
       setSubmitting(false);
     }
   };
