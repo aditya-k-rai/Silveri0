@@ -37,14 +37,25 @@ const INITIAL_PRODUCTS: Product[] = [
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("Name");
 
   // Editor State
   const [editingParams, setEditingParams] = useState<Product | null>(null);
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products
+    .filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === "Name") return a.name.localeCompare(b.name);
+      if (sortBy === "PriceAsc") return a.price - b.price;
+      if (sortBy === "PriceDesc") return b.price - a.price;
+      if (sortBy === "StockAsc") return a.stock - b.stock;
+      if (sortBy === "StockDesc") return b.stock - a.stock;
+      if (sortBy === "Carat") return a.carat.localeCompare(b.carat);
+      return 0;
+    });
 
   const toggleFlag = (e: React.MouseEvent, id: string, field: 'isFeatured' | 'isNewArrival') => {
     e.stopPropagation();
@@ -108,18 +119,32 @@ export default function AdminProductsPage() {
   return (
     <div className="relative space-y-6 min-h-screen">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7585]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E8E8E8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7585]" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search products..."
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E8E8E8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-[#E8E8E8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 text-[#1A1A1A] font-medium cursor-pointer"
+          >
+            <option value="Name">Sort by: Name (A-Z)</option>
+            <option value="PriceAsc">Sort by: Price (Low to High)</option>
+            <option value="PriceDesc">Sort by: Price (High to Low)</option>
+            <option value="StockAsc">Sort by: Stock (Low to High)</option>
+            <option value="StockDesc">Sort by: Stock (High to Low)</option>
+            <option value="Carat">Sort by: Carat / Purity</option>
+          </select>
         </div>
         <button 
           onClick={() => openEditor(null)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-white text-sm font-medium rounded-xl hover:bg-[#8A6E2F] transition-colors"
+          className="inline-flex items-center w-full sm:w-auto justify-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-white text-sm font-medium rounded-xl hover:bg-[#8A6E2F] transition-colors shrink-0"
         >
           <Plus size={16} /> Add Product
         </button>

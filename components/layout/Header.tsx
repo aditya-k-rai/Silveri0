@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
@@ -50,6 +51,7 @@ export default function Header() {
             <nav className="hidden md:flex items-center gap-1">
               <NavItem href="/" icon={<Home size={20} />} label="Home" />
               <NavItem href="/category/all" icon={<Grid3X3 size={20} />} label="Category" />
+              <NavItem href="/custom-jewelry" icon={<Sparkles size={20} />} label="Bespoke" />
               <NavItem href="/account/orders" icon={<Package size={20} />} label="Orders" />
               <NavItem href="/account/wishlist" icon={<Heart size={20} />} label="Wishlist" />
               <NavItem
@@ -144,6 +146,7 @@ export default function Header() {
             <nav className="flex flex-col px-4 py-3 gap-1">
               <MobileNavItem href="/" icon={<Home size={18} />} label="Home" onClick={() => setIsMobileMenuOpen(false)} />
               <MobileNavItem href="/category/all" icon={<Grid3X3 size={18} />} label="Category" onClick={() => setIsMobileMenuOpen(false)} />
+              <MobileNavItem href="/custom-jewelry" icon={<Sparkles size={18} />} label="Bespoke" onClick={() => setIsMobileMenuOpen(false)} />
               <MobileNavItem href="/account/orders" icon={<Package size={18} />} label="Orders" onClick={() => setIsMobileMenuOpen(false)} />
               <MobileNavItem href="/account/wishlist" icon={<Heart size={18} />} label="Wishlist" onClick={() => setIsMobileMenuOpen(false)} />
               <MobileNavItem href="/account/profile" icon={<User size={18} />} label="Profile" onClick={() => setIsMobileMenuOpen(false)} />

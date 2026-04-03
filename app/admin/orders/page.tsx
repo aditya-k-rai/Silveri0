@@ -15,9 +15,10 @@ interface Order {
   items: { sku: string; name: string; price: number; quantity: number }[];
 }
 
-const STATUSES = ["All", "Processing", "Shipped", "Delivered", "Cancelled"];
+const STATUSES = ["All", "New", "Processing", "Shipped", "Delivered", "Cancelled"];
 
 const STATUS_COLORS: Record<string, string> = {
+  New: "bg-purple-50 text-purple-700",
   Delivered: "bg-green-50 text-green-700",
   Shipped: "bg-blue-50 text-blue-700",
   Processing: "bg-amber-50 text-amber-700",
@@ -25,6 +26,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const INITIAL_ORDERS: Order[] = [
+  { 
+    id: "ORD-2026-157", customer: "Vikram Kohli", email: "vikram@example.com", phone: "+91 65498 73210", location: "Chennai, Tamil Nadu", date: "2026-04-03", total: 10498, status: "New",
+    items: [{ sku: "SLV-RNG-006", name: "Solitaire Ring", price: 5499, quantity: 1 }, { sku: "SLV-BRC-004", name: "Charm Bracelet", price: 4999, quantity: 1 }]
+  },
   { 
     id: "ORD-2026-156", customer: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", location: "Mumbai, Maharashtra", date: "2026-04-02", total: 6398, status: "Delivered",
     items: [{ sku: "SLV-RNG-001", name: "Silver Elegance Ring", price: 2499, quantity: 1 }, { sku: "SLV-NCK-002", name: "Luna Necklace", price: 3899, quantity: 1 }]

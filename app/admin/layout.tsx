@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, FolderTree, ClipboardList,
-  Users, Tags, Settings, Menu, X, Box, LogOut,
+  Users, Tags, Settings, Menu, X, Box, LogOut, Sparkles, LineChart
 } from "lucide-react";
 import { useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
@@ -12,8 +12,10 @@ import { signOutUser } from "@/lib/firebase/auth";
 
 const NAV_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/live-market", label: "Live Market", icon: LineChart },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
+  { href: "/admin/custom-orders", label: "Custom Orders", icon: Sparkles },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/promos", label: "Promos", icon: Tags },
