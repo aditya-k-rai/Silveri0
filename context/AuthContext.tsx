@@ -26,17 +26,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Guard: if Firebase isn't initialized (missing keys), skip auth
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
-      if (firebaseUser) {
+      if (firebaseUser && db) {
         const userRef = doc(db, 'users', firebaseUser.uid);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
           setUserDoc(userSnap.data() as User);
         } else {
-          // First login — create user document
           const newUser: Omit<User, 'orderCount' | 'totalSpent'> = {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || '',

@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,31 +13,43 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Singleton pattern - avoid re-initialization
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Only initialize if we have a valid API key (prevents build crashes on Vercel)
+function getFirebaseApp(): FirebaseApp | null {
+  if (getApps().length > 0) return getApp();
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-export let analytics: import('firebase/analytics').Analytics | null = null;
-
-export async function initAnalytics() {
-  if (analytics) {
-    return analytics;
-  }
-
-  if (typeof window === 'undefined') {
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'your_firebase_api_key') {
+    if (typeof window !== 'undefined') {
+      console.warn('Firebase: Missing API key. Add NEXT_PUBLIC_FIREBASE_* env vars.');
+    }
     return null;
   }
 
   try {
+    return initializeApp(firebaseConfig);
+  } catch (error) {
+    console.warn('Firebase client initialization failed:', error);
+    return null;
+  }
+}
+
+export const app = getFirebaseApp();
+
+// These will be null during build if Firebase keys are missing — that's OK
+// Pages using them are client-side only ('use client')
+export const auth = app ? getAuth(app) : (null as unknown as Auth);
+export const db = app ? getFirestore(app) : (null as unknown as Firestore);
+export const storage = app ? getStorage(app) : (null as unknown as FirebaseStorage);
+
+export let analytics: import('firebase/analytics').Analytics | null = null;
+
+export async function initAnalytics() {
+  if (analytics || !app) return null;
+  if (typeof window === 'undefined') return null;
+
+  try {
     const { getAnalytics, isSupported } = await import('firebase/analytics');
     const supported = await isSupported();
-    if (!supported) {
-      return null;
-    }
-
+    if (!supported) return null;
     analytics = getAnalytics(app);
     return analytics;
   } catch {
@@ -45,6 +57,6 @@ export async function initAnalytics() {
   }
 }
 
-void initAnalytics();
+if (app) void initAnalytics();
 
 export default app;
