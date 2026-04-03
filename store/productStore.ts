@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface Product {
   id: string;
@@ -40,13 +41,18 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 3165, isLinked: true, makingMargin: 1500, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", colour: "Silver", size: "7.5 inch lock", height: "0.5cm", weight: "18g", width: "0.8cm", radius: "", warranty: "No warranty on charms", tags: "casual, charm", primaryImage: null, hoverImage: null, model3dFileName: null },
 ];
 
-export const useProductStore = create<ProductStore>((set) => ({
-  products: INITIAL_PRODUCTS,
-  setProducts: (items) => set({ products: items }),
-  updateProduct: (id, updates) => set((state) => ({
-    products: state.products.map(p => p.id === id ? { ...p, ...updates } : p)
-  })),
-  addProduct: (product) => set((state) => ({
-    products: [product, ...state.products]
-  }))
-}));
+export const useProductStore = create<ProductStore>()(
+  persist(
+    (set) => ({
+      products: INITIAL_PRODUCTS,
+      setProducts: (items) => set({ products: items }),
+      updateProduct: (id, updates) => set((state) => ({
+        products: state.products.map(p => p.id === id ? { ...p, ...updates } : p)
+      })),
+      addProduct: (product) => set((state) => ({
+        products: [product, ...state.products]
+      }))
+    }),
+    { name: 'silveri-products' }
+  )
+);
