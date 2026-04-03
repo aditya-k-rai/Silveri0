@@ -63,6 +63,17 @@ export const useProductStore = create<ProductStore>()(
         products: state.products.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p)
       }))
     }),
-    { name: 'silveri-products' }
+    {
+      name: 'silveri-products',
+      merge: (persisted: unknown, current: ProductStore) => {
+        const state = persisted as Partial<ProductStore> | undefined;
+        const products = (state?.products ?? current.products).map((p) => ({
+          ...p,
+          views: p.views ?? 0,
+          likes: p.likes ?? 0,
+        }));
+        return { ...current, ...state, products };
+      },
+    }
   )
 );
