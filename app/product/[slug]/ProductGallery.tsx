@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Box, ImageIcon } from 'lucide-react';
 
-// Dynamically import 3D viewer (heavy — only load when needed)
 const JewelryViewer = dynamic(() => import('@/components/3d/JewelryViewer'), {
   ssr: false,
   loading: () => (
@@ -18,31 +18,35 @@ const JewelryViewer = dynamic(() => import('@/components/3d/JewelryViewer'), {
 });
 
 interface ProductGalleryProps {
-  product: {
-    name: string;
-    images: string[];
-    material: string;
-    model3d: { url: string; fileName: string } | null;
-  };
+  name: string;
+  primaryImage: string | null;
+  hoverImage: string | null;
+  colour: string;
+  model3dFileName: string | null;
 }
 
-export default function ProductGallery({ product }: ProductGalleryProps) {
-  const [viewMode, setViewMode] = useState<'images' | '3d'>(
-    product.model3d ? '3d' : 'images'
-  );
+export default function ProductGallery({ name, primaryImage, hoverImage, colour, model3dFileName }: ProductGalleryProps) {
+  const has3D = !!model3dFileName;
+  const [viewMode, setViewMode] = useState<'images' | '3d'>(has3D ? '3d' : 'images');
+  const [activeThumb, setActiveThumb] = useState(0);
 
-  const materialPreset = product.material.toLowerCase().includes('gold')
-    ? product.material.toLowerCase().includes('rose')
+  const images = [primaryImage, hoverImage].filter(Boolean) as string[];
+
+  const materialPreset = colour.toLowerCase().includes('gold')
+    ? colour.toLowerCase().includes('rose')
       ? 'rose-gold'
       : 'gold'
-    : product.material.toLowerCase().includes('platinum')
+    : colour.toLowerCase().includes('platinum')
     ? 'platinum'
     : 'silver';
 
+  // Build a URL for the 3D model file — stored in public/models/
+  const modelUrl = model3dFileName ? `/models/${model3dFileName}` : '';
+
   return (
     <div className="space-y-4">
-      {/* Toggle Buttons (only show if model exists) */}
-      {product.model3d && (
+      {/* Toggle Buttons (only show if 3D model exists) */}
+      {has3D && (
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode('3d')}
@@ -70,10 +74,10 @@ export default function ProductGallery({ product }: ProductGalleryProps) {
       )}
 
       {/* 3D Viewer */}
-      {viewMode === '3d' && product.model3d ? (
+      {viewMode === '3d' && has3D ? (
         <JewelryViewer
-          modelUrl={product.model3d.url}
-          fileName={product.model3d.fileName}
+          modelUrl={modelUrl}
+          fileName={model3dFileName!}
           className="aspect-square"
           materialPreset={materialPreset as 'silver' | 'gold' | 'rose-gold' | 'platinum'}
           autoRotate={true}
@@ -81,9 +85,19 @@ export default function ProductGallery({ product }: ProductGalleryProps) {
       ) : (
         /* Image Gallery */
         <>
-          <div className="aspect-square bg-silver/20 rounded-xl flex items-center justify-center relative">
-            <span className="text-muted">Product Image</span>
-            {product.model3d && (
+          <div className="aspect-square bg-silver/20 rounded-xl flex items-center justify-center relative overflow-hidden">
+            {images.length > 0 ? (
+              <Image
+                src={images[activeThumb] || images[0]}
+                alt={name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            ) : (
+              <span className="text-muted">Product Image</span>
+            )}
+            {has3D && (
               <button
                 onClick={() => setViewMode('3d')}
                 className="absolute bottom-4 right-4 bg-warm-black/80 backdrop-blur-sm text-white px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-medium hover:bg-warm-black transition-colors"
@@ -93,16 +107,23 @@ export default function ProductGallery({ product }: ProductGalleryProps) {
               </button>
             )}
           </div>
-          <div className="flex gap-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="w-20 h-20 bg-silver/20 rounded-lg flex items-center justify-center border-2 border-transparent hover:border-gold cursor-pointer transition-colors"
-              >
-                <span className="text-muted text-[10px]">{i}</span>
-              </div>
-            ))}
-          </div>
+
+          {/* Thumbnails */}
+          {images.length > 0 && (
+            <div className="flex gap-3">
+              {images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveThumb(i)}
+                  className={`w-20 h-20 rounded-lg border-2 overflow-hidden relative cursor-pointer transition-colors ${
+                    activeThumb === i ? 'border-gold' : 'border-transparent hover:border-gold/50'
+                  }`}
+                >
+                  <Image src={img} alt="" fill className="object-cover" sizes="80px" />
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
