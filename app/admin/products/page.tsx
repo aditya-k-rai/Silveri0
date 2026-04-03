@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity } from "lucide-react";
+import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
@@ -63,6 +63,8 @@ export default function AdminProductsPage() {
         radius: "",
         warranty: "",
         tags: "",
+        views: 0,
+        likes: 0,
         primaryImage: null,
         hoverImage: null,
         model3dFileName: null
@@ -167,9 +169,10 @@ export default function AdminProductsPage() {
                 <th className="px-5 py-3 font-medium text-center">Featured</th>
                 <th className="px-5 py-3 font-medium text-center">New</th>
                 <th className="px-5 py-3 font-medium text-right">Price</th>
+                <th className="px-5 py-3 font-medium text-right">Views</th>
+                <th className="px-5 py-3 font-medium text-right">Likes</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
                 <th className="px-5 py-3 font-medium text-right">Status</th>
-                <th className="px-5 py-3 font-medium text-center">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -223,6 +226,16 @@ export default function AdminProductsPage() {
                   </td>
 
                   <td className="px-5 py-4 text-right font-medium">₹{p.price.toLocaleString("en-IN")}</td>
+                  <td className="px-5 py-4 text-right">
+                    <span className="inline-flex items-center gap-1 text-[#7A7585]">
+                      <Eye size={13} /> {p.views.toLocaleString("en-IN")}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <span className="inline-flex items-center gap-1 text-rose-500">
+                      <Heart size={13} className="fill-current" /> {p.likes.toLocaleString("en-IN")}
+                    </span>
+                  </td>
                   <td className="px-5 py-4 text-right">
                     <span className={p.stock === 0 ? "text-red-600 font-medium" : ""}>
                       {p.stock === 0 ? "Out of stock" : p.stock}
@@ -481,6 +494,69 @@ export default function AdminProductsPage() {
                       rows={2}
                       className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 resize-none"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Engagement — Views & Likes */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Engagement Stats</h3>
+                <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] grid grid-cols-2 gap-6">
+                  {/* Views */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-2 flex items-center gap-1.5">
+                      <Eye size={14} /> Views
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => editingParams && setEditingParams({ ...editingParams, views: Math.max(0, editingParams.views - 1) })}
+                        className="w-9 h-9 rounded-lg border border-[#E8E8E8] flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <input
+                        type="number"
+                        value={editingParams?.views ?? 0}
+                        onChange={(e) => editingParams && setEditingParams({ ...editingParams, views: Math.max(0, Number(e.target.value)) })}
+                        className="flex-1 bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm text-center font-mono font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => editingParams && setEditingParams({ ...editingParams, views: editingParams.views + 1 })}
+                        className="w-9 h-9 rounded-lg border border-[#E8E8E8] flex items-center justify-center hover:bg-green-50 hover:border-green-200 hover:text-green-600 transition-colors"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Likes */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-2 flex items-center gap-1.5">
+                      <Heart size={14} className="text-rose-500" /> Likes
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => editingParams && setEditingParams({ ...editingParams, likes: Math.max(0, editingParams.likes - 1) })}
+                        className="w-9 h-9 rounded-lg border border-[#E8E8E8] flex items-center justify-center hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <input
+                        type="number"
+                        value={editingParams?.likes ?? 0}
+                        onChange={(e) => editingParams && setEditingParams({ ...editingParams, likes: Math.max(0, Number(e.target.value)) })}
+                        className="flex-1 bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm text-center font-mono font-medium focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => editingParams && setEditingParams({ ...editingParams, likes: editingParams.likes + 1 })}
+                        className="w-9 h-9 rounded-lg border border-[#E8E8E8] flex items-center justify-center hover:bg-green-50 hover:border-green-200 hover:text-green-600 transition-colors"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
