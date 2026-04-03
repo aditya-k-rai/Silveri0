@@ -194,6 +194,55 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ====== ALL PRODUCTS SECTION ====== */}
+      <section className="bg-silver-100 py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <p className="text-silver-400 text-xs uppercase tracking-[0.2em] mb-2">Complete Collection</p>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-light text-silver-900 mb-2">
+              All Products
+            </h2>
+            <p className="text-silver-500 text-sm">{activeProducts.length} pieces available</p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {activeProducts.map((product) => (
+              <Link
+                key={`all-${product.id}`}
+                href={`/product/${toSlug(product.name)}`}
+                className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-silver-200"
+              >
+                <div className="relative aspect-square bg-gradient-to-br from-silver-100 to-silver-50">
+                  {product.primaryImage ? (
+                    <Image src={product.primaryImage} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-silver-400 text-xs">Product Image</span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-silver-500">{product.carat} · {product.colour}</p>
+                  <h3 className="font-[family-name:var(--font-heading)] text-sm font-medium text-silver-800 mt-0.5 line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <span className="text-silver-900 font-semibold text-sm">
+                    ₹{product.price.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Link href="/category/all" className="inline-flex items-center gap-2 text-silver-700 border border-silver-300 px-6 py-2.5 rounded-full text-sm hover:bg-white hover:border-silver-400 transition-colors">
+              Browse Full Collection
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ====== NEWSLETTER CTA ====== */}
       <section className="bg-gradient-to-r from-silver-900 to-silver-800 py-12 md:py-16">
         <div className="max-w-xl mx-auto px-4 text-center">

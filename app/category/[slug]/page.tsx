@@ -1,35 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronRight, SlidersHorizontal, X } from 'lucide-react';
-import ProductCard from '@/components/product/ProductCard';
+import Image from 'next/image';
+import { ChevronRight, SlidersHorizontal, X, Heart, ShoppingCart } from 'lucide-react';
+import { useProductStore, Product } from '@/store/productStore';
 
-const sampleProducts = [
-  { id: '1', name: 'Silver Moonlight Ring', slug: 'silver-moonlight-ring', price: 2499, comparePrice: 3999, image: '', material: 'Sterling Silver' },
-  { id: '2', name: 'Gold Plated Pendant', slug: 'gold-plated-pendant', price: 3499, comparePrice: 4999, image: '', material: 'Gold Plated' },
-  { id: '3', name: 'Pearl Drop Earrings', slug: 'pearl-drop-earrings', price: 1999, comparePrice: 2999, image: '', material: 'Silver & Pearl' },
-  { id: '4', name: 'Twisted Silver Bracelet', slug: 'twisted-silver-bracelet', price: 2999, comparePrice: 4499, image: '', material: 'Sterling Silver' },
-  { id: '5', name: 'Diamond Cut Anklet', slug: 'diamond-cut-anklet', price: 1799, comparePrice: 2499, image: '', material: 'Sterling Silver' },
-  { id: '6', name: 'Rose Gold Hoop Earrings', slug: 'rose-gold-hoop-earrings', price: 2299, comparePrice: 3499, image: '', material: 'Rose Gold' },
-];
+export default function CategoryPage({ params }: { params: { slug: string } }) {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const unsub = useProductStore.persist.onFinishHydration(() => setHydrated(true));
+    if (useProductStore.persist.hasHydrated()) setHydrated(true);
+    return () => unsub();
+  }, []);
 
-const materials = ['Sterling Silver', 'Gold Plated', 'Rose Gold', 'Silver & Pearl', 'Oxidized Silver'];
-
-export default function CategoryPage() {
+  const products = useProductStore((s) => s.products);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedColours, setSelectedColours] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
 
-  const toggleMaterial = (mat: string) => {
-    setSelectedMaterials((prev) =>
-      prev.includes(mat) ? prev.filter((m) => m !== mat) : [...prev, mat]
-    );
-  };
+  const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
 
-  const filteredProducts = sampleProducts
-    .filter((p) => selectedMaterials.length === 0 || selectedMaterials.includes(p.material || ''))
+  // Filter active products, then by category slug
+  const activeProducts = products.filter((p) => p.status === 'Active');
+  const categoryFiltered = params.slug === 'all'
+    ? activeProducts
+    : params.slug === 'new-arrivals'
+      ? activeProducts.filter((p) => p.isNewArrival)
+      : activeProducts.filter((p) => p.category.toLowerCase() === params.slug);
+
+  // Get unique colours for filter sidebar
+  const allColours = [...new Set(categoryFiltered.map((p) => p.colour))];
+
+  const filteredProducts = categoryFiltered
+    .filter((p) => selectedColours.length === 0 || selectedColours.includes(p.colour))
     .filter((p) => !priceRange.min || p.price >= Number(priceRange.min))
     .filter((p) => !priceRange.max || p.price <= Number(priceRange.max))
     .sort((a, b) => {
@@ -38,18 +43,32 @@ export default function CategoryPage() {
       return 0;
     });
 
+  const toggleColour = (c: string) => {
+    setSelectedColours((prev) =>
+      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
+    );
+  };
+
+  const categoryTitle = params.slug === 'all'
+    ? 'Our Collection'
+    : params.slug === 'new-arrivals'
+      ? 'New Arrivals'
+      : params.slug.charAt(0).toUpperCase() + params.slug.slice(1);
+
+  if (!hydrated) return null;
+
   return (
     <div className="bg-cream min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center gap-2 text-sm text-muted mb-6">
           <Link href="/" className="hover:text-gold transition-colors">Home</Link>
           <ChevronRight size={14} />
-          <span className="text-warm-black capitalize">Collection</span>
+          <span className="text-warm-black capitalize">{categoryTitle}</span>
         </div>
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-light text-warm-black capitalize">
-            Our Collection
+            {categoryTitle}
           </h1>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowFilters(!showFilters)} className="md:hidden flex items-center gap-2 px-3 py-2 border border-silver rounded-lg text-sm">
@@ -74,12 +93,12 @@ export default function CategoryPage() {
                 </div>
               </div>
               <div>
-                <h4 className="font-medium text-sm text-warm-black mb-3">Material</h4>
+                <h4 className="font-medium text-sm text-warm-black mb-3">Colour</h4>
                 <div className="space-y-2">
-                  {materials.map((mat) => (
-                    <label key={mat} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={selectedMaterials.includes(mat)} onChange={() => toggleMaterial(mat)} className="rounded border-silver text-gold focus:ring-gold" />
-                      <span className="text-sm text-muted">{mat}</span>
+                  {allColours.map((c) => (
+                    <label key={c} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedColours.includes(c)} onChange={() => toggleColour(c)} className="rounded border-silver text-gold focus:ring-gold" />
+                      <span className="text-sm text-muted">{c}</span>
                     </label>
                   ))}
                 </div>
@@ -97,11 +116,11 @@ export default function CategoryPage() {
                 </div>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="font-medium text-sm text-warm-black mb-3">Material</h4>
-                    {materials.map((mat) => (
-                      <label key={mat} className="flex items-center gap-2 cursor-pointer mb-2">
-                        <input type="checkbox" checked={selectedMaterials.includes(mat)} onChange={() => toggleMaterial(mat)} className="rounded" />
-                        <span className="text-sm text-muted">{mat}</span>
+                    <h4 className="font-medium text-sm text-warm-black mb-3">Colour</h4>
+                    {allColours.map((c) => (
+                      <label key={c} className="flex items-center gap-2 cursor-pointer mb-2">
+                        <input type="checkbox" checked={selectedColours.includes(c)} onChange={() => toggleColour(c)} className="rounded" />
+                        <span className="text-sm text-muted">{c}</span>
                       </label>
                     ))}
                   </div>
@@ -114,7 +133,47 @@ export default function CategoryPage() {
             <p className="text-muted text-sm mb-4">{filteredProducts.length} products</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} {...product} />
+                <div key={product.id} className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-silver/30">
+                  <Link href={`/product/${toSlug(product.name)}`} className="block relative aspect-square overflow-hidden">
+                    {product.primaryImage ? (
+                      <Image
+                        src={product.primaryImage}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-silver/30 flex items-center justify-center">
+                        <span className="text-muted text-sm">No Image</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <button className="flex-1 bg-gold text-warm-black py-2 rounded text-xs font-medium hover:bg-gold-light transition-colors flex items-center justify-center gap-1">
+                        <ShoppingCart size={14} />
+                        Add to Cart
+                      </button>
+                      <button className="w-9 h-9 bg-white rounded flex items-center justify-center hover:bg-cream transition-colors shadow-sm">
+                        <Heart size={16} className="text-warm-black" />
+                      </button>
+                    </div>
+                  </Link>
+                  <div className="p-3">
+                    <span className="text-muted text-[10px] uppercase tracking-wider">
+                      {product.carat} · {product.colour}
+                    </span>
+                    <Link href={`/product/${toSlug(product.name)}`}>
+                      <h3 className="font-[family-name:var(--font-heading)] text-base font-medium text-warm-black mt-0.5 line-clamp-1 hover:text-gold transition-colors">
+                        {product.name}
+                      </h3>
+                    </Link>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-warm-black font-semibold">
+                        ₹{product.price.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
             {filteredProducts.length === 0 && (
