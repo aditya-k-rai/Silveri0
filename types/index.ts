@@ -98,6 +98,7 @@ export interface User {
   email: string;
   photoURL: string;
   phone: string;
+  location?: string;
   role: 'customer' | 'admin';
   addresses: UserAddress[];
   wishlist: string[];
