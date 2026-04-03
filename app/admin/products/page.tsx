@@ -163,8 +163,8 @@ export default function AdminProductsPage() {
                   
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-center gap-2">
-                       {p.primaryImage && <ImageIcon size={14} className="text-[#1A1A1A]" title="Has Image" />}
-                       {p.model3dFileName && <Box size={14} className="text-[#C9A84C]" title="Has 3D Model" />}
+                       {p.primaryImage && <span title="Has Image"><ImageIcon size={14} className="text-[#1A1A1A]" /></span>}
+                       {p.model3dFileName && <span title="Has 3D Model"><Box size={14} className="text-[#C9A84C]" /></span>}
                     </div>
                   </td>
 
