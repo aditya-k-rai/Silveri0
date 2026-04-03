@@ -13,7 +13,6 @@ import { signOutUser } from "@/lib/firebase/auth";
 const NAV_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/3d-models", label: "3D Models", icon: Box },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/users", label: "Users", icon: Users },
