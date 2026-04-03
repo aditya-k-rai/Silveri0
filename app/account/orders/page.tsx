@@ -3,32 +3,7 @@
 import Link from "next/link";
 import { Package, ChevronRight } from "lucide-react";
 
-const ORDERS = [
-  {
-    id: "ORD-2026-001",
-    date: "2026-03-28",
-    items: [
-      { name: "Silver Elegance Ring", qty: 1, price: 2499 },
-      { name: "Luna Necklace", qty: 1, price: 3899 },
-    ],
-    total: 6398,
-    status: "Delivered",
-  },
-  {
-    id: "ORD-2026-002",
-    date: "2026-03-15",
-    items: [{ name: "Aria Earrings", qty: 2, price: 1899 }],
-    total: 3798,
-    status: "Shipped",
-  },
-  {
-    id: "ORD-2026-003",
-    date: "2026-02-20",
-    items: [{ name: "Charm Bracelet", qty: 1, price: 4299 }],
-    total: 4299,
-    status: "Processing",
-  },
-];
+import { useOrderStore } from "@/store/orderStore";
 
 const STATUS_COLORS: Record<string, string> = {
   Delivered: "bg-green-50 text-green-700",
@@ -38,7 +13,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  if (ORDERS.length === 0) {
+  const { orders } = useOrderStore();
+  
+  if (orders.length === 0) {
     return (
       <div className="bg-white border border-silver/40 rounded-2xl p-10 text-center">
         <Package size={48} className="mx-auto text-muted mb-4" />
@@ -54,7 +31,7 @@ export default function OrdersPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-2">My Orders</h2>
-      {ORDERS.map((order) => (
+      {orders.map((order) => (
         <Link
           key={order.id}
           href={`/order/${order.id}`}
@@ -75,7 +52,7 @@ export default function OrdersPage() {
           <div className="space-y-1 text-sm text-muted">
             {order.items.map((item) => (
               <p key={item.name}>
-                {item.name} <span className="text-xs">x{item.qty}</span>
+                {item.name} <span className="text-xs">x{item.quantity}</span>
               </p>
             ))}
           </div>

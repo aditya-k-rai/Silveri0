@@ -1,47 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag } from "lucide-react";
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  price: number; // Base or total static price
-  makingMargin?: number; // Added specifically for the dynamic market sync equation
-  stock: number;
-  category: string;
-  status: string;
-  isFeatured: boolean;
-  isNewArrival: boolean;
-  carat: string;
-  colour: string;
-  size: string;
-  height: string;
-  weight: string;
-  width: string;
-  radius: string;
-  warranty: string;
-  tags: string;
-  primaryImage: string | null;
-  hoverImage: string | null;
-  model3dFileName: string | null;
-}
-
-const INITIAL_PRODUCTS: Product[] = [
-  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, makingMargin: 1500, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false, carat: "22K", colour: "Silver", size: "US 7", height: "0.2cm", weight: "4.2g", width: "0.8cm", radius: "0.85cm", warranty: "1 Year Polish Guarantee", tags: "wedding, elegant, classic", primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80", hoverImage: null, model3dFileName: "ring_elegance.obj" },
-  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, makingMargin: 2200, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true, carat: "18K", colour: "Rose Gold", size: "18 inch chain", height: "N/A", weight: "12g", width: "0.4cm", radius: "", warranty: "Lifetime Clasp Replacement", tags: "daily wear, trendy", primaryImage: null, hoverImage: null, model3dFileName: "luna.3dm" },
-  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, makingMargin: 800, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true, carat: "24K", colour: "Gold", size: "Regular", height: "2.5cm", weight: "6g", width: "1.2cm", radius: "", warranty: "6 Month Manufacturer Defect Guarantee", tags: "party, gold", primaryImage: null, hoverImage: null, model3dFileName: null },
-  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, makingMargin: 1200, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", colour: "Silver", size: "7.5 inch lock", height: "0.5cm", weight: "18g", width: "0.8cm", radius: "", warranty: "No warranty on charms", tags: "casual, charm", primaryImage: null, hoverImage: null, model3dFileName: null },
-];
+import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity } from "lucide-react";
+import { useProductStore, Product } from "@/store/productStore";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const { products, setProducts, updateProduct, addProduct } = useProductStore();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("Name");
 
   // Editor State
   const [editingParams, setEditingParams] = useState<Product | null>(null);
+  
+  // History Modal State
+  const [historyViewProduct, setHistoryViewProduct] = useState<Product | null>(null);
+
 
   const filtered = products
     .filter((p) =>
@@ -60,7 +34,8 @@ export default function AdminProductsPage() {
 
   const toggleFlag = (e: React.MouseEvent, id: string, field: 'isFeatured' | 'isNewArrival') => {
     e.stopPropagation();
-    setProducts((prev) => prev.map(p => p.id === id ? { ...p, [field]: !p[field] } : p));
+    const p = products.find(prod => prod.id === id);
+    if(p) updateProduct(id, { [field]: !p[field] });
   };
 
   const openEditor = (prod: Product | null) => {
@@ -73,6 +48,7 @@ export default function AdminProductsPage() {
         sku: `SLV-NEW-${Math.floor(1000 + Math.random() * 9000)}`,
         price: 0,
         makingMargin: 500, // Default making margin explicitly created
+        isLinked: false, // For dynamic market
         stock: 0,
         category: "Rings",
         status: "Draft",
@@ -99,23 +75,51 @@ export default function AdminProductsPage() {
   const saveProduct = () => {
     if (!editingParams) return;
     if (editingParams.id === "NEW") {
-      const newProd = { ...editingParams, id: `P${Date.now()}` };
-      setProducts([newProd, ...products]);
+      const newProd = { ...editingParams, id: `P${Math.floor(100 + Math.random() * 900)}` };
+      addProduct(newProd);
     } else {
-      setProducts(prev => prev.map(p => p.id === editingParams.id ? editingParams : p));
+      updateProduct(editingParams.id, editingParams);
     }
     closeEditor();
   };
 
-  const simulateMediaUpload = (type: 'primary' | 'hover' | '3d') => {
-    if (!editingParams) return;
-    if (type === 'primary') {
-      setEditingParams({ ...editingParams, primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80" });
-    } else if (type === 'hover') {
-      setEditingParams({ ...editingParams, hoverImage: "https://images.unsplash.com/photo-1515562141207-7a8ea4114e17?w=500&q=80" });
-    } else {
-      setEditingParams({ ...editingParams, model3dFileName: `model_${Date.now()}.obj` });
+  // Helper to generate a fake realistic 30 day curve based heavily on the actual current price anchor
+  const generate30DayData = (currentPrice: number) => {
+    const data = [];
+    let walkingPrice = currentPrice * 0.90; // Start 10% lower a month ago
+    for (let i = 30; i >= 1; i--) {
+      // Create an elegant market walk toward current price
+      walkingPrice += (currentPrice - walkingPrice) * 0.15 + (Math.random() * (currentPrice * 0.02)) - (currentPrice * 0.01);
+      data.push({
+        date: `Day -${i}`,
+        price: Math.round(walkingPrice)
+      });
     }
+    data.push({ date: "Today", price: currentPrice });
+    return data;
+  };
+
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | '3d') => {
+    if (!editingParams || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (type === '3d') {
+      setEditingParams({ ...editingParams, model3dFileName: file.name });
+      return;
+    }
+
+    // For images, generate a base64 local preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        if (type === 'primary') {
+          setEditingParams({ ...editingParams, primaryImage: event.target.result as string });
+        } else if (type === 'hover') {
+          setEditingParams({ ...editingParams, hoverImage: event.target.result as string });
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -165,6 +169,7 @@ export default function AdminProductsPage() {
                 <th className="px-5 py-3 font-medium text-right">Price</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
                 <th className="px-5 py-3 font-medium text-right">Status</th>
+                <th className="px-5 py-3 font-medium text-center">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -266,10 +271,10 @@ export default function AdminProductsPage() {
                   {/* Primary Image */}
                   <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
                     <label className="block text-xs font-medium text-[#7A7585] mb-2 text-center">Primary Image (Default)</label>
-                    <div 
-                      onClick={() => simulateMediaUpload('primary')}
+                    <label 
                       className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${editingParams.primaryImage ? 'border-[#C9A84C]' : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'}`}
                     >
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'primary')} />
                       {editingParams.primaryImage ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -284,16 +289,16 @@ export default function AdminProductsPage() {
                           <span className="text-[10px] text-[#7A7585]">Upload Primary</span>
                         </div>
                       )}
-                    </div>
+                    </label>
                   </div>
 
                   {/* Hover Image */}
                   <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
                     <label className="block text-xs font-medium text-[#7A7585] mb-2 text-center">Secondary Image (Hover)</label>
-                    <div 
-                      onClick={() => simulateMediaUpload('hover')}
+                    <label 
                       className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${editingParams.hoverImage ? 'border-purple-400' : 'border-[#E8E8E8] hover:border-purple-300 bg-[#FDFAF5]'}`}
                     >
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'hover')} />
                       {editingParams.hoverImage ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -308,7 +313,7 @@ export default function AdminProductsPage() {
                           <span className="text-[10px] text-[#7A7585]">Upload Hover</span>
                         </div>
                       )}
-                    </div>
+                    </label>
                   </div>
                 </div>
 
@@ -323,12 +328,10 @@ export default function AdminProductsPage() {
                       {editingParams.model3dFileName ? `Attached: ${editingParams.model3dFileName}` : "No 3D file attached for Interactive AR/Viewer."}
                     </p>
                   </div>
-                  <button 
-                    onClick={() => simulateMediaUpload('3d')}
-                    className="px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium hover:bg-[#F5F3EF] transition-colors"
-                  >
+                  <label className="cursor-pointer px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium hover:bg-[#F5F3EF] transition-colors">
+                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} />
                     {editingParams.model3dFileName ? "Replace File" : "Upload File"}
-                  </button>
+                  </label>
                 </div>
               </div>
 
@@ -336,14 +339,26 @@ export default function AdminProductsPage() {
               <div className="space-y-4 pt-2">
                 <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Product Context</h3>
                 <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] space-y-5">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Product Name</label>
-                    <input 
-                      type="text" 
-                      value={editingParams.name}
-                      onChange={(e) => setEditingParams({...editingParams, name: e.target.value})}
-                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Product Name</label>
+                      <input 
+                        type="text" 
+                        value={editingParams.name}
+                        onChange={(e) => setEditingParams({...editingParams, name: e.target.value})}
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">SKU Code</label>
+                      <input 
+                        type="text" 
+                        value={editingParams.sku}
+                        onChange={(e) => setEditingParams({...editingParams, sku: e.target.value})}
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                        title="Auto-generated on creation, but free to override."
+                      />
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -484,14 +499,14 @@ export default function AdminProductsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#7A7585] mb-1.5 flex items-center gap-1">
-                    Making Margin (₹) <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Active on Live Market Sync"></span>
+                    Making Charges (₹) <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Active on Live Market Sync"></span>
                   </label>
                   <input 
                     type="number" 
                     value={editingParams.makingMargin || 0}
                     onChange={(e) => setEditingParams({...editingParams, makingMargin: Number(e.target.value)})}
                     className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 text-green-700 font-mono font-medium"
-                    title="Profit margin added to raw Silver value if Market Sync is engaged."
+                    title="Fixed making charges isolated from raw silver cost."
                   />
                 </div>
                 <div>
@@ -537,6 +552,54 @@ export default function AdminProductsPage() {
           </div>
         </>
       )}
+      {/* 30-Day History Modal */}
+      {historyViewProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+            onClick={() => setHistoryViewProduct(null)}
+          />
+          <div className="bg-white rounded-2xl w-full max-w-2xl relative z-10 p-6 shadow-2xl border border-[#E8E8E8]">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A] flex items-center gap-2">
+                  <Activity className="text-[#C9A84C]" size={20} />
+                  30-Day Price Trend
+                </h3>
+                <p className="text-sm text-[#7A7585] mt-1">{historyViewProduct.name} ({historyViewProduct.sku})</p>
+              </div>
+              <button 
+                onClick={() => setHistoryViewProduct(null)}
+                className="p-2 hover:bg-[#F5F3EF] rounded-full text-[#7A7585] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="w-full h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={generate30DayData(historyViewProduct.price)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E8E8" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A09DAB" }} dy={10} minTickGap={30} />
+                  <YAxis domain={['dataMin - 100', 'dataMax + 100']} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A09DAB" }} width={60} tickFormatter={(val) => `₹${val}`} />
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #E8E8E8', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ fontSize: '14px', fontWeight: 600, color: '#C9A84C' }}
+                    labelStyle={{ color: '#7A7585', fontSize: '12px' }}
+                    formatter={(value: any) => [`₹${value}`, 'Price']}
+                  />
+                  <Line type="monotone" name="Listed Price" dataKey="price" stroke="#C9A84C" strokeWidth={3} dot={{ r: 0 }} activeDot={{ r: 6, fill: "#1A1A1A" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-sm bg-[#FDFAF5] p-4 rounded-xl">
+              <span className="text-[#7A7585]">Current Listed Price:</span>
+              <span className="font-bold text-lg font-[family-name:var(--font-heading)] text-[#1A1A1A]">₹{historyViewProduct.price.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

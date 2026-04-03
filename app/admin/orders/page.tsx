@@ -1,19 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard } from "lucide-react";
-
-interface Order {
-  id: string;
-  customer: string;
-  email: string;
-  phone: string;
-  location: string;
-  date: string;
-  total: number;
-  status: string;
-  items: { sku: string; name: string; price: number; quantity: number }[];
-}
+import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard, Clock, X, CheckCircle } from "lucide-react";
+import { useOrderStore, Order } from "@/store/orderStore";
 
 const STATUSES = ["All", "New", "Processing", "Shipped", "Delivered", "Cancelled"];
 
@@ -25,44 +14,57 @@ const STATUS_COLORS: Record<string, string> = {
   Cancelled: "bg-red-50 text-red-700",
 };
 
-const INITIAL_ORDERS: Order[] = [
-  { 
-    id: "ORD-2026-157", customer: "Vikram Kohli", email: "vikram@example.com", phone: "+91 65498 73210", location: "Chennai, Tamil Nadu", date: "2026-04-03", total: 10498, status: "New",
-    items: [{ sku: "SLV-RNG-006", name: "Solitaire Ring", price: 5499, quantity: 1 }, { sku: "SLV-BRC-004", name: "Charm Bracelet", price: 4999, quantity: 1 }]
-  },
-  { 
-    id: "ORD-2026-156", customer: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", location: "Mumbai, Maharashtra", date: "2026-04-02", total: 6398, status: "Delivered",
-    items: [{ sku: "SLV-RNG-001", name: "Silver Elegance Ring", price: 2499, quantity: 1 }, { sku: "SLV-NCK-002", name: "Luna Necklace", price: 3899, quantity: 1 }]
-  },
-  { 
-    id: "ORD-2026-155", customer: "Arjun Mehta", email: "arjun@example.com", phone: "+91 87654 32100", location: "Delhi, NCR", date: "2026-04-01", total: 3899, status: "Shipped",
-    items: [{ sku: "SLV-NCK-002", name: "Luna Necklace", price: 3899, quantity: 1 }]
-  },
-  { 
-    id: "ORD-2026-154", customer: "Neha Reddy", email: "neha@example.com", phone: "+91 76543 21000", location: "Bangalore, Karnataka", date: "2026-03-31", total: 8750, status: "Processing",
-    items: [{ sku: "SLV-RNG-006", name: "Solitaire Ring", price: 5499, quantity: 1 }, { sku: "SLV-ANK-005", name: "Twist Anklet", price: 1299, quantity: 2 }, { sku: "SLV-BRC-004", name: "Charm Bracelet", price: 653, quantity: 1 }] 
-  },
-  { 
-    id: "ORD-2026-153", customer: "Rahul Singh", email: "rahul@example.com", phone: "+91 65432 10000", location: "Pune, Maharashtra", date: "2026-03-30", total: 2499, status: "Delivered",
-    items: [{ sku: "SLV-RNG-001", name: "Silver Elegance Ring", price: 2499, quantity: 1 }]
-  },
-  { 
-    id: "ORD-2026-152", customer: "Ananya Gupta", email: "ananya@example.com", phone: "+91 54321 00000", location: "Hyderabad, Telangana", date: "2026-03-29", total: 5200, status: "Shipped",
-    items: [{ sku: "SLV-NCK-007", name: "Pearl Pendant", price: 2899, quantity: 1 }, { sku: "SLV-EAR-003", name: "Aria Earrings", price: 2301, quantity: 1 }]
-  },
-];
+interface StatusUpdateParams {
+  id: string;
+  currentStatus: string;
+  newStatus: string;
+}
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const { orders, updateOrderStatus } = useOrderStore();
   const [activeTab, setActiveTab] = useState("All");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
+  // Status Modal State
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<StatusUpdateParams | null>(null);
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [eventNote, setEventNote] = useState("");
+  const [notifyCustomer, setNotifyCustomer] = useState(true);
+
   const filtered = activeTab === "All" ? orders : orders.filter((o) => o.status === activeTab);
 
-  const updateStatus = (e: React.ChangeEvent<HTMLSelectElement>, id: string) => {
+  const openStatusModal = (e: React.ChangeEvent<HTMLSelectElement>, id: string, currentStatus: string) => {
     e.stopPropagation();
     const newStatus = e.target.value;
-    setOrders((prev) => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+    if (newStatus === currentStatus) return;
+
+    const now = new Date();
+    setEventDate(now.toISOString().split("T")[0]);
+    // Format to HH:MM based on local standard
+    setEventTime(now.toTimeString().split(" ")[0].slice(0, 5));
+    setEventNote("");
+    setNotifyCustomer(true);
+
+    setPendingStatusUpdate({ id, currentStatus, newStatus });
+  };
+
+  const confirmStatusUpdate = () => {
+    if (!pendingStatusUpdate) return;
+    
+    const [hours, minutes] = eventTime.split(":");
+    const h = parseInt(hours);
+    const formattedTime = `${h % 12 || 12}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
+
+    updateOrderStatus(pendingStatusUpdate.id, pendingStatusUpdate.newStatus, {
+      status: pendingStatusUpdate.newStatus,
+      date: eventDate,
+      time: formattedTime,
+      note: eventNote || undefined,
+      customerNotified: notifyCustomer
+    });
+
+    setPendingStatusUpdate(null);
   };
 
   const toggleExpand = (id: string) => {
@@ -131,7 +133,7 @@ export default function AdminOrdersPage() {
                       <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={o.status}
-                          onChange={(e) => updateStatus(e, o.id)}
+                          onChange={(e) => openStatusModal(e, o.id, o.status)}
                           className={`text-xs font-medium px-2.5 py-1.5 rounded-full border border-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 transition-colors ${STATUS_COLORS[o.status]}`}
                         >
                           {STATUSES.filter((s) => s !== "All").map((s) => (
@@ -145,7 +147,7 @@ export default function AdminOrdersPage() {
                     {isExpanded && (
                       <tr className="bg-[#FDFAF5]/30 border-b border-[#E8E8E8]/50">
                         <td colSpan={7} className="px-5 pb-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 pl-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 pl-8">
                             
                             {/* Items Ordered */}
                             <div className="bg-white border border-[#E8E8E8] rounded-xl p-5">
@@ -198,6 +200,41 @@ export default function AdminOrdersPage() {
                               </div>
                             </div>
 
+                            {/* Tracking Timeline */}
+                            <div className="bg-white border border-[#E8E8E8] rounded-xl p-5 shrink-0">
+                              <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-4">
+                                <Clock size={16} className="text-purple-600" /> Order Tracking
+                              </h4>
+                              {o.events && o.events.length > 0 ? (
+                                <div className="space-y-4">
+                                  {o.events.map((ev, idx) => (
+                                    <div key={idx} className="relative pl-6">
+                                      {/* Vertical Line */}
+                                      {idx !== o.events.length - 1 && (
+                                        <div className="absolute left-[9px] top-6 bottom-[-20px] w-px bg-[#E8E8E8] z-0"></div>
+                                      )}
+                                      {/* Node */}
+                                      <div className={`absolute left-0 top-1 w-[19px] h-[19px] rounded-full flex items-center justify-center z-10 ${idx === o.events.length - 1 ? 'bg-[#C9A84C]' : 'bg-[#E8E8E8]'}`}>
+                                        <div className="w-2 h-2 rounded-full bg-white"></div>
+                                      </div>
+                                      
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-semibold text-[#1A1A1A]">{ev.status}</span>
+                                        <span className="text-[10px] text-[#A09DAB] mt-0.5">{ev.date} at {ev.time}</span>
+                                        {ev.note && (
+                                          <span className="text-xs text-[#7A7585] mt-1.5 bg-[#F5F3EF] px-2.5 py-1.5 rounded-md inline-block">
+                                            "{ev.note}"
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-[#7A7585] italic">No tracking events logged yet.</p>
+                              )}
+                            </div>
+
                           </div>
                         </td>
                       </tr>
@@ -212,6 +249,62 @@ export default function AdminOrdersPage() {
           <p className="text-center py-10 text-[#7A7585] text-sm">No orders found for this status.</p>
         )}
       </div>
+      {/* STATUS UPDATE MODAL */}
+      {pendingStatusUpdate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPendingStatusUpdate(null)} />
+          <div className="bg-white rounded-2xl w-full max-w-md relative z-10 p-6 shadow-2xl border border-[#E8E8E8]">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A]">Update Status</h3>
+                <p className="text-sm text-[#7A7585] mt-1">Order {pendingStatusUpdate.id} ➔ <span className="font-semibold text-[#C9A84C]">{pendingStatusUpdate.newStatus}</span></p>
+              </div>
+              <button onClick={() => setPendingStatusUpdate(null)} className="p-2 hover:bg-[#F5F3EF] rounded-full text-[#7A7585] transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Date</label>
+                  <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Time</label>
+                  <input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Dispatch / Tracking Note (Optional)</label>
+                <textarea 
+                  value={eventNote} onChange={(e) => setEventNote(e.target.value)}
+                  placeholder="e.g. Tracking ID: AW309192, Shipped via BlueDart"
+                  rows={2}
+                  className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 resize-none"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${notifyCustomer ? 'bg-amber-500' : 'bg-white border border-[#E8E8E8]'}`}>
+                  {notifyCustomer && <CheckCircle size={14} className="text-white" />}
+                </div>
+                <input type="checkbox" className="hidden" checked={notifyCustomer} onChange={() => setNotifyCustomer(!notifyCustomer)} />
+                <div>
+                  <span className="text-sm font-semibold text-amber-900 block">Notify Customer</span>
+                  <span className="text-[10px] text-amber-700/80 leading-tight block">Ping SMS / Email instantly.</span>
+                </div>
+              </label>
+            </div>
+
+            <button onClick={confirmStatusUpdate} className="w-full py-3 bg-[#1A1A1A] text-white text-sm font-semibold rounded-xl hover:bg-black transition-colors">
+              Save Tracking Event
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

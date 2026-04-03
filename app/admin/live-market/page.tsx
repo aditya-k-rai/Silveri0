@@ -2,19 +2,34 @@
 
 import React, { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, CheckCircle, AlertTriangle } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { fetchLiveMarketRates } from "@/app/actions/market";
 
 // Simulated 7-day Historical Data from APIs (Recent baseline adjusted closer to actual values)
+// Shows exactly which API fetched at what timeline (6:00 AM, 11:30 AM, 8:00 PM)
 const HISTORICAL_DATA = [
-  { day: "Day 1", silverRate: 201.50, usdInr: 94.10 },
-  { day: "Day 2", silverRate: 205.10, usdInr: 94.25 },
-  { day: "Day 3", silverRate: 204.90, usdInr: 94.50 },
-  { day: "Day 4", silverRate: 208.20, usdInr: 94.65 },
-  { day: "Day 5", silverRate: 211.00, usdInr: 94.60 },
-  { day: "Day 6", silverRate: 215.80, usdInr: 94.80 },
-  { day: "Day 7", silverRate: 216.50, usdInr: 94.81 },
+  { label: "D1 6:00 AM", silverRate: 198.50, usdInr: 94.00 },
+  { label: "D1 11:30 AM", silverRate: 199.10, usdInr: 94.02 },
+  { label: "D1 8:00 PM", silverRate: 198.90, usdInr: 94.05 },
+  { label: "D2 6:00 AM", silverRate: 199.50, usdInr: 94.05 },
+  { label: "D2 11:30 AM", silverRate: 200.20, usdInr: 94.08 },
+  { label: "D2 8:00 PM", silverRate: 201.00, usdInr: 94.10 },
+  { label: "D3 6:00 AM", silverRate: 201.50, usdInr: 94.10 },
+  { label: "D3 11:30 AM", silverRate: 202.30, usdInr: 94.15 },
+  { label: "D3 8:00 PM", silverRate: 204.00, usdInr: 94.20 },
+  { label: "D4 6:00 AM", silverRate: 203.80, usdInr: 94.18 },
+  { label: "D4 11:30 AM", silverRate: 205.10, usdInr: 94.25 },
+  { label: "D4 8:00 PM", silverRate: 205.90, usdInr: 94.28 },
+  { label: "D5 6:00 AM", silverRate: 206.50, usdInr: 94.30 },
+  { label: "D5 11:30 AM", silverRate: 207.20, usdInr: 94.35 },
+  { label: "D5 8:00 PM", silverRate: 208.50, usdInr: 94.40 },
+  { label: "D6 6:00 AM", silverRate: 209.00, usdInr: 94.42 },
+  { label: "D6 11:30 AM", silverRate: 211.50, usdInr: 94.48 },
+  { label: "D6 8:00 PM", silverRate: 212.80, usdInr: 94.52 },
+  { label: "D7 6:00 AM", silverRate: 213.50, usdInr: 94.60 },
+  { label: "D7 11:30 AM", silverRate: 214.20, usdInr: 94.65 },
+  { label: "D7 8:00 PM", silverRate: 216.50, usdInr: 94.81 },
 ];
 
 export default function LiveMarketDashboard() {
@@ -92,8 +107,9 @@ export default function LiveMarketDashboard() {
   };
 
   // Metrics diffs
-  const silverDiff = currentSilver - HISTORICAL_DATA[5].silverRate;
-  const usdDiff = currentUSD - HISTORICAL_DATA[5].usdInr;
+  const lastRecordedData = HISTORICAL_DATA[HISTORICAL_DATA.length - 1];
+  const silverDiff = currentSilver - lastRecordedData.silverRate;
+  const usdDiff = currentUSD - lastRecordedData.usdInr;
 
   return (
     <div className="space-y-6">
@@ -106,14 +122,19 @@ export default function LiveMarketDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <p className="text-xs text-[#7A7585] hidden sm:block">Automated Syncs: 6:00 AM, 11:30 AM, 8:00 PM (IST)</p>
-          <button 
-            onClick={forceSync}
-            disabled={isSyncing}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors ${isSyncing ? "opacity-75 cursor-not-allowed" : ""}`}
-          >
-            <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} /> 
-            {isSyncing ? "Fetching APIs..." : "Force API Sync"}
-          </button>
+          <div className="flex flex-col items-end gap-1.5">
+            <button 
+              onClick={forceSync}
+              disabled={isSyncing}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors ${isSyncing ? "opacity-75 cursor-not-allowed" : ""}`}
+            >
+              <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} /> 
+              {isSyncing ? "Fetching APIs..." : "Force API Sync"}
+            </button>
+            <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+              <AlertTriangle size={12} /> Limit: 20 per month
+            </p>
+          </div>
         </div>
       </div>
 
@@ -158,20 +179,20 @@ export default function LiveMarketDashboard() {
 
       {/* Historical Chart */}
       <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] shadow-sm">
-        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">7-Day Market Trend History</h3>
+        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">7-Day Hourly Market Trend</h3>
         <div className="w-full h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={[...HISTORICAL_DATA.slice(0, 6), { day: "Live (Current)", silverRate: currentSilver, usdInr: currentUSD }]}>
+            <LineChart data={[...HISTORICAL_DATA, { label: "Live", silverRate: currentSilver, usdInr: currentUSD }]}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E8E8" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A09DAB" }} dy={10} />
-              <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A09DAB" }} />
-              <YAxis yAxisId="right" orientation="right" domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A09DAB" }} />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} dy={10} minTickGap={20} />
+              <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
+              <YAxis yAxisId="right" orientation="right" domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
               <RechartsTooltip 
                 contentStyle={{ borderRadius: '12px', border: '1px solid #E8E8E8', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 itemStyle={{ fontSize: '14px', fontWeight: 600 }}
               />
-              <Line yAxisId="left" type="monotone" name="Silver Target (₹)" dataKey="silverRate" stroke="#C9A84C" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" name="USD/INR Base" dataKey="usdInr" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+              <Line yAxisId="left" type="monotone" name="Silver Rate (₹)" dataKey="silverRate" stroke="#C9A84C" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 6 }} />
+              <Line yAxisId="right" type="monotone" name="USD/INR Exch" dataKey="usdInr" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
