@@ -1,25 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Star, Sparkles } from "lucide-react";
 
-const PRODUCTS = [
-  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, stock: 34, category: "Rings", status: "Active" },
-  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, stock: 22, category: "Necklaces", status: "Active" },
-  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, stock: 45, category: "Earrings", status: "Active" },
-  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, stock: 18, category: "Bracelets", status: "Active" },
-  { id: "P005", name: "Twist Anklet", sku: "SLV-ANK-005", price: 1299, stock: 0, category: "Anklets", status: "Draft" },
-  { id: "P006", name: "Solitaire Ring", sku: "SLV-RNG-006", price: 5499, stock: 12, category: "Rings", status: "Active" },
-  { id: "P007", name: "Pearl Pendant", sku: "SLV-NCK-007", price: 2899, stock: 8, category: "Necklaces", status: "Active" },
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  stock: number;
+  category: string;
+  status: string;
+  isFeatured: boolean;
+  isNewArrival: boolean;
+}
+
+const INITIAL_PRODUCTS: Product[] = [
+  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false },
+  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true },
+  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true },
+  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false },
+  { id: "P005", name: "Twist Anklet", sku: "SLV-ANK-005", price: 1299, stock: 0, category: "Anklets", status: "Draft", isFeatured: false, isNewArrival: false },
+  { id: "P006", name: "Solitaire Ring", sku: "SLV-RNG-006", price: 5499, stock: 12, category: "Rings", status: "Active", isFeatured: false, isNewArrival: false },
+  { id: "P007", name: "Pearl Pendant", sku: "SLV-NCK-007", price: 2899, stock: 8, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: false },
 ];
 
 export default function AdminProductsPage() {
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [search, setSearch] = useState("");
 
-  const filtered = PRODUCTS.filter((p) =>
+  const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleToggle = (id: string, field: 'isFeatured' | 'isNewArrival') => {
+    setProducts((prev) => prev.map(p => p.id === id ? { ...p, [field]: !p[field] } : p));
+  };
 
   return (
     <div className="space-y-6">
@@ -39,13 +56,14 @@ export default function AdminProductsPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E8E8E8] overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[#7A7585] bg-[#FDFAF5]">
                 <th className="px-5 py-3 font-medium">Product</th>
                 <th className="px-5 py-3 font-medium">SKU</th>
-                <th className="px-5 py-3 font-medium">Category</th>
+                <th className="px-5 py-3 font-medium text-center">Featured</th>
+                <th className="px-5 py-3 font-medium text-center">New Arrival</th>
                 <th className="px-5 py-3 font-medium text-right">Price</th>
                 <th className="px-5 py-3 font-medium text-right">Stock</th>
                 <th className="px-5 py-3 font-medium text-right">Status</th>
@@ -63,7 +81,31 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-[#7A7585]">{p.sku}</td>
-                  <td className="px-5 py-3">{p.category}</td>
+                  
+                  {/* Toggles */}
+                  <td className="px-5 py-3 text-center">
+                    <button 
+                      onClick={() => toggleToggle(p.id, 'isFeatured')}
+                      className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
+                        p.isFeatured ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                      title="Toggle Featured on Home"
+                    >
+                      <Star size={16} className={p.isFeatured ? "fill-current" : ""} />
+                    </button>
+                  </td>
+                  <td className="px-5 py-3 text-center">
+                    <button 
+                      onClick={() => toggleToggle(p.id, 'isNewArrival')}
+                      className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
+                        p.isNewArrival ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                      title="Toggle New Arrival"
+                    >
+                      <Sparkles size={16} />
+                    </button>
+                  </td>
+
                   <td className="px-5 py-3 text-right">₹{p.price.toLocaleString("en-IN")}</td>
                   <td className="px-5 py-3 text-right">
                     <span className={p.stock === 0 ? "text-red-600 font-medium" : ""}>

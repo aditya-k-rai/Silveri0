@@ -1,40 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { Search, ShieldOff, Shield } from "lucide-react";
+import React, { useState } from "react";
+import { Search, ShieldOff, Shield, ChevronDown, ChevronUp, ShoppingBag, Heart, ShoppingCart } from "lucide-react";
 
 interface UserData {
   id: string;
   name: string;
   email: string;
   phone: string;
-  orders: number;
-  totalSpent: number;
   joined: string;
   blocked: boolean;
+  orders: { id: string; date: string; amount: number; items: number; status: string }[];
+  wishlist: { sku: string; name: string; price: number }[];
+  cart: { sku: string; name: string; price: number; quantity: number }[];
 }
 
 const INITIAL_USERS: UserData[] = [
-  { id: "U001", name: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", orders: 5, totalSpent: 18500, joined: "2025-12-10", blocked: false },
-  { id: "U002", name: "Arjun Mehta", email: "arjun@example.com", phone: "+91 87654 32100", orders: 3, totalSpent: 12400, joined: "2026-01-05", blocked: false },
-  { id: "U003", name: "Neha Reddy", email: "neha@example.com", phone: "+91 76543 21000", orders: 8, totalSpent: 32000, joined: "2025-11-20", blocked: false },
-  { id: "U004", name: "Rahul Singh", email: "rahul@example.com", phone: "+91 65432 10000", orders: 1, totalSpent: 2499, joined: "2026-03-01", blocked: false },
-  { id: "U005", name: "Ananya Gupta", email: "ananya@example.com", phone: "+91 54321 00000", orders: 4, totalSpent: 15800, joined: "2026-02-14", blocked: true },
+  { 
+    id: "U001", name: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", joined: "2025-12-10", blocked: false,
+    orders: [
+      { id: "ORD-2026-156", date: "2026-04-02", amount: 6398, items: 2, status: "Delivered" },
+      { id: "ORD-2025-081", date: "2025-12-15", amount: 12102, items: 3, status: "Delivered" }
+    ],
+    wishlist: [{ sku: "SLV-RNG-001", name: "Silver Elegance Ring", price: 2499 }],
+    cart: [{ sku: "SLV-NCK-002", name: "Luna Necklace", price: 3899, quantity: 1 }]
+  },
+  { 
+    id: "U002", name: "Arjun Mehta", email: "arjun@example.com", phone: "+91 87654 32100", joined: "2026-01-05", blocked: false,
+    orders: [{ id: "ORD-2026-155", date: "2026-04-01", amount: 3899, items: 1, status: "Shipped" }],
+    wishlist: [{ sku: "SLV-BRC-004", name: "Charm Bracelet", price: 4299 }, { sku: "SLV-EAR-003", name: "Aria Earrings", price: 1899 }],
+    cart: []
+  },
+  { 
+    id: "U003", name: "Neha Reddy", email: "neha@example.com", phone: "+91 76543 21000", joined: "2025-11-20", blocked: false,
+    orders: [{ id: "ORD-2026-154", date: "2026-03-31", amount: 8750, items: 3, status: "Processing" }],
+    wishlist: [],
+    cart: [{ sku: "SLV-RNG-006", name: "Solitaire Ring", price: 5499, quantity: 2 }]
+  },
 ];
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserData[]>(INITIAL_USERS);
   const [search, setSearch] = useState("");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const filtered = users.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const toggleBlock = (id: string) => {
+  const toggleBlock = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     setUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, blocked: !u.blocked } : u))
     );
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedUser(expandedUser === id ? null : id);
   };
 
   return (
@@ -50,10 +73,11 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E8E8E8] overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[500px]">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[#7A7585] bg-[#FDFAF5]">
+                <th className="px-5 py-3 font-medium w-8"></th>
                 <th className="px-5 py-3 font-medium">User</th>
                 <th className="px-5 py-3 font-medium">Phone</th>
                 <th className="px-5 py-3 font-medium text-center">Orders</th>
@@ -63,38 +87,110 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
-                <tr key={u.id} className="border-t border-[#E8E8E8]/50 hover:bg-[#FDFAF5]/50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center text-[#C9A84C] text-xs font-semibold shrink-0">
-                        {u.name[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium">{u.name}</p>
-                        <p className="text-xs text-[#7A7585]">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-[#7A7585]">{u.phone}</td>
-                  <td className="px-5 py-3 text-center">{u.orders}</td>
-                  <td className="px-5 py-3 text-right">₹{u.totalSpent.toLocaleString("en-IN")}</td>
-                  <td className="px-5 py-3 text-[#7A7585]">{u.joined}</td>
-                  <td className="px-5 py-3 text-right">
-                    <button
-                      onClick={() => toggleBlock(u.id)}
-                      className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                        u.blocked
-                          ? "bg-green-50 text-green-700 hover:bg-green-100"
-                          : "bg-red-50 text-red-700 hover:bg-red-100"
-                      }`}
-                    >
-                      {u.blocked ? <Shield size={12} /> : <ShieldOff size={12} />}
-                      {u.blocked ? "Unblock" : "Block"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((u) => {
+                const isExpanded = expandedUser === u.id;
+                const totalSpent = u.orders.reduce((sum, ord) => sum + ord.amount, 0);
+
+                return (
+                  <React.Fragment key={u.id}>
+                    <tr onClick={() => toggleExpand(u.id)} className={`cursor-pointer hover:bg-[#FDFAF5]/50 transition-colors ${isExpanded ? 'bg-[#FDFAF5]/30' : 'border-t border-[#E8E8E8]/50'}`}>
+                      <td className="px-5 py-4 text-[#7A7585]">
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center text-[#C9A84C] text-xs font-semibold shrink-0">
+                            {u.name[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-[#1A1A1A]">{u.name}</p>
+                            <p className="text-xs text-[#7A7585]">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-[#7A7585]">{u.phone}</td>
+                      <td className="px-5 py-4 text-center font-medium">{u.orders.length}</td>
+                      <td className="px-5 py-4 text-right font-medium">₹{totalSpent.toLocaleString("en-IN")}</td>
+                      <td className="px-5 py-4 text-[#7A7585]">{u.joined}</td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          onClick={(e) => toggleBlock(e, u.id)}
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                            u.blocked
+                              ? "bg-green-50 text-green-700 hover:bg-green-100"
+                              : "bg-red-50 text-red-700 hover:bg-red-100"
+                          }`}
+                        >
+                          {u.blocked ? <Shield size={12} /> : <ShieldOff size={12} />}
+                          {u.blocked ? "Unblock" : "Block"}
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    {/* EXPANDED DETAILS */}
+                    {isExpanded && (
+                      <tr className="bg-[#FDFAF5]/30 border-b border-[#E8E8E8]/50">
+                        <td colSpan={7} className="px-5 pb-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 pl-8">
+                            
+                            {/* Orders */}
+                            <div className="bg-white border border-[#E8E8E8] rounded-xl p-4">
+                              <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
+                                <ShoppingBag size={16} className="text-[#C9A84C]" /> Recent Orders
+                              </h4>
+                              {u.orders.length > 0 ? (
+                                <ul className="space-y-2">
+                                  {u.orders.map(o => (
+                                    <li key={o.id} className="flex justify-between items-center text-xs">
+                                      <span className="text-[#7A7585]">{o.id} ({o.items} items)</span>
+                                      <span className="font-medium">₹{o.amount.toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : <p className="text-xs text-[#7A7585]">No orders yet.</p>}
+                            </div>
+
+                            {/* Wishlist */}
+                            <div className="bg-white border border-[#E8E8E8] rounded-xl p-4">
+                              <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
+                                <Heart size={16} className="text-rose-500" /> Wishlisted Items
+                              </h4>
+                              {u.wishlist.length > 0 ? (
+                                <ul className="space-y-2">
+                                  {u.wishlist.map(w => (
+                                    <li key={w.sku} className="flex justify-between items-center text-xs">
+                                      <span className="text-[#7A7585] truncate pr-2 max-w-[150px]">{w.name} <br/><span className="text-[10px] text-[#A09DAB]">{w.sku}</span></span>
+                                      <span className="font-medium shrink-0">₹{w.price.toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : <p className="text-xs text-[#7A7585]">Wishlist is empty.</p>}
+                            </div>
+
+                            {/* Cart */}
+                            <div className="bg-white border border-[#E8E8E8] rounded-xl p-4">
+                              <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
+                                <ShoppingCart size={16} className="text-blue-500" /> Active Cart
+                              </h4>
+                              {u.cart.length > 0 ? (
+                                <ul className="space-y-2">
+                                  {u.cart.map(c => (
+                                    <li key={c.sku} className="flex justify-between items-center text-xs">
+                                      <span className="text-[#7A7585] truncate pr-2 max-w-[150px]">{c.name} (x{c.quantity}) <br/><span className="text-[10px] text-[#A09DAB]">{c.sku}</span></span>
+                                      <span className="font-medium shrink-0">₹{(c.price * c.quantity).toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : <p className="text-xs text-[#7A7585]">Cart is currently empty.</p>}
+                            </div>
+
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
