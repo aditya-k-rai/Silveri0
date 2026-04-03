@@ -10,6 +10,11 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret || secret.includes('xxxx')) {
+      return NextResponse.json({ error: "Razorpay not configured" }, { status: 503 });
+    }
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
@@ -22,7 +27,6 @@ export async function POST(req: NextRequest) {
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parsed.data;
 
-    const secret = process.env.RAZORPAY_KEY_SECRET!;
     const generatedSignature = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -31,8 +35,6 @@ export async function POST(req: NextRequest) {
     if (generatedSignature !== razorpay_signature) {
       return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
     }
-
-    // TODO: Update order status in database to "paid"
 
     return NextResponse.json({ success: true, paymentId: razorpay_payment_id });
   } catch (error) {
