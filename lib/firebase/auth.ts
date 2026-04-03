@@ -8,8 +8,9 @@ import {
   updateProfile,
   verifyPasswordResetCode,
   confirmPasswordReset,
+  getAuth,
 } from 'firebase/auth';
-import { auth } from './client';
+import { auth, app } from './client';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -60,12 +61,18 @@ export async function resetPassword(email: string) {
   });
 }
 
+function getAuthInstance() {
+  if (auth) return auth;
+  if (app) return getAuth(app);
+  throw new Error('Firebase is not initialized');
+}
+
 export async function verifyResetCode(code: string) {
-  return verifyPasswordResetCode(auth, code);
+  return verifyPasswordResetCode(getAuthInstance(), code);
 }
 
 export async function confirmReset(code: string, newPassword: string) {
-  await confirmPasswordReset(auth, code, newPassword);
+  await confirmPasswordReset(getAuthInstance(), code, newPassword);
 }
 
 export async function signOutUser() {
