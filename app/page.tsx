@@ -1,13 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, ArrowRight } from 'lucide-react';
-
-const featuredProducts = [
-  { id: '1', name: 'Silver Moonlight Ring', slug: 'silver-moonlight-ring', price: 2499, comparePrice: 3999, image: '', material: 'Sterling Silver' },
-  { id: '2', name: 'Gold Plated Pendant', slug: 'gold-plated-pendant', price: 3499, comparePrice: 4999, image: '', material: 'Gold Plated' },
-  { id: '3', name: 'Pearl Drop Earrings', slug: 'pearl-drop-earrings', price: 1999, comparePrice: 2999, image: '', material: 'Silver & Pearl' },
-  { id: '4', name: 'Twisted Silver Bracelet', slug: 'twisted-silver-bracelet', price: 2999, comparePrice: 4499, image: '', material: 'Sterling Silver' },
-];
+import { useProductStore } from '@/store/productStore';
 
 const exploreCategories = [
   { name: 'Wedding', slug: 'wedding', image: '' },
@@ -16,6 +12,13 @@ const exploreCategories = [
 ];
 
 export default function HomePage() {
+  const products = useProductStore((s) => s.products);
+  const activeProducts = products.filter((p) => p.status === 'Active');
+  const featuredProducts = activeProducts.filter((p) => p.isFeatured);
+  const newArrivals = activeProducts.filter((p) => p.isNewArrival);
+
+  const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
+
   return (
     <>
       {/* ====== HERO SECTION ====== */}
@@ -63,12 +66,12 @@ export default function HomePage() {
             {featuredProducts.map((product) => (
               <Link
                 key={product.id}
-                href={`/product/${product.slug}`}
+                href={`/product/${toSlug(product.name)}`}
                 className="group bg-silver-800 border border-silver-700 rounded-xl overflow-hidden hover:border-silver-500 transition-all duration-300 hover:shadow-lg hover:shadow-silver-900/50"
               >
                 <div className="relative aspect-square bg-gradient-to-br from-silver-700 to-silver-800">
-                  {product.image ? (
-                    <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" />
+                  {product.primaryImage ? (
+                    <Image src={product.primaryImage} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-silver-500 text-xs">Product Image</span>
@@ -76,7 +79,7 @@ export default function HomePage() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-silver-500">{product.material}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-silver-500">{product.carat} · {product.colour}</p>
                   <h3 className="font-[family-name:var(--font-heading)] text-sm font-medium text-silver-100 mt-0.5 line-clamp-1">
                     {product.name}
                   </h3>
@@ -84,11 +87,6 @@ export default function HomePage() {
                     <span className="text-white font-semibold text-sm">
                       ₹{product.price.toLocaleString('en-IN')}
                     </span>
-                    {product.comparePrice && (
-                      <span className="text-silver-500 text-xs line-through">
-                        ₹{product.comparePrice.toLocaleString('en-IN')}
-                      </span>
-                    )}
                   </div>
                 </div>
               </Link>
@@ -152,16 +150,20 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {featuredProducts.map((product) => (
+            {newArrivals.map((product) => (
               <Link
                 key={`new-${product.id}`}
-                href={`/product/${product.slug}`}
+                href={`/product/${toSlug(product.name)}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-silver-200"
               >
                 <div className="relative aspect-square bg-gradient-to-br from-silver-100 to-silver-50">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-silver-400 text-xs">Product Image</span>
-                  </div>
+                  {product.primaryImage ? (
+                    <Image src={product.primaryImage} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-silver-400 text-xs">Product Image</span>
+                    </div>
+                  )}
                   <span className="absolute top-2 left-2 bg-silver-900 text-white text-[10px] font-medium px-2 py-0.5 rounded">
                     NEW
                   </span>

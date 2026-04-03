@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard, Clock, X, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard, Clock, X, CheckCircle, Send, MessageCircle } from "lucide-react";
 import { useOrderStore, Order } from "@/store/orderStore";
 
 const STATUSES = ["All", "New", "Processing", "Shipped", "Delivered", "Cancelled"];
@@ -65,6 +65,38 @@ export default function AdminOrdersPage() {
     });
 
     setPendingStatusUpdate(null);
+  };
+
+  const handleWhatsAppNotify = () => {
+    if (!pendingStatusUpdate) return;
+    const order = orders.find(o => o.id === pendingStatusUpdate.id);
+    if (!order) return;
+
+    const hours = new Date().getHours();
+    let greeting = "Evening";
+    if (hours < 12) greeting = "Morning";
+    else if (hours < 17) greeting = "Afternoon";
+
+    const cleanPhone = order.phone.replace(/\D/g, "");
+    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
+      // Assuming India if prefix missing and length is 10
+      // Prefix 91 already exists in Initial Orders data but just in case
+    }
+
+    const message = `Good ${greeting} ${order.customer}! 🌟
+
+Your order *${order.id}* from *Silveri* has been updated to: *${pendingStatusUpdate.newStatus}*.
+${eventNote ? `\n📝 _Note: ${eventNote}_` : ""}
+
+📍 *Status Date:* ${eventDate} at ${eventTime}
+
+You can track your live order progress here:
+${window.location.origin}/order/${order.id}
+
+Thank you for choosing Silveri! ✨`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, "_blank");
   };
 
   const toggleExpand = (id: string) => {
@@ -285,7 +317,6 @@ export default function AdminOrdersPage() {
                   className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 resize-none"
                 />
               </div>
-
               <label className="flex items-center gap-3 cursor-pointer p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                 <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${notifyCustomer ? 'bg-amber-500' : 'bg-white border border-[#E8E8E8]'}`}>
                   {notifyCustomer && <CheckCircle size={14} className="text-white" />}
@@ -296,6 +327,21 @@ export default function AdminOrdersPage() {
                   <span className="text-[10px] text-amber-700/80 leading-tight block">Ping SMS / Email instantly.</span>
                 </div>
               </label>
+
+              <button 
+                type="button"
+                onClick={handleWhatsAppNotify}
+                className="flex items-center justify-center gap-3 w-full p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-700 hover:bg-green-500/20 transition-colors mt-2"
+              >
+                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
+                  <MessageCircle size={16} />
+                </div>
+                <div className="text-left flex-1">
+                  <span className="text-sm font-semibold block">Notify via WhatsApp</span>
+                  <span className="text-[10px] opacity-70 block">Open chat with pre-filled template.</span>
+                </div>
+                <Send size={14} className="opacity-40" />
+              </button>
             </div>
 
             <button onClick={confirmStatusUpdate} className="w-full py-3 bg-[#1A1A1A] text-white text-sm font-semibold rounded-xl hover:bg-black transition-colors">
