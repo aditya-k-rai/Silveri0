@@ -58,7 +58,9 @@ export default function AdminLoginPage() {
       window.location.href = '/admin';
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
-      if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
+      if (msg.includes('too-many-requests')) {
+        setError('Too many login attempts. Please wait 15–30 minutes before trying again.');
+      } else if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
         setError('Invalid email or password');
       } else {
         setError(msg);
@@ -78,7 +80,12 @@ export default function AdminLoginPage() {
       await resetPassword(email);
       setSuccess('Password reset link sent to your email. If you don\'t see it, check your Spam or Junk folder.');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+      const msg = err instanceof Error ? err.message : 'Failed to send reset email';
+      if (msg.includes('too-many-requests')) {
+        setError('Too many attempts. Please wait 15–30 minutes before trying again.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
