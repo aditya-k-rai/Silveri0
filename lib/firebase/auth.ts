@@ -6,6 +6,8 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
 } from 'firebase/auth';
 import { auth } from './client';
 
@@ -52,7 +54,18 @@ export async function signInWithEmail(email: string, password: string) {
 }
 
 export async function resetPassword(email: string) {
-  await sendPasswordResetEmail(auth, email);
+  await sendPasswordResetEmail(auth, email, {
+    url: typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://silveri.in/login',
+    handleCodeInApp: false,
+  });
+}
+
+export async function verifyResetCode(code: string) {
+  return verifyPasswordResetCode(auth, code);
+}
+
+export async function confirmReset(code: string, newPassword: string) {
+  await confirmPasswordReset(auth, code, newPassword);
 }
 
 export async function signOutUser() {

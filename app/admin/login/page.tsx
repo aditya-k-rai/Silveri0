@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
     setSubmitting(true);
     try {
       await resetPassword(email);
-      setSuccess('Password reset link sent to your email');
+      setSuccess('Password reset link sent to your email. If you don\'t see it, check your Spam or Junk folder.');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send reset email');
     } finally {
