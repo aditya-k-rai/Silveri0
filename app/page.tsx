@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, ArrowRight } from 'lucide-react';
@@ -12,12 +13,23 @@ const exploreCategories = [
 ];
 
 export default function HomePage() {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    // Wait for Zustand persist to rehydrate from localStorage
+    const unsub = useProductStore.persist.onFinishHydration(() => setHydrated(true));
+    // If already hydrated (e.g. fast load), set immediately
+    if (useProductStore.persist.hasHydrated()) setHydrated(true);
+    return () => unsub();
+  }, []);
+
   const products = useProductStore((s) => s.products);
   const activeProducts = products.filter((p) => p.status === 'Active');
   const featuredProducts = activeProducts.filter((p) => p.isFeatured);
   const newArrivals = activeProducts.filter((p) => p.isNewArrival);
 
   const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
+
+  if (!hydrated) return null;
 
   return (
     <>
