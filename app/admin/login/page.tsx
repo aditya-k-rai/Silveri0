@@ -1,23 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmail, resetPassword } from '@/lib/firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { signInWithEmail, signUpWithEmail, resetPassword } from '@/lib/firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertTriangle, KeyRound } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertTriangle, KeyRound, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 const ADMIN_ACCESS_CODE = 'AKRP';
 
+type View = 'login' | 'register' | 'forgot';
+
 export default function AdminLoginPage() {
+  const [view, setView] = useState<View>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showForgot, setShowForgot] = useState(false);
+
+  const validateAccessCode = (): boolean => {
+    if (!accessCode || accessCode.length !== 4) {
+      setError('Enter a valid 4-character access code');
+      return false;
+    }
+    if (accessCode.toUpperCase() !== ADMIN_ACCESS_CODE) {
+      setError('Invalid access code');
+      return false;
+    }
+    return true;
+  };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,15 +43,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (!accessCode || accessCode.length !== 4) {
-      setError('Enter a valid 4-character access code');
-      return;
-    }
-
-    if (accessCode.toUpperCase() !== ADMIN_ACCESS_CODE) {
-      setError('Invalid access code');
-      return;
-    }
+    if (!validateAccessCode()) return;
 
     setSubmitting(true);
     try {
@@ -69,6 +76,64 @@ export default function AdminLoginPage() {
     }
   };
 
+  const handleAdminRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
+    if (!email || !password) {
+      setError('Email and password are required');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (!validateAccessCode()) return;
+
+    setSubmitting(true);
+    try {
+      const firebaseUser = await signUpWithEmail(email, password, name);
+
+      if (!db) {
+        setError('Database not connected');
+        setSubmitting(false);
+        return;
+      }
+
+      // Create admin user doc in Firestore
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        uid: firebaseUser.uid,
+        name: name.trim(),
+        email: firebaseUser.email || email,
+        photoURL: '',
+        phone: '',
+        role: 'admin',
+        addresses: [],
+        wishlist: [],
+        blocked: false,
+        createdAt: new Date(),
+      });
+
+      window.location.href = '/admin';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration failed';
+      if (msg.includes('too-many-requests')) {
+        setError('Too many attempts. Please wait 15–30 minutes before trying again.');
+      } else if (msg.includes('email-already-in-use')) {
+        setError('This email is already registered. Try logging in instead.');
+      } else if (msg.includes('weak-password')) {
+        setError('Password is too weak. Use at least 6 characters.');
+      } else {
+        setError(msg);
+      }
+      setSubmitting(false);
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -89,6 +154,12 @@ export default function AdminLoginPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const switchView = (newView: View) => {
+    setView(newView);
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -113,7 +184,8 @@ export default function AdminLoginPage() {
           {error && <div className="bg-red-900/20 border border-red-800 text-red-400 text-sm rounded-lg px-4 py-2.5 mb-4">{error}</div>}
           {success && <div className="bg-green-900/20 border border-green-800 text-green-400 text-sm rounded-lg px-4 py-2.5 mb-4">{success}</div>}
 
-          {!showForgot ? (
+          {/* ====== LOGIN VIEW ====== */}
+          {view === 'login' && (
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
                 <label className="block text-sm text-[#aaa] mb-1.5">Admin Email</label>
@@ -166,7 +238,7 @@ export default function AdminLoginPage() {
               </div>
 
               <div className="text-right">
-                <button type="button" onClick={() => { setShowForgot(true); setError(''); setSuccess(''); }} className="text-gold text-xs hover:underline">
+                <button type="button" onClick={() => switchView('forgot')} className="text-gold text-xs hover:underline">
                   Forgot password?
                 </button>
               </div>
@@ -179,10 +251,111 @@ export default function AdminLoginPage() {
                 <Shield size={16} />
                 {submitting ? 'Verifying...' : 'Access Dashboard'}
               </button>
+
+              <p className="text-center text-sm text-[#888] mt-2">
+                New admin?{' '}
+                <button type="button" onClick={() => switchView('register')} className="text-gold font-medium hover:underline">
+                  Create admin account
+                </button>
+              </p>
             </form>
-          ) : (
+          )}
+
+          {/* ====== REGISTER VIEW ====== */}
+          {view === 'register' && (
+            <form onSubmit={handleAdminRegister} className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <UserPlus size={18} className="text-gold" />
+                <h2 className="text-white text-sm font-semibold">Create Admin Account</h2>
+              </div>
+
+              <div>
+                <label className="block text-sm text-[#aaa] mb-1.5">Full Name</label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" />
+                  <input
+                    type="text"
+                    placeholder="Your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#242424] border border-[#333] rounded-lg text-sm text-white placeholder-[#666] outline-none focus:border-gold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-[#aaa] mb-1.5">Admin Email</label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" />
+                  <input
+                    type="email"
+                    placeholder="admin@silveri.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#242424] border border-[#333] rounded-lg text-sm text-white placeholder-[#666] outline-none focus:border-gold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-[#aaa] mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-[#242424] border border-[#333] rounded-lg text-sm text-white placeholder-[#666] outline-none focus:border-gold"
+                    required
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666]">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-[#aaa] mb-1.5">Access Code</label>
+                <div className="relative">
+                  <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666]" />
+                  <input
+                    type="text"
+                    placeholder="4-character code"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4))}
+                    maxLength={4}
+                    className="w-full pl-10 pr-4 py-3 bg-[#242424] border border-[#333] rounded-lg text-sm text-white placeholder-[#666] outline-none focus:border-gold tracking-[0.3em] font-mono uppercase"
+                    required
+                  />
+                </div>
+                <p className="text-[#555] text-[10px] mt-1">4-digit alphanumeric code required</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-semibold hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <UserPlus size={16} />
+                {submitting ? 'Creating...' : 'Create Admin Account'}
+              </button>
+
+              <p className="text-center text-sm text-[#888] mt-2">
+                Already have an account?{' '}
+                <button type="button" onClick={() => switchView('login')} className="text-gold font-medium hover:underline">
+                  Sign in
+                </button>
+              </p>
+            </form>
+          )}
+
+          {/* ====== FORGOT PASSWORD VIEW ====== */}
+          {view === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
-              <button type="button" onClick={() => { setShowForgot(false); setError(''); setSuccess(''); }} className="flex items-center gap-1 text-[#888] text-sm hover:text-white mb-2">
+              <button type="button" onClick={() => switchView('login')} className="flex items-center gap-1 text-[#888] text-sm hover:text-white mb-2">
                 <ArrowLeft size={14} /> Back to login
               </button>
               <div className="relative">
