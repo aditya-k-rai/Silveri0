@@ -4,20 +4,23 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get('session')?.value;
 
-  // Protect /account/* — redirect to login if not authenticated
+  // Allow admin login page without session
+  if (pathname === '/admin/login') {
+    return NextResponse.next();
+  }
+
+  // Protect /account/* — redirect to user login
   if (pathname.startsWith('/account')) {
     if (!sessionCookie) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
-  // Protect /admin/* — redirect to home if not admin
+  // Protect /admin/* — redirect to admin login (separate page)
   if (pathname.startsWith('/admin')) {
     if (!sessionCookie) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    // Note: Full admin role verification happens server-side in admin layout
-    // The session cookie alone doesn't prove admin — the admin layout checks Firestore role
   }
 
   return NextResponse.next();
