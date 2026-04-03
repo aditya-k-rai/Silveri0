@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, FolderTree, ClipboardList,
-  Users, Tags, Settings, Menu, X, Box,
+  Users, Tags, Settings, Menu, X, Box, LogOut,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuthContext } from "@/context/AuthContext";
+import { signOutUser } from "@/lib/firebase/auth";
 
 const NAV_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -21,6 +23,8 @@ const NAV_LINKS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { userDoc } = useAuthContext();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Skip admin layout for login page — it has its own full-screen layout
@@ -30,6 +34,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+
+  const adminName = userDoc?.name || 'Admin';
+  const adminInitial = adminName.charAt(0).toUpperCase();
+
+  const handleLogout = async () => {
+    await signOutUser();
+    router.push('/admin/login');
+  };
 
   const sidebar = (
     <nav className="flex flex-col gap-1 px-3">
@@ -66,6 +78,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs text-white/40 mt-0.5">Admin Panel</p>
         </div>
         {sidebar}
+        {/* Admin info at bottom */}
+        <div className="mt-auto px-4 py-4 border-t border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#C9A84C]/20 flex items-center justify-center text-[#C9A84C] text-sm font-semibold">
+              {adminInitial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-medium truncate">{adminName}</p>
+              <p className="text-white/40 text-xs truncate">{userDoc?.email || ''}</p>
+            </div>
+            <button onClick={handleLogout} className="text-white/40 hover:text-red-400 transition-colors" title="Logout">
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
       </aside>
 
       {/* Mobile overlay */}
@@ -80,6 +107,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
             </div>
             {sidebar}
+            {/* Admin info at bottom of mobile sidebar */}
+            <div className="mt-auto px-4 py-4 border-t border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#C9A84C]/20 flex items-center justify-center text-[#C9A84C] text-sm font-semibold">
+                  {adminInitial}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium truncate">{adminName}</p>
+                </div>
+                <button onClick={handleLogout} className="text-white/40 hover:text-red-400 transition-colors" title="Logout">
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </div>
           </aside>
         </div>
       )}
@@ -98,8 +139,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {NAV_LINKS.find((l) => isActive(l.href))?.label ?? "Admin"}
           </h2>
           <div className="ml-auto flex items-center gap-3">
+            <span className="text-sm text-[#7A7585] hidden sm:block">{adminName}</span>
             <div className="w-8 h-8 rounded-full bg-[#C9A84C]/10 flex items-center justify-center text-[#C9A84C] text-sm font-semibold">
-              A
+              {adminInitial}
             </div>
           </div>
         </header>

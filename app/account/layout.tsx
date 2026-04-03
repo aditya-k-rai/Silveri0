@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { User, Package, MapPin, Heart } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { User, Package, MapPin, Heart, Loader2 } from "lucide-react";
+import { useAuthContext } from "@/context/AuthContext";
+import { useEffect } from "react";
+import Image from "next/image";
 
 const NAV_LINKS = [
   { href: "/account/profile", label: "Profile", icon: <User size={18} /> },
@@ -13,6 +16,28 @@ const NAV_LINKS = [
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, userDoc, loading } = useAuthContext();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 size={32} className="text-gold animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  const displayName = userDoc?.name || user.displayName || 'User';
+  const displayEmail = userDoc?.email || user.email || '';
+  const photoURL = userDoc?.photoURL || user.photoURL || '';
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
@@ -24,11 +49,23 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
           <div className="bg-white border border-silver/40 rounded-2xl p-6">
             {/* Avatar */}
             <div className="flex flex-col items-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-3">
-                <User size={28} className="text-gold" />
-              </div>
-              <span className="font-[family-name:var(--font-heading)] font-semibold text-lg">Priya Sharma</span>
-              <span className="text-xs text-muted">priya@example.com</span>
+              {photoURL ? (
+                <Image
+                  src={photoURL}
+                  alt={displayName}
+                  width={64}
+                  height={64}
+                  className="w-16 h-16 rounded-full object-cover mb-3"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                  <User size={28} className="text-gold" />
+                </div>
+              )}
+              <span className="font-[family-name:var(--font-heading)] font-semibold text-lg text-center">
+                {displayName}
+              </span>
+              <span className="text-xs text-muted">{displayEmail}</span>
             </div>
             <nav className="space-y-1">
               {NAV_LINKS.map((link) => {
