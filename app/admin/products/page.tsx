@@ -14,17 +14,24 @@ interface Product {
   isFeatured: boolean;
   isNewArrival: boolean;
   carat: string;
+  colour: string;
+  size: string;
+  height: string;
+  weight: string;
+  width: string;
+  radius: string;
+  warranty: string;
+  tags: string;
   primaryImage: string | null;
   hoverImage: string | null;
   model3dFileName: string | null;
 }
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false, carat: "22K", primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80", hoverImage: null, model3dFileName: "ring_elegance.obj" },
-  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true, carat: "18K", primaryImage: null, hoverImage: null, model3dFileName: "luna.3dm" },
-  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true, carat: "24K", primaryImage: null, hoverImage: null, model3dFileName: null },
-  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", primaryImage: null, hoverImage: null, model3dFileName: null },
-  { id: "P005", name: "Twist Anklet", sku: "SLV-ANK-005", price: 1299, stock: 0, category: "Anklets", status: "Draft", isFeatured: false, isNewArrival: false, carat: "22K", primaryImage: null, hoverImage: null, model3dFileName: null },
+  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false, carat: "22K", colour: "Silver", size: "US 7", height: "0.2cm", weight: "4.2g", width: "0.8cm", radius: "0.85cm", warranty: "1 Year Polish Guarantee", tags: "wedding, elegant, classic", primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80", hoverImage: null, model3dFileName: "ring_elegance.obj" },
+  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true, carat: "18K", colour: "Rose Gold", size: "18 inch chain", height: "N/A", weight: "12g", width: "0.4cm", radius: "", warranty: "Lifetime Clasp Replacement", tags: "daily wear, trendy", primaryImage: null, hoverImage: null, model3dFileName: "luna.3dm" },
+  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true, carat: "24K", colour: "Gold", size: "Regular", height: "2.5cm", weight: "6g", width: "1.2cm", radius: "", warranty: "6 Month Manufacturer Defect Guarantee", tags: "party, gold", primaryImage: null, hoverImage: null, model3dFileName: null },
+  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", colour: "Silver", size: "7.5 inch lock", height: "0.5cm", weight: "18g", width: "0.8cm", radius: "", warranty: "No warranty on charms", tags: "casual, charm", primaryImage: null, hoverImage: null, model3dFileName: null },
 ];
 
 export default function AdminProductsPage() {
@@ -59,6 +66,14 @@ export default function AdminProductsPage() {
         isFeatured: false,
         isNewArrival: false,
         carat: "22K",
+        colour: "Silver",
+        size: "",
+        height: "",
+        weight: "",
+        width: "",
+        radius: "",
+        warranty: "",
+        tags: "",
         primaryImage: null,
         hoverImage: null,
         model3dFileName: null
@@ -116,7 +131,7 @@ export default function AdminProductsPage() {
             <thead>
               <tr className="text-left text-[#7A7585] bg-[#FDFAF5]">
                 <th className="px-5 py-3 font-medium">Product</th>
-                <th className="px-5 py-3 font-medium">SKU / Carat</th>
+                <th className="px-5 py-3 font-medium">SKU / Specs</th>
                 <th className="px-5 py-3 font-medium text-center">Media</th>
                 <th className="px-5 py-3 font-medium text-center">Featured</th>
                 <th className="px-5 py-3 font-medium text-center">New</th>
@@ -143,7 +158,7 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <p className="font-medium text-[#7A7585]">{p.sku}</p>
-                    <p className="text-[10px] text-amber-600 font-semibold">{p.carat}</p>
+                    <p className="text-[10px] text-amber-600 font-semibold">{p.carat} • {p.colour}</p>
                   </td>
                   
                   <td className="px-5 py-4">
@@ -291,8 +306,8 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Core Details */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Product Details</h3>
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Product Context</h3>
                 <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] space-y-5">
                   <div>
                     <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Product Name</label>
@@ -304,7 +319,7 @@ export default function AdminProductsPage() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Category</label>
                       <select 
@@ -321,6 +336,16 @@ export default function AdminProductsPage() {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour</label>
+                      <input 
+                        type="text" 
+                        value={editingParams.colour}
+                        onChange={(e) => setEditingParams({...editingParams, colour: e.target.value})}
+                        placeholder="e.g. Silver, Rose Gold"
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Carat (Purity)</label>
                       <input 
                         type="text" 
@@ -331,42 +356,127 @@ export default function AdminProductsPage() {
                       />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-4 border-t border-[#E8E8E8] pt-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">M.R.P (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editingParams.price}
-                        onChange={(e) => setEditingParams({...editingParams, price: Number(e.target.value)})}
-                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Stock Unit</label>
-                      <input 
-                        type="number" 
-                        value={editingParams.stock}
-                        onChange={(e) => setEditingParams({...editingParams, stock: Number(e.target.value)})}
-                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Status</label>
-                      <select 
-                        value={editingParams.status}
-                        onChange={(e) => setEditingParams({...editingParams, status: e.target.value})}
-                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Draft">Draft</option>
-                        <option value="Archived">Archived</option>
-                      </select>
-                    </div>
-                  </div>
-
                 </div>
               </div>
+
+              {/* Physical Dimensions */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Physical Dimensions</h3>
+                <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Size/Length</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.size}
+                      onChange={(e) => setEditingParams({...editingParams, size: e.target.value})}
+                      placeholder="e.g. US 7, 18in"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Weight</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.weight}
+                      onChange={(e) => setEditingParams({...editingParams, weight: e.target.value})}
+                      placeholder="e.g. 4.2g"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Height</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.height}
+                      onChange={(e) => setEditingParams({...editingParams, height: e.target.value})}
+                      placeholder="e.g. 1.2cm"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Width</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.width}
+                      onChange={(e) => setEditingParams({...editingParams, width: e.target.value})}
+                      placeholder="e.g. 0.4cm"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Radius (Optional for Rings)</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.radius}
+                      onChange={(e) => setEditingParams({...editingParams, radius: e.target.value})}
+                      placeholder="e.g. 0.85cm"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Policies & Tags */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Policies & Tags</h3>
+                <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Search Tags</label>
+                    <input 
+                      type="text" 
+                      value={editingParams.tags}
+                      onChange={(e) => setEditingParams({...editingParams, tags: e.target.value})}
+                      placeholder="e.g. classic, wedding, silver"
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Guarantee / Warranty Note</label>
+                    <textarea 
+                      value={editingParams.warranty}
+                      onChange={(e) => setEditingParams({...editingParams, warranty: e.target.value})}
+                      placeholder="e.g. 1 Year free polish replacement"
+                      rows={2}
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing & Inventory */}
+              <div className="grid grid-cols-3 gap-4 bg-white p-6 rounded-2xl border border-[#E8E8E8]">
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">M.R.P (₹)</label>
+                  <input 
+                    type="number" 
+                    value={editingParams.price}
+                    onChange={(e) => setEditingParams({...editingParams, price: Number(e.target.value)})}
+                    className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 text-green-700 font-mono font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Stock Unit</label>
+                  <input 
+                    type="number" 
+                    value={editingParams.stock}
+                    onChange={(e) => setEditingParams({...editingParams, stock: Number(e.target.value)})}
+                    className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Status</label>
+                  <select 
+                    value={editingParams.status}
+                    onChange={(e) => setEditingParams({...editingParams, status: e.target.value})}
+                    className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+              </div>
+
             </div>
 
             <div className="px-6 py-5 border-t border-[#E8E8E8] bg-white gap-3 flex shrink-0">
@@ -381,7 +491,7 @@ export default function AdminProductsPage() {
                 disabled={!editingParams.name || !editingParams.price}
                 className="flex-[2] flex items-center justify-center gap-2 bg-[#1A1A1A] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
               >
-                <Save size={16} /> Save Product Updates
+                <Save size={16} /> Save Product Specs
               </button>
             </div>
           </div>
