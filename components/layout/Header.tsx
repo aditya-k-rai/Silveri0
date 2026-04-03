@@ -29,7 +29,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-[#E53935] shadow-md">
+      <header className="sticky top-0 z-50 bg-gradient-to-r from-silver-800 to-silver-900 shadow-md">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -99,7 +99,7 @@ export default function Header() {
               <Link href="/checkout" className="relative">
                 <ShoppingCart size={22} className="text-white" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-white text-[#E53935] text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-white text-silver-900 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                     {cartCount}
                   </span>
                 )}
@@ -134,7 +134,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-[#D32F2F] border-t border-[#C62828]">
+          <div className="md:hidden bg-silver-800 border-t border-silver-700">
             <nav className="flex flex-col px-4 py-3 gap-1">
               <MobileNavItem href="/" icon={<Home size={18} />} label="Home" onClick={() => setIsMobileMenuOpen(false)} />
               <MobileNavItem href="/category/all" icon={<Grid3X3 size={18} />} label="Category" onClick={() => setIsMobileMenuOpen(false)} />
@@ -163,12 +163,12 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="flex flex-col items-center px-3 py-1 text-white hover:text-yellow-200 transition-colors relative"
+      className="flex flex-col items-center px-3 py-1 text-white hover:text-silver-300 transition-colors relative"
     >
       <span className="relative">
         {icon}
         {badge !== undefined && (
-          <span className="absolute -top-2 -right-3 bg-white text-[#E53935] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+          <span className="absolute -top-2 -right-3 bg-white text-silver-900 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
             {badge}
           </span>
         )}
@@ -193,7 +193,7 @@ function MobileNavItem({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-[#C62828] rounded-lg transition-colors"
+      className="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-silver-700 rounded-lg transition-colors"
     >
       {icon}
       <span className="text-sm">{label}</span>

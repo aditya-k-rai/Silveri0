@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FDFAF5;
-  --foreground: #1A1A1A;
-  --gold: #C9A84C;
-  --gold-light: #D4B96A;
-  --gold-dark: #8A6E2F;
-  --cream: #FDFAF5;
-  --warm-black: #1A1A1A;
-  --silver: #E8E8E8;
-  --muted: #7A7585;
+  --background: #F7F7F8;
+  --foreground: #1C1C1E;
+  --silver-50: #FAFAFA;
+  --silver-100: #F4F4F5;
+  --silver-200: #E4E4E7;
+  --silver-300: #D4D4D8;
+  --silver-400: #A1A1AA;
+  --silver-500: #71717A;
+  --silver-600: #52525B;
+  --silver-700: #3F3F46;
+  --silver-800: #27272A;
+  --silver-900: #18181B;
+  --accent: #9CA3AF;
+  --accent-light: #C0C7D0;
+  --accent-dark: #6B7280;
+  --shimmer: #D1D5DB;
+  --warm-black: #1C1C1E;
+  --muted: #71717A;
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'Jost', sans-serif;
 }
@@ -17,13 +26,27 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-silver-50: #FAFAFA;
+  --color-silver-100: #F4F4F5;
+  --color-silver-200: #E4E4E7;
+  --color-silver-300: #D4D4D8;
+  --color-silver-400: #A1A1AA;
+  --color-silver-500: #71717A;
+  --color-silver-600: #52525B;
+  --color-silver-700: #3F3F46;
+  --color-silver-800: #27272A;
+  --color-silver-900: #18181B;
+  --color-accent: #9CA3AF;
+  --color-accent-light: #C0C7D0;
+  --color-accent-dark: #6B7280;
+  --color-shimmer: #D1D5DB;
   --color-gold: #C9A84C;
   --color-gold-light: #D4B96A;
   --color-gold-dark: #8A6E2F;
-  --color-cream: #FDFAF5;
-  --color-warm-black: #1A1A1A;
-  --color-silver: #E8E8E8;
-  --color-muted: #7A7585;
+  --color-cream: #F7F7F8;
+  --color-warm-black: #1C1C1E;
+  --color-silver: #D4D4D8;
+  --color-muted: #71717A;
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'Jost', sans-serif;
 }
@@ -43,14 +66,29 @@ h1, h2, h3, h4, h5, h6 {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--cream);
+  background: #F4F4F5;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gold);
+  background: #A1A1AA;
   border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #71717A;
 }
 
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* Silver shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.silver-shimmer {
+  background: linear-gradient(90deg, #D4D4D8 0%, #F4F4F5 25%, #FAFAFA 50%, #F4F4F5 75%, #D4D4D8 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
 }

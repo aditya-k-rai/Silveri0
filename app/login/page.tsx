@@ -43,7 +43,7 @@ export default function LoginPage() {
       if (!userDoc.phone) {
         setView('complete-profile');
       } else {
-        router.push('/account/profile');
+        window.location.href = '/';
       }
     }
   }, [user, userDoc, loading, router]);
@@ -80,7 +80,7 @@ export default function LoginPage() {
         location: regLocation,
       });
 
-      router.push('/account/profile');
+      window.location.href = '/';
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
       if (msg.includes('email-already-in-use')) {
@@ -101,7 +101,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signInWithEmail(loginEmail, loginPassword);
-      router.push('/account/profile');
+      window.location.href = '/';
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
@@ -143,11 +143,11 @@ export default function LoginPage() {
           phone: profilePhone,
           location: profileLocation,
         });
-        router.push('/account/profile');
+        // Hard redirect to avoid middleware/session issues
+        window.location.href = '/';
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
-    } finally {
       setSubmitting(false);
     }
   };

@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-heading",
@@ -42,13 +43,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${jost.variable}`}>
-      <body className="min-h-screen flex flex-col bg-cream text-warm-black font-[family-name:var(--font-body)]">
+      <body className="min-h-screen flex flex-col bg-silver-50 text-silver-900 font-[family-name:var(--font-body)]">
         <Providers>
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
         </Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
