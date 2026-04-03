@@ -3,6 +3,11 @@ import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret || webhookSecret.includes('your_')) {
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+
     const body = await req.text();
     const signature = req.headers.get("x-razorpay-signature");
 
@@ -10,7 +15,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!;
     const expectedSignature = crypto
       .createHmac("sha256", webhookSecret)
       .update(body)
@@ -26,19 +30,11 @@ export async function POST(req: NextRequest) {
       case "payment.captured": {
         const payment = event.payload.payment.entity;
         console.log("Payment captured:", payment.id, "Amount:", payment.amount);
-        // TODO: Mark order as paid in database
         break;
       }
       case "payment.failed": {
         const payment = event.payload.payment.entity;
         console.log("Payment failed:", payment.id);
-        // TODO: Mark order as failed in database
-        break;
-      }
-      case "refund.created": {
-        const refund = event.payload.refund.entity;
-        console.log("Refund created:", refund.id);
-        // TODO: Process refund in database
         break;
       }
       default:

@@ -9,13 +9,24 @@ const schema = z.object({
   notes: z.record(z.string(), z.string()).optional(),
 });
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+function getRazorpay() {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret || keyId.includes('xxxx')) {
+    return null;
+  }
+
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const razorpay = getRazorpay();
+    if (!razorpay) {
+      return NextResponse.json({ error: "Razorpay not configured" }, { status: 503 });
+    }
+
     const body = await req.json();
     const parsed = schema.safeParse(body);
 
@@ -29,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { amount, currency, receipt, notes } = parsed.data;
 
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // Razorpay expects paise
+      amount: Math.round(amount * 100),
       currency,
       receipt: receipt ?? `rcpt_${Date.now()}`,
       notes: notes ?? {},
