@@ -20,10 +20,12 @@ function ResetPasswordForm() {
   const [verifying, setVerifying] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [invalidCode, setInvalidCode] = useState(false);
+  const [debugError, setDebugError] = useState('');
 
   useEffect(() => {
     if (mode !== 'resetPassword' || !oobCode) {
       setInvalidCode(true);
+      setDebugError(`mode: ${mode}, oobCode present: ${!!oobCode}`);
       setVerifying(false);
       return;
     }
@@ -33,7 +35,9 @@ function ResetPasswordForm() {
         setEmail(userEmail);
         setVerifying(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Reset code verification failed:', err);
+        setDebugError(err instanceof Error ? err.message : String(err));
         setInvalidCode(true);
         setVerifying(false);
       });
@@ -93,6 +97,9 @@ function ResetPasswordForm() {
           This password reset link is invalid or has expired.<br />
           Please request a new one.
         </p>
+        {debugError && (
+          <p className="text-[#555] text-xs mb-4 font-mono break-all">Debug: {debugError}</p>
+        )}
         <Link
           href="/login"
           className="inline-block bg-gold text-warm-black px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gold-light transition-colors"
