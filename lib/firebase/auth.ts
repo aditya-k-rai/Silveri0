@@ -15,11 +15,15 @@ export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
   const idToken = await result.user.getIdToken();
 
-  await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  });
+  try {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+  } catch {
+    // Session cookie failed — login still works via Firebase client auth
+  }
 
   return result.user;
 }
@@ -29,11 +33,15 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   await updateProfile(result.user, { displayName });
 
   const idToken = await result.user.getIdToken();
-  await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  });
+  try {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+  } catch {
+    // Session cookie failed — login still works via Firebase client auth
+  }
 
   return result.user;
 }
@@ -42,11 +50,16 @@ export async function signInWithEmail(email: string, password: string) {
   const result = await signInWithEmailAndPassword(auth, email, password);
   const idToken = await result.user.getIdToken();
 
-  await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  });
+  // Best-effort session creation — don't block login if it fails
+  try {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+  } catch {
+    // Session cookie failed — login still works via Firebase client auth
+  }
 
   return result.user;
 }
