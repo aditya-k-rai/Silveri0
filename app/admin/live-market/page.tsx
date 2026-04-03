@@ -1,98 +1,94 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, CheckCircle } from "lucide-react";
+import { useProductStore } from "@/store/productStore";
+import { fetchLiveMarketRates } from "@/app/actions/market";
 
-// Simulated 7-day Historical Data from APIs
+// Simulated 7-day Historical Data from APIs (Recent baseline adjusted closer to actual values)
 const HISTORICAL_DATA = [
-  { day: "Day 1", silverRate: 88.50, usdInr: 82.90 },
-  { day: "Day 2", silverRate: 89.10, usdInr: 83.05 },
-  { day: "Day 3", silverRate: 88.90, usdInr: 83.00 },
-  { day: "Day 4", silverRate: 90.20, usdInr: 83.15 },
-  { day: "Day 5", silverRate: 91.00, usdInr: 83.10 },
-  { day: "Day 6", silverRate: 90.80, usdInr: 83.20 },
-  { day: "Day 7", silverRate: 92.50, usdInr: 83.35 },
-];
-
-interface LinkedProduct {
-  id: string;
-  name: string;
-  specs: string;
-  weightGm: number;
-  isLinked: boolean;
-  makingMargin: number; // Flat explicit profit/labor margin
-  currentPrice: number; // The final output price
-}
-
-const INITIAL_PRODUCTS: LinkedProduct[] = [
-  { id: "P001", name: "Silver Elegance Ring", specs: "22K Silver", weightGm: 4.2, isLinked: true, makingMargin: 1200, currentPrice: 1588 },
-  { id: "P002", name: "Luna Necklace", specs: "925 Silver Cube", weightGm: 12, isLinked: true, makingMargin: 2500, currentPrice: 3610 },
-  { id: "P003", name: "Aria Earrings", specs: "24K Silver Drop", weightGm: 6, isLinked: false, makingMargin: 800, currentPrice: 1899 },
-  { id: "P004", name: "Charm Bracelet", specs: "18K Silver Chain", weightGm: 18, isLinked: true, makingMargin: 1500, currentPrice: 3165 },
+  { day: "Day 1", silverRate: 201.50, usdInr: 94.10 },
+  { day: "Day 2", silverRate: 205.10, usdInr: 94.25 },
+  { day: "Day 3", silverRate: 204.90, usdInr: 94.50 },
+  { day: "Day 4", silverRate: 208.20, usdInr: 94.65 },
+  { day: "Day 5", silverRate: 211.00, usdInr: 94.60 },
+  { day: "Day 6", silverRate: 215.80, usdInr: 94.80 },
+  { day: "Day 7", silverRate: 216.50, usdInr: 94.81 },
 ];
 
 export default function LiveMarketDashboard() {
   const [currentSilver, setCurrentSilver] = useState(HISTORICAL_DATA[6].silverRate);
   const [currentUSD, setCurrentUSD] = useState(HISTORICAL_DATA[6].usdInr);
   
-  const [products, setProducts] = useState<LinkedProduct[]>(INITIAL_PRODUCTS);
+  const { products, setProducts, updateProduct } = useProductStore();
   const [search, setSearch] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
 
   const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  // Simulates the CRON Job hitting Metals.Dev and FED APIs
-  const forceSync = () => {
+  // FETCH REAL API DATA via Server Action
+  const forceSync = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      // Simulate Market Flux (Silver goes up or down randomly, USD fluctuates)
-      const newSilver = Number((currentSilver + (Math.random() * 4 - 1.5)).toFixed(2));
-      const newUSD = Number((currentUSD + (Math.random() * 0.5 - 0.2)).toFixed(2));
+
+    try {
+      const result = await fetchLiveMarketRates();
       
-      setCurrentSilver(newSilver);
-      setCurrentUSD(newUSD);
-
-      // Recalculate linked product prices dynamically based strictly on formulas
-      setProducts(prev => prev.map(p => {
-        if (!p.isLinked) return p; // Do not touch unlinked (manual) products
+      if (result.success && result.silverRate > 0) {
+        const newSilver = result.silverRate;
+        const newUSD = result.usdInrRate;
         
-        const rawSilverCost = p.weightGm * newSilver;
-        const newTotal = Math.round(rawSilverCost + p.makingMargin);
-        
-        return { ...p, currentPrice: newTotal };
-      }));
+        setCurrentSilver(newSilver);
+        setCurrentUSD(newUSD);
 
+        // Recalculate linked product prices using the REAL commodity costs
+        const updatedProducts = products.map(p => {
+          if (!p.isLinked) return p; 
+          const weightGm = parseFloat(p.weight) || 0;
+          const rawSilverCost = weightGm * newSilver;
+          const newTotal = Math.round(rawSilverCost + (p.makingMargin || 0));
+          return { ...p, price: newTotal };
+        });
+        
+        // Push massive recalculation globally across store
+        setProducts(updatedProducts);
+      } else {
+        console.error("Market API Fetch Failed: ", result.error);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsSyncing(false);
-    }, 1500);
+    }
   };
 
-  const toggleLink = (id: string) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === id) {
-        const isNowLinked = !p.isLinked;
-        if (isNowLinked) {
-          // If turning ON, immediately calculate the current live price
-          const newPrice = Math.round((p.weightGm * currentSilver) + p.makingMargin);
-          return { ...p, isLinked: true, currentPrice: newPrice };
-        }
-        return { ...p, isLinked: false };
-      }
-      return p;
-    }));
+  // Mount sync!
+  useEffect(() => {
+    forceSync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleLink = (id: string, currentTargetWeightStr: string, currentMargin: number) => {
+    const p = products.find(prod => prod.id === id);
+    if (!p) return;
+    const isNowLinked = !p.isLinked;
+    if (isNowLinked) {
+      const weightGm = parseFloat(currentTargetWeightStr) || 0;
+      const newPrice = Math.round((weightGm * currentSilver) + currentMargin);
+      updateProduct(id, { isLinked: true, price: newPrice });
+    } else {
+      updateProduct(id, { isLinked: false });
+    }
   };
 
-  const updateMargin = (id: string, newMargin: number) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === id) {
-        const updated = { ...p, makingMargin: newMargin };
-        if (updated.isLinked) {
-           updated.currentPrice = Math.round((updated.weightGm * currentSilver) + newMargin);
-        }
-        return updated;
-      }
-      return p;
-    }));
+  const syncMargin = (id: string, newMargin: number, isCurrentlyLinked: boolean, weightStr: string) => {
+    if (isCurrentlyLinked) {
+       const weightGm = parseFloat(weightStr) || 0;
+       const newPrice = Math.round((weightGm * currentSilver) + newMargin);
+       updateProduct(id, { makingMargin: newMargin, price: newPrice });
+    } else {
+       updateProduct(id, { makingMargin: newMargin });
+    }
   };
 
   // Metrics diffs
@@ -212,21 +208,23 @@ export default function LiveMarketDashboard() {
             </thead>
             <tbody>
               {filtered.map((p) => {
-                const rawSilverCost = p.weightGm * currentSilver;
+                const weightGm = parseFloat(p.weight) || 0;
+                const rawSilverCost = weightGm * currentSilver;
+                const activeMargin = p.makingMargin || 0;
 
                 return (
                   <tr key={p.id} className="border-t border-[#E8E8E8] hover:bg-[#FDFAF5]/50 transition-colors">
                     <td className="px-6 py-4">
                       <p className="font-bold text-[#1A1A1A]">{p.name}</p>
-                      <p className="text-xs text-[#A09DAB]">{p.specs}</p>
+                      <p className="text-xs text-[#A09DAB]">{p.carat} {p.colour}</p>
                     </td>
-                    <td className="px-6 py-4 font-mono font-medium">{p.weightGm}g</td>
+                    <td className="px-6 py-4 font-mono font-medium">{p.weight}</td>
                     
                     {/* Toggle */}
                     <td className="px-6 py-4">
                       <div className="flex justify-center">
                         <button
-                          onClick={() => toggleLink(p.id)}
+                          onClick={() => toggleLink(p.id, p.weight, activeMargin)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${p.isLinked ? 'bg-green-500' : 'bg-gray-300'}`}
                         >
                           <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${p.isLinked ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -239,8 +237,8 @@ export default function LiveMarketDashboard() {
                         <span className="text-[#7A7585]">₹</span>
                         <input
                           type="number"
-                          value={p.makingMargin}
-                          onChange={(e) => updateMargin(p.id, Number(e.target.value))}
+                          value={activeMargin}
+                          onChange={(e) => syncMargin(p.id, Number(e.target.value), p.isLinked, p.weight)}
                           disabled={!p.isLinked}
                           className="w-24 px-3 py-1.5 bg-[#F5F3EF] border border-[#E8E8E8] rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 disabled:opacity-50 font-medium"
                         />
@@ -248,10 +246,10 @@ export default function LiveMarketDashboard() {
                     </td>
 
                     <td className="px-6 py-4 text-right bg-amber-50/10">
-                      <p className="text-lg font-[family-name:var(--font-heading)] font-bold text-[#1A1A1A]">₹{p.currentPrice.toLocaleString('en-IN')}</p>
+                      <p className="text-lg font-[family-name:var(--font-heading)] font-bold text-[#1A1A1A]">₹{p.price.toLocaleString('en-IN')}</p>
                       {p.isLinked && (
-                        <p className="text-[10px] text-[#A09DAB] mt-0.5" title={`Silver Base: ${rawSilverCost.toFixed(2)} + Margin: ${p.makingMargin}`}>
-                          {rawSilverCost.toFixed(0)} (Base) + {p.makingMargin} (Make)
+                        <p className="text-[10px] text-[#A09DAB] mt-0.5" title={`Silver Base: ${rawSilverCost.toFixed(2)} + Margin: ${activeMargin}`}>
+                          {rawSilverCost.toFixed(0)} (Base) + {activeMargin} (Make)
                         </p>
                       )}
                       {!p.isLinked && (

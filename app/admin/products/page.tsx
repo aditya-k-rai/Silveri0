@@ -7,7 +7,8 @@ interface Product {
   id: string;
   name: string;
   sku: string;
-  price: number;
+  price: number; // Base or total static price
+  makingMargin?: number; // Added specifically for the dynamic market sync equation
   stock: number;
   category: string;
   status: string;
@@ -28,10 +29,10 @@ interface Product {
 }
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false, carat: "22K", colour: "Silver", size: "US 7", height: "0.2cm", weight: "4.2g", width: "0.8cm", radius: "0.85cm", warranty: "1 Year Polish Guarantee", tags: "wedding, elegant, classic", primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80", hoverImage: null, model3dFileName: "ring_elegance.obj" },
-  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true, carat: "18K", colour: "Rose Gold", size: "18 inch chain", height: "N/A", weight: "12g", width: "0.4cm", radius: "", warranty: "Lifetime Clasp Replacement", tags: "daily wear, trendy", primaryImage: null, hoverImage: null, model3dFileName: "luna.3dm" },
-  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true, carat: "24K", colour: "Gold", size: "Regular", height: "2.5cm", weight: "6g", width: "1.2cm", radius: "", warranty: "6 Month Manufacturer Defect Guarantee", tags: "party, gold", primaryImage: null, hoverImage: null, model3dFileName: null },
-  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", colour: "Silver", size: "7.5 inch lock", height: "0.5cm", weight: "18g", width: "0.8cm", radius: "", warranty: "No warranty on charms", tags: "casual, charm", primaryImage: null, hoverImage: null, model3dFileName: null },
+  { id: "P001", name: "Silver Elegance Ring", sku: "SLV-RNG-001", price: 2499, makingMargin: 1500, stock: 34, category: "Rings", status: "Active", isFeatured: true, isNewArrival: false, carat: "22K", colour: "Silver", size: "US 7", height: "0.2cm", weight: "4.2g", width: "0.8cm", radius: "0.85cm", warranty: "1 Year Polish Guarantee", tags: "wedding, elegant, classic", primaryImage: "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80", hoverImage: null, model3dFileName: "ring_elegance.obj" },
+  { id: "P002", name: "Luna Necklace", sku: "SLV-NCK-002", price: 3899, makingMargin: 2200, stock: 22, category: "Necklaces", status: "Active", isFeatured: false, isNewArrival: true, carat: "18K", colour: "Rose Gold", size: "18 inch chain", height: "N/A", weight: "12g", width: "0.4cm", radius: "", warranty: "Lifetime Clasp Replacement", tags: "daily wear, trendy", primaryImage: null, hoverImage: null, model3dFileName: "luna.3dm" },
+  { id: "P003", name: "Aria Earrings", sku: "SLV-EAR-003", price: 1899, makingMargin: 800, stock: 45, category: "Earrings", status: "Active", isFeatured: true, isNewArrival: true, carat: "24K", colour: "Gold", size: "Regular", height: "2.5cm", weight: "6g", width: "1.2cm", radius: "", warranty: "6 Month Manufacturer Defect Guarantee", tags: "party, gold", primaryImage: null, hoverImage: null, model3dFileName: null },
+  { id: "P004", name: "Charm Bracelet", sku: "SLV-BRC-004", price: 4299, makingMargin: 1200, stock: 18, category: "Bracelets", status: "Active", isFeatured: false, isNewArrival: false, carat: "18K", colour: "Silver", size: "7.5 inch lock", height: "0.5cm", weight: "18g", width: "0.8cm", radius: "", warranty: "No warranty on charms", tags: "casual, charm", primaryImage: null, hoverImage: null, model3dFileName: null },
 ];
 
 export default function AdminProductsPage() {
@@ -71,6 +72,7 @@ export default function AdminProductsPage() {
         name: "",
         sku: `SLV-NEW-${Math.floor(1000 + Math.random() * 9000)}`,
         price: 0,
+        makingMargin: 500, // Default making margin explicitly created
         stock: 0,
         category: "Rings",
         status: "Draft",
@@ -469,14 +471,27 @@ export default function AdminProductsPage() {
               </div>
 
               {/* Pricing & Inventory */}
-              <div className="grid grid-cols-3 gap-4 bg-white p-6 rounded-2xl border border-[#E8E8E8]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white p-6 rounded-2xl border border-[#E8E8E8]">
                 <div>
-                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">M.R.P (₹)</label>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Static Base M.R.P (₹)</label>
                   <input 
                     type="number" 
                     value={editingParams.price}
                     onChange={(e) => setEditingParams({...editingParams, price: Number(e.target.value)})}
+                    className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 font-mono font-medium"
+                    title="Regular fixed price if not using Market Sync."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A7585] mb-1.5 flex items-center gap-1">
+                    Making Margin (₹) <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Active on Live Market Sync"></span>
+                  </label>
+                  <input 
+                    type="number" 
+                    value={editingParams.makingMargin || 0}
+                    onChange={(e) => setEditingParams({...editingParams, makingMargin: Number(e.target.value)})}
                     className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 text-green-700 font-mono font-medium"
+                    title="Profit margin added to raw Silver value if Market Sync is engaged."
                   />
                 </div>
                 <div>
