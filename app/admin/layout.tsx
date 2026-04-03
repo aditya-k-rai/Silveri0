@@ -146,6 +146,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-8 overflow-auto">{children}</main>
+        
+        {/* Admin Footer */}
+        <footer className="px-4 lg:px-8 py-4 border-t border-[#E8E8E8] bg-white text-center text-xs text-[#7A7585]">
+          &copy; {new Date().getFullYear()} Silveri Admin Portal. All systems operational.
+        </footer>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { signInWithEmail, signUpWithEmail, resetPassword } from '@/lib/firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -12,6 +13,7 @@ const ADMIN_ACCESS_CODE = 'AKRP';
 type View = 'login' | 'register' | 'forgot';
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [view, setView] = useState<View>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,22 +48,10 @@ export default function AdminLoginPage() {
     if (!validateAccessCode()) return;
 
     setSubmitting(true);
+    console.log('[Admin Login] Step 1: Starting sign in...');
     try {
-      let firebaseUser;
-      try {
-        firebaseUser = await signInWithEmail(email, password);
-      } catch (authErr: unknown) {
-        const msg = authErr instanceof Error ? authErr.message : 'Login failed';
-        if (msg.includes('too-many-requests')) {
-          setError('Too many login attempts. Please wait 15–30 minutes before trying again.');
-        } else if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-          setError('Invalid email or password');
-        } else {
-          setError(msg);
-        }
-        setSubmitting(false);
-        return;
-      }
+      const firebaseUser = await signInWithEmail(email, password);
+      console.log('[Admin Login] Step 2: Firebase auth success, uid:', firebaseUser.uid);
 
       if (!db) {
         setError('Database not connected. Please try again.');
@@ -69,14 +59,9 @@ export default function AdminLoginPage() {
         return;
       }
 
-      let userDocSnap;
-      try {
-        userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-      } catch (dbErr: unknown) {
-        setError('Failed to verify admin role: ' + (dbErr instanceof Error ? dbErr.message : 'Database error'));
-        setSubmitting(false);
-        return;
-      }
+      console.log('[Admin Login] Step 3: Checking Firestore role...');
+      const userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+      console.log('[Admin Login] Step 4: Firestore result - exists:', userDocSnap.exists(), 'role:', userDocSnap.data()?.role);
 
       if (!userDocSnap.exists()) {
         setError('No user profile found. Please register first.');
@@ -90,9 +75,19 @@ export default function AdminLoginPage() {
         return;
       }
 
-      window.location.href = '/admin';
+      console.log('[Admin Login] Step 5: Redirecting to /admin...');
+      setSubmitting(false);
+      window.location.replace('/admin');
     } catch (err: unknown) {
-      setError('Unexpected error: ' + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Admin Login] Error:', msg);
+      if (msg.includes('too-many-requests')) {
+        setError('Too many login attempts. Please wait 15–30 minutes before trying again.');
+      } else if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential')) {
+        setError('Invalid email or password');
+      } else {
+        setError(msg);
+      }
       setSubmitting(false);
     }
   };
@@ -139,7 +134,7 @@ export default function AdminLoginPage() {
         createdAt: new Date(),
       });
 
-      window.location.href = '/admin';
+      router.push('/admin');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
       if (msg.includes('too-many-requests')) {

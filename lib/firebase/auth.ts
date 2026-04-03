@@ -13,16 +13,20 @@ const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
-  const idToken = await result.user.getIdToken();
 
   try {
+    const idToken = await result.user.getIdToken();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch {
-    // Session cookie failed — login still works via Firebase client auth
+    // Session cookie failed or timed out
   }
 
   return result.user;
@@ -32,15 +36,19 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName });
 
-  const idToken = await result.user.getIdToken();
   try {
+    const idToken = await result.user.getIdToken();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch {
-    // Session cookie failed — login still works via Firebase client auth
+    // Session cookie failed or timed out
   }
 
   return result.user;
@@ -48,17 +56,21 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 
 export async function signInWithEmail(email: string, password: string) {
   const result = await signInWithEmailAndPassword(auth, email, password);
-  const idToken = await result.user.getIdToken();
 
-  // Best-effort session creation — don't block login if it fails
+  // Best-effort session creation with timeout — don't block login
   try {
+    const idToken = await result.user.getIdToken();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch {
-    // Session cookie failed — login still works via Firebase client auth
+    // Session cookie failed or timed out — login still works via Firebase client auth
   }
 
   return result.user;

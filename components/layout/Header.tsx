@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import {
   Home,
   Grid3X3,
@@ -20,8 +21,13 @@ import { signOutUser } from '@/lib/firebase/auth';
 import { useCartStore } from '@/store/cartStore';
 
 export default function Header() {
+  const pathname = usePathname();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
   const [searchQuery, setSearchQuery] = useState('');
   const { user, loading } = useAuthContext();
   const cartItems = useCartStore((state) => state.items);

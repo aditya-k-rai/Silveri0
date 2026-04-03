@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, Package, MapPin, Heart, Loader2 } from "lucide-react";
+import { User, Package, MapPin, Heart, Loader2, Star } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useEffect } from "react";
 import Image from "next/image";
@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/account/orders", label: "Orders", icon: <Package size={18} /> },
   { href: "/account/addresses", label: "Addresses", icon: <MapPin size={18} /> },
   { href: "/account/wishlist", label: "Wishlist", icon: <Heart size={18} /> },
+  { href: "/account/reviews", label: "Reviews", icon: <Star size={18} /> },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
