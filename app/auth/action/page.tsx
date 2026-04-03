@@ -1,8 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, Suspense } from 'react';
-import { verifyResetCode, confirmReset } from '@/lib/firebase/auth';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { Shield, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -10,6 +9,7 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
   const oobCode = searchParams.get('oobCode');
+  const apiKey = searchParams.get('apiKey');
 
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -20,28 +20,49 @@ function ResetPasswordForm() {
   const [verifying, setVerifying] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [invalidCode, setInvalidCode] = useState(false);
-  const [debugError, setDebugError] = useState('');
+
+  // Store auth ref so we can reuse it for confirm
+  const authRef = useRef<import('firebase/auth').Auth | null>(null);
 
   useEffect(() => {
     if (mode !== 'resetPassword' || !oobCode) {
       setInvalidCode(true);
-      setDebugError(`mode: ${mode}, oobCode present: ${!!oobCode}`);
       setVerifying(false);
       return;
     }
 
-    verifyResetCode(oobCode)
-      .then((userEmail) => {
+    // Dynamically import and initialize Firebase client-side only
+    async function verify() {
+      try {
+        const { initializeApp, getApps, getApp } = await import('firebase/app');
+        const { getAuth, verifyPasswordResetCode } = await import('firebase/auth');
+
+        let app;
+        if (getApps().length > 0) {
+          app = getApp();
+        } else {
+          app = initializeApp({
+            apiKey: apiKey || process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+          });
+        }
+
+        const authInstance = getAuth(app);
+        authRef.current = authInstance;
+
+        const userEmail = await verifyPasswordResetCode(authInstance, oobCode!);
         setEmail(userEmail);
         setVerifying(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('Reset code verification failed:', err);
-        setDebugError(err instanceof Error ? err.message : String(err));
         setInvalidCode(true);
         setVerifying(false);
-      });
-  }, [mode, oobCode]);
+      }
+    }
+
+    verify();
+  }, [mode, oobCode, apiKey]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +80,15 @@ function ResetPasswordForm() {
 
     setSubmitting(true);
     try {
-      await confirmReset(oobCode!, newPassword);
+      const { confirmPasswordReset } = await import('firebase/auth');
+
+      if (!authRef.current) {
+        setError('Authentication not ready. Please refresh the page.');
+        setSubmitting(false);
+        return;
+      }
+
+      await confirmPasswordReset(authRef.current, oobCode!, newPassword);
       setSuccess(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to reset password';
@@ -97,9 +126,6 @@ function ResetPasswordForm() {
           This password reset link is invalid or has expired.<br />
           Please request a new one.
         </p>
-        {debugError && (
-          <p className="text-[#555] text-xs mb-4 font-mono break-all">Debug: {debugError}</p>
-        )}
         <Link
           href="/login"
           className="inline-block bg-gold text-warm-black px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gold-light transition-colors"
