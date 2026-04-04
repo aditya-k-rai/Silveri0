@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye } from 'lucide-react';
+import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye, X } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
@@ -215,55 +215,72 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 </button>
                 <div className="flex items-center gap-3 text-xs text-muted">
                   <span className="flex items-center gap-1"><Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views</span>
-                  <span className="flex items-center gap-1"><ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes</span>
+                  <button
+                    onClick={() => likedBy.length > 0 && setShowLikedBy(true)}
+                    className={`flex items-center gap-1 ${likedBy.length > 0 ? 'hover:text-blue-500 cursor-pointer transition-colors' : ''}`}
+                  >
+                    <ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes
+                  </button>
                 </div>
               </div>
 
-              {/* Liked by section */}
+              {/* Liked by preview */}
               {likedBy.length > 0 && (
-                <div>
-                  <button
-                    onClick={() => setShowLikedBy(!showLikedBy)}
-                    className="text-xs text-muted hover:text-warm-black transition-colors flex items-center gap-1.5"
-                  >
-                    <div className="flex -space-x-2">
-                      {likedBy.slice(0, 3).map((u, i) => (
-                        u.photo ? (
-                          <img key={i} src={u.photo} alt="" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
-                        ) : (
-                          <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                            {u.name.charAt(0).toUpperCase()}
-                          </div>
-                        )
-                      ))}
-                    </div>
-                    <span>
-                      {likedBy.length === 1
-                        ? `${likedBy[0].name} liked this`
-                        : likedBy.length <= 3
-                          ? `${likedBy.map(u => u.name).join(', ')} liked this`
-                          : `${likedBy.slice(0, 2).map(u => u.name).join(', ')} and ${likedBy.length - 2} others liked this`
-                      }
-                    </span>
-                  </button>
+                <button
+                  onClick={() => setShowLikedBy(true)}
+                  className="text-xs text-muted hover:text-warm-black transition-colors flex items-center gap-1.5"
+                >
+                  <div className="flex -space-x-2">
+                    {likedBy.slice(0, 3).map((u, i) => (
+                      u.photo ? (
+                        <img key={i} src={u.photo} alt="" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
+                      ) : (
+                        <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                      )
+                    ))}
+                  </div>
+                  <span>
+                    {likedBy.length === 1
+                      ? `${likedBy[0].name} liked this`
+                      : likedBy.length <= 3
+                        ? `${likedBy.map(u => u.name).join(', ')} liked this`
+                        : `${likedBy.slice(0, 2).map(u => u.name).join(', ')} and ${likedBy.length - 2} others liked this`
+                    }
+                  </span>
+                </button>
+              )}
 
-                  {/* Expanded liked by list */}
-                  {showLikedBy && (
-                    <div className="mt-2 bg-white border border-silver/40 rounded-xl p-3 max-h-48 overflow-y-auto">
+              {/* Liked By Popup Modal */}
+              {showLikedBy && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowLikedBy(false)} />
+                  <div className="bg-white rounded-2xl w-full max-w-sm relative z-10 shadow-2xl border border-silver/30 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-silver/30">
+                      <div>
+                        <h3 className="font-[family-name:var(--font-heading)] font-semibold text-warm-black">Liked By</h3>
+                        <p className="text-xs text-muted mt-0.5">{likedBy.length} {likedBy.length === 1 ? 'person' : 'people'} liked this</p>
+                      </div>
+                      <button onClick={() => setShowLikedBy(false)} className="p-2 hover:bg-silver/20 rounded-full text-muted transition-colors">
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto px-5 py-3">
                       {likedBy.map((u, i) => (
-                        <div key={i} className="flex items-center gap-2.5 py-1.5">
+                        <div key={i} className="flex items-center gap-3 py-2.5 border-b border-silver/20 last:border-0">
                           {u.photo ? (
-                            <img src={u.photo} alt="" className="w-7 h-7 rounded-full object-cover" />
+                            <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover" />
                           ) : (
-                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">
                               {u.name.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <span className="text-sm text-warm-black">{u.name}</span>
+                          <span className="text-sm font-medium text-warm-black">{u.name}</span>
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

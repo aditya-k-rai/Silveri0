@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
   Grid3X3,
@@ -12,7 +12,6 @@ import {
   ShoppingCart,
   Search,
   User,
-  Menu,
   X,
   LogOut,
   Sparkles,
@@ -23,189 +22,234 @@ import { useCartStore } from '@/store/cartStore';
 
 export default function Header() {
   const pathname = usePathname();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  if (pathname.startsWith('/admin')) {
-    return null;
-  }
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, loading } = useAuthContext();
   const cartItems = useCartStore((state) => state.items);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  if (pathname.startsWith('/admin')) return null;
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/category/all?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchOpen(false);
+    }
+  };
+
+  const navLinks = [
+    { href: '/', icon: Home, label: 'Home' },
+    { href: '/category/all', icon: Grid3X3, label: 'Shop' },
+    { href: '/custom-jewelry', icon: Sparkles, label: 'Bespoke' },
+    { href: '/account/orders', icon: Package, label: 'Orders' },
+    { href: '/account/wishlist', icon: Heart, label: 'Wishlist' },
+  ];
+
   return (
     <>
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-silver-800 to-silver-900 shadow-md">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+      {/* ===== DESKTOP HEADER ===== */}
+      <header className="sticky top-0 z-50 hidden md:block bg-white/80 backdrop-blur-xl border-b border-silver-200/60">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-[72px]">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <span className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              <div className="w-8 h-8 bg-silver-900 rounded-lg flex items-center justify-center">
+                <span className="text-white font-[family-name:var(--font-heading)] text-sm font-bold">S</span>
+              </div>
+              <span className="font-[family-name:var(--font-heading)] text-xl font-semibold text-silver-900 tracking-tight">
                 Silveri
               </span>
-              <span className="text-white text-xs hidden sm:block">Logo</span>
             </Link>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-1">
-              <NavItem href="/" icon={<Home size={20} />} label="Home" />
-              <NavItem href="/category/all" icon={<Grid3X3 size={20} />} label="Category" />
-              <NavItem href="/custom-jewelry" icon={<Sparkles size={20} />} label="Bespoke" />
-              <NavItem href="/account/orders" icon={<Package size={20} />} label="Orders" />
-              <NavItem href="/account/wishlist" icon={<Heart size={20} />} label="Wishlist" />
-              <NavItem
-                href="/checkout"
-                icon={<ShoppingCart size={20} />}
-                label="Cart"
-                badge={cartCount > 0 ? cartCount : undefined}
-              />
+            {/* Center Nav */}
+            <nav className="flex items-center gap-1">
+              {navLinks.map(({ href, label }) => {
+                const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                      isActive
+                        ? 'bg-silver-900 text-white'
+                        : 'text-silver-600 hover:text-silver-900 hover:bg-silver-100'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
             </nav>
 
-            {/* Search Bar */}
-            <div className="hidden md:flex items-center bg-white rounded-full px-4 py-2 min-w-[200px] lg:min-w-[280px]">
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent outline-none text-sm text-warm-black flex-1 font-[family-name:var(--font-body)]"
-              />
-              <Search size={20} className="text-warm-black cursor-pointer" />
-            </div>
+            {/* Right Actions */}
+            <div className="flex items-center gap-2">
+              {/* Search */}
+              <form onSubmit={handleSearch} className="relative">
+                <div className="flex items-center bg-silver-100 rounded-full pl-4 pr-3 py-2 w-[220px] lg:w-[260px] focus-within:bg-white focus-within:ring-2 focus-within:ring-silver-300 transition-all">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-transparent outline-none text-sm text-silver-800 flex-1 placeholder:text-silver-400"
+                  />
+                  <button type="submit">
+                    <Search size={16} className="text-silver-500" />
+                  </button>
+                </div>
+              </form>
 
-            {/* Profile / Auth */}
-            <div className="hidden md:flex items-center gap-2">
+              {/* Cart */}
+              <Link
+                href="/checkout"
+                className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-silver-100 transition-colors"
+              >
+                <ShoppingCart size={20} className="text-silver-700" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-gold text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Profile */}
               {!loading && user ? (
-                <div className="flex items-center gap-2">
-                  <Link href="/account/profile" className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border-2 border-white">
+                <div className="flex items-center gap-1.5">
+                  <Link
+                    href="/account/profile"
+                    className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border-2 border-silver-200 hover:border-gold transition-colors"
+                  >
                     {user.photoURL ? (
                       <Image src={user.photoURL} alt="Profile" width={40} height={40} className="object-cover" />
                     ) : (
-                      <User size={20} className="text-white" />
+                      <div className="w-full h-full bg-silver-100 flex items-center justify-center">
+                        <User size={18} className="text-silver-600" />
+                      </div>
                     )}
                   </Link>
-                  <button onClick={() => signOutUser()} className="text-white/70 hover:text-white transition-colors" title="Sign out">
-                    <LogOut size={18} />
+                  <button
+                    onClick={() => signOutUser()}
+                    className="flex items-center justify-center w-9 h-9 rounded-full text-silver-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Sign out"
+                  >
+                    <LogOut size={16} />
                   </button>
                 </div>
               ) : (
                 <Link
                   href="/login"
-                  className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white bg-white/10"
+                  className="flex items-center gap-2 bg-silver-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-silver-800 transition-colors"
                 >
-                  <User size={20} className="text-white" />
+                  <User size={16} />
+                  Login
                 </Link>
               )}
             </div>
+          </div>
+        </div>
+      </header>
 
-            {/* Mobile Controls */}
-            <div className="flex md:hidden items-center gap-3">
-              <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
-                <Search size={22} className="text-white" />
-              </button>
-              <Link href="/checkout" className="relative">
-                <ShoppingCart size={22} className="text-white" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-white text-silver-900 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                    {cartCount}
-                  </span>
+      {/* ===== MOBILE HEADER ===== */}
+      <header className="sticky top-0 z-50 md:hidden bg-white/90 backdrop-blur-xl border-b border-silver-200/60">
+        <div className="flex items-center justify-between h-14 px-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-silver-900 rounded-lg flex items-center justify-center">
+              <span className="text-white font-[family-name:var(--font-heading)] text-xs font-bold">S</span>
+            </div>
+            <span className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">
+              Silveri
+            </span>
+          </Link>
+
+          {/* Mobile Right Actions */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-silver-100 transition-colors"
+            >
+              <Search size={20} className="text-silver-700" />
+            </button>
+            <Link href="/checkout" className="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-silver-100 transition-colors">
+              <ShoppingCart size={20} className="text-silver-700" />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-gold text-white text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            {!loading && user ? (
+              <Link
+                href="/account/profile"
+                className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden border border-silver-200"
+              >
+                {user.photoURL ? (
+                  <Image src={user.photoURL} alt="Profile" width={36} height={36} className="object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-silver-100 flex items-center justify-center">
+                    <User size={16} className="text-silver-600" />
+                  </div>
                 )}
               </Link>
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                {isMobileMenuOpen ? (
-                  <X size={24} className="text-white" />
-                ) : (
-                  <Menu size={24} className="text-white" />
-                )}
-              </button>
-            </div>
+            ) : (
+              <Link href="/login" className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-silver-100 transition-colors">
+                <User size={18} className="text-silver-700" />
+              </Link>
+            )}
           </div>
-
-          {/* Mobile Search Bar */}
-          {isSearchOpen && (
-            <div className="md:hidden pb-3">
-              <div className="flex items-center bg-white rounded-full px-4 py-2">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent outline-none text-sm text-warm-black flex-1"
-                  autoFocus
-                />
-                <Search size={18} className="text-warm-black" />
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-silver-800 border-t border-silver-700">
-            <nav className="flex flex-col px-4 py-3 gap-1">
-              <MobileNavItem href="/" icon={<Home size={18} />} label="Home" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavItem href="/category/all" icon={<Grid3X3 size={18} />} label="Category" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavItem href="/custom-jewelry" icon={<Sparkles size={18} />} label="Bespoke" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavItem href="/account/orders" icon={<Package size={18} />} label="Orders" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavItem href="/account/wishlist" icon={<Heart size={18} />} label="Wishlist" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavItem href="/account/profile" icon={<User size={18} />} label="Profile" onClick={() => setIsMobileMenuOpen(false)} />
-            </nav>
-          </div>
-        )}
       </header>
+
+      {/* ===== MOBILE SEARCH OVERLAY ===== */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[60] bg-white md:hidden">
+          <div className="flex items-center gap-3 px-4 h-14 border-b border-silver-200">
+            <form onSubmit={handleSearch} className="flex-1 flex items-center bg-silver-100 rounded-xl px-4 py-2.5">
+              <Search size={18} className="text-silver-400 shrink-0 mr-3" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent outline-none text-sm text-silver-800 flex-1"
+                autoFocus
+              />
+            </form>
+            <button
+              onClick={() => setIsSearchOpen(false)}
+              className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-silver-100 transition-colors shrink-0"
+            >
+              <X size={20} className="text-silver-600" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MOBILE BOTTOM TAB BAR ===== */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 backdrop-blur-xl border-t border-silver-200/60 safe-area-bottom">
+        <div className="flex items-center justify-around h-16 px-2">
+          {navLinks.map(({ href, icon: Icon, label }) => {
+            const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex flex-col items-center justify-center gap-0.5 w-16 py-1 rounded-xl transition-all duration-200 ${
+                  isActive ? 'text-gold' : 'text-silver-400'
+                }`}
+              >
+                <Icon size={22} className={isActive ? 'text-gold' : ''} strokeWidth={isActive ? 2.5 : 1.5} />
+                <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-normal'}`}>{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Bottom spacer for mobile bottom bar */}
+      <div className="h-16 md:hidden" />
     </>
-  );
-}
-
-function NavItem({
-  href,
-  icon,
-  label,
-  badge,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  badge?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col items-center px-3 py-1 text-white hover:text-silver-300 transition-colors relative"
-    >
-      <span className="relative">
-        {icon}
-        {badge !== undefined && (
-          <span className="absolute -top-2 -right-3 bg-white text-silver-900 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-            {badge}
-          </span>
-        )}
-      </span>
-      <span className="text-[10px] mt-0.5">{label}</span>
-    </Link>
-  );
-}
-
-function MobileNavItem({
-  href,
-  icon,
-  label,
-  onClick,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-silver-700 rounded-lg transition-colors"
-    >
-      {icon}
-      <span className="text-sm">{label}</span>
-    </Link>
   );
 }
