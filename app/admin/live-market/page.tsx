@@ -1,71 +1,135 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, CheckCircle, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, AlertTriangle, Clock } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
 import { fetchLiveMarketRates } from "@/app/actions/market";
+import { saveMarketRate, fetchRecentRates, MarketRateEntry } from "@/lib/firebase/marketRates";
 
-// Simulated 7-day Historical Data from APIs (Recent baseline adjusted closer to actual values)
-// Shows exactly which API fetched at what timeline (6:00 AM, 11:30 AM, 8:00 PM)
-const HISTORICAL_DATA = [
-  { label: "D1 6:00 AM", silverRate: 198.50, usdInr: 94.00 },
-  { label: "D1 11:30 AM", silverRate: 199.10, usdInr: 94.02 },
-  { label: "D1 8:00 PM", silverRate: 198.90, usdInr: 94.05 },
-  { label: "D2 6:00 AM", silverRate: 199.50, usdInr: 94.05 },
-  { label: "D2 11:30 AM", silverRate: 200.20, usdInr: 94.08 },
-  { label: "D2 8:00 PM", silverRate: 201.00, usdInr: 94.10 },
-  { label: "D3 6:00 AM", silverRate: 201.50, usdInr: 94.10 },
-  { label: "D3 11:30 AM", silverRate: 202.30, usdInr: 94.15 },
-  { label: "D3 8:00 PM", silverRate: 204.00, usdInr: 94.20 },
-  { label: "D4 6:00 AM", silverRate: 203.80, usdInr: 94.18 },
-  { label: "D4 11:30 AM", silverRate: 205.10, usdInr: 94.25 },
-  { label: "D4 8:00 PM", silverRate: 205.90, usdInr: 94.28 },
-  { label: "D5 6:00 AM", silverRate: 206.50, usdInr: 94.30 },
-  { label: "D5 11:30 AM", silverRate: 207.20, usdInr: 94.35 },
-  { label: "D5 8:00 PM", silverRate: 208.50, usdInr: 94.40 },
-  { label: "D6 6:00 AM", silverRate: 209.00, usdInr: 94.42 },
-  { label: "D6 11:30 AM", silverRate: 211.50, usdInr: 94.48 },
-  { label: "D6 8:00 PM", silverRate: 212.80, usdInr: 94.52 },
-  { label: "D7 6:00 AM", silverRate: 213.50, usdInr: 94.60 },
-  { label: "D7 11:30 AM", silverRate: 214.20, usdInr: 94.65 },
-  { label: "D7 8:00 PM", silverRate: 216.50, usdInr: 94.81 },
-];
+interface ChartPoint {
+  label: string;
+  date: string;
+  time: string;
+  silverRate: number;
+  usdInr: number;
+}
+
+function formatChartLabel(date: Date): { label: string; date: string; time: string } {
+  const d = date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  const t = date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return { label: `${d} ${t}`, date: d, time: t };
+}
+
+function formatLastUpdated(date: Date): string {
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
 
 export default function LiveMarketDashboard() {
-  const [currentSilver, setCurrentSilver] = useState(HISTORICAL_DATA[6].silverRate);
-  const [currentUSD, setCurrentUSD] = useState(HISTORICAL_DATA[6].usdInr);
-  
+  const [currentSilver, setCurrentSilver] = useState(0);
+  const [currentUSD, setCurrentUSD] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [fredDate, setFredDate] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [previousSilver, setPreviousSilver] = useState(0);
+  const [previousUSD, setPreviousUSD] = useState(0);
+
   const { products, setProducts, updateProduct } = useProductStore();
   const [search, setSearch] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
 
   const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  // FETCH REAL API DATA via Server Action
-  const forceSync = async () => {
-    setIsSyncing(true);
+  // Load historical data from Firebase on mount
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
+  const loadHistory = async () => {
+    const history = await fetchRecentRates(30);
+    if (history.length > 0) {
+      const points = history.map((entry) => {
+        const fmt = formatChartLabel(entry.fetchedAt);
+        return {
+          ...fmt,
+          silverRate: entry.silverRate,
+          usdInr: entry.usdInr,
+        };
+      });
+      setChartData(points);
+
+      // Set current from the latest entry
+      const latest = history[history.length - 1];
+      setCurrentSilver(latest.silverRate);
+      setCurrentUSD(latest.usdInr);
+      setLastUpdated(latest.fetchedAt);
+      setFredDate(latest.fredObservationDate || null);
+
+      // Set previous from second-to-last for diff calculation
+      if (history.length >= 2) {
+        const prev = history[history.length - 2];
+        setPreviousSilver(prev.silverRate);
+        setPreviousUSD(prev.usdInr);
+      }
+    }
+
+    // Auto-sync on mount to get fresh data
+    await doSync(history);
+  };
+
+  const doSync = async (existingHistory?: MarketRateEntry[]) => {
+    setIsSyncing(true);
     try {
       const result = await fetchLiveMarketRates();
-      
+
       if (result.success && result.silverRate > 0) {
         const newSilver = result.silverRate;
         const newUSD = result.usdInrRate;
-        
+        const fetchedAt = new Date(result.fetchedAt);
+
+        // Update previous values for diff
+        setPreviousSilver(currentSilver || newSilver);
+        setPreviousUSD(currentUSD || newUSD);
+
         setCurrentSilver(newSilver);
         setCurrentUSD(newUSD);
+        setLastUpdated(fetchedAt);
+        setFredDate(result.fredObservationDate || null);
 
-        // Recalculate linked product prices using the REAL commodity costs
+        // Save to Firebase history
+        await saveMarketRate({
+          silverRate: newSilver,
+          usdInr: newUSD,
+          fetchedAt,
+          fredObservationDate: result.fredObservationDate || undefined,
+        });
+
+        // Add to chart
+        const fmt = formatChartLabel(fetchedAt);
+        const newPoint: ChartPoint = {
+          ...fmt,
+          silverRate: newSilver,
+          usdInr: newUSD,
+        };
+        setChartData((prev) => [...prev, newPoint]);
+
+        // Recalculate linked product prices
         const updatedProducts = products.map(p => {
-          if (!p.isLinked) return p; 
+          if (!p.isLinked) return p;
           const weightGm = parseFloat(p.weight) || 0;
           const rawSilverCost = weightGm * newSilver;
           const newTotal = Math.round(rawSilverCost + (p.makingMargin || 0));
           return { ...p, price: newTotal };
         });
-        
-        // Push massive recalculation globally across store
+
         setProducts(updatedProducts);
       } else {
         console.error("Market API Fetch Failed: ", result.error);
@@ -77,11 +141,7 @@ export default function LiveMarketDashboard() {
     }
   };
 
-  // Mount sync!
-  useEffect(() => {
-    forceSync();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const forceSync = () => doSync();
 
   const toggleLink = (id: string, currentTargetWeightStr: string, currentMargin: number) => {
     const p = products.find(prod => prod.id === id);
@@ -98,22 +158,21 @@ export default function LiveMarketDashboard() {
 
   const syncMargin = (id: string, newMargin: number, isCurrentlyLinked: boolean, weightStr: string) => {
     if (isCurrentlyLinked) {
-       const weightGm = parseFloat(weightStr) || 0;
-       const newPrice = Math.round((weightGm * currentSilver) + newMargin);
-       updateProduct(id, { makingMargin: newMargin, price: newPrice });
+      const weightGm = parseFloat(weightStr) || 0;
+      const newPrice = Math.round((weightGm * currentSilver) + newMargin);
+      updateProduct(id, { makingMargin: newMargin, price: newPrice });
     } else {
-       updateProduct(id, { makingMargin: newMargin });
+      updateProduct(id, { makingMargin: newMargin });
     }
   };
 
   // Metrics diffs
-  const lastRecordedData = HISTORICAL_DATA[HISTORICAL_DATA.length - 1];
-  const silverDiff = currentSilver - lastRecordedData.silverRate;
-  const usdDiff = currentUSD - lastRecordedData.usdInr;
+  const silverDiff = currentSilver - previousSilver;
+  const usdDiff = currentUSD - previousUSD;
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header & Force Sync */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -123,12 +182,12 @@ export default function LiveMarketDashboard() {
         <div className="flex items-center gap-4">
           <p className="text-xs text-[#7A7585] hidden sm:block">Automated Syncs: 6:00 AM, 11:30 AM, 8:00 PM (IST)</p>
           <div className="flex flex-col items-end gap-1.5">
-            <button 
+            <button
               onClick={forceSync}
               disabled={isSyncing}
               className={`inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors ${isSyncing ? "opacity-75 cursor-not-allowed" : ""}`}
             >
-              <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} /> 
+              <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} />
               {isSyncing ? "Fetching APIs..." : "Force API Sync"}
             </button>
             <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
@@ -146,12 +205,14 @@ export default function LiveMarketDashboard() {
               <Gem size={16} className="text-[#C9A84C]" /> Silver Rate (Per Gram)
             </p>
             <h2 className="text-3xl font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A]">
-              ₹{currentSilver.toFixed(2)}
+              {currentSilver > 0 ? `₹${currentSilver.toFixed(2)}` : "—"}
             </h2>
-            <div className={`flex items-center gap-1 text-sm font-semibold mt-2 ${silverDiff >= 0 ? "text-green-600" : "text-red-500"}`}>
-              {silverDiff >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-              {Math.abs(silverDiff).toFixed(2)} vs yesterday
-            </div>
+            {currentSilver > 0 && previousSilver > 0 && (
+              <div className={`flex items-center gap-1 text-sm font-semibold mt-2 ${silverDiff >= 0 ? "text-green-600" : "text-red-500"}`}>
+                {silverDiff >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                {Math.abs(silverDiff).toFixed(2)} vs last sync
+              </div>
+            )}
           </div>
           <div className="w-16 h-16 bg-[#C9A84C]/10 rounded-full flex items-center justify-center">
             <Gem size={32} className="text-[#C9A84C]" />
@@ -164,12 +225,17 @@ export default function LiveMarketDashboard() {
               <DollarSign size={16} className="text-blue-500" /> Exchange Rate (USD to INR)
             </p>
             <h2 className="text-3xl font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A]">
-              ₹{currentUSD.toFixed(2)}
+              {currentUSD > 0 ? `₹${currentUSD.toFixed(2)}` : "—"}
             </h2>
-            <div className={`flex items-center gap-1 text-sm font-semibold mt-2 ${usdDiff >= 0 ? "text-green-600" : "text-red-500"}`}>
-              {usdDiff >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-              {Math.abs(usdDiff).toFixed(2)} vs yesterday
-            </div>
+            {currentUSD > 0 && previousUSD > 0 && (
+              <div className={`flex items-center gap-1 text-sm font-semibold mt-2 ${usdDiff >= 0 ? "text-green-600" : "text-red-500"}`}>
+                {usdDiff >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                {Math.abs(usdDiff).toFixed(2)} vs last sync
+              </div>
+            )}
+            {fredDate && (
+              <p className="text-[10px] text-amber-600 mt-1">FRED data from: {fredDate}</p>
+            )}
           </div>
           <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
             <span className="text-blue-500 font-bold text-xl">$</span>
@@ -179,23 +245,56 @@ export default function LiveMarketDashboard() {
 
       {/* Historical Chart */}
       <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] shadow-sm">
-        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">7-Day Hourly Market Trend</h3>
-        <div className="w-full h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={[...HISTORICAL_DATA, { label: "Live", silverRate: currentSilver, usdInr: currentUSD }]}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E8E8" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} dy={10} minTickGap={20} />
-              <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
-              <YAxis yAxisId="right" orientation="right" domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
-              <RechartsTooltip 
-                contentStyle={{ borderRadius: '12px', border: '1px solid #E8E8E8', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                itemStyle={{ fontSize: '14px', fontWeight: 600 }}
-              />
-              <Line yAxisId="left" type="monotone" name="Silver Rate (₹)" dataKey="silverRate" stroke="#C9A84C" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" name="USD/INR Exch" dataKey="usdInr" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, strokeWidth: 1 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">Market Rate History</h3>
+        {chartData.length > 0 ? (
+          <>
+            <div className="w-full h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8E8E8" />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "#A09DAB" }}
+                    dy={10}
+                    minTickGap={40}
+                  />
+                  <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
+                  <YAxis yAxisId="right" orientation="right" domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#A09DAB" }} />
+                  <RechartsTooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #E8E8E8', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ fontSize: '14px', fontWeight: 600 }}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <Line yAxisId="left" type="monotone" name="Silver Rate (₹/g)" dataKey="silverRate" stroke="#C9A84C" strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" name="USD/INR Exch" dataKey="usdInr" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Last Updated Info */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#E8E8E8]">
+              <div className="flex items-center gap-2 text-xs text-[#7A7585]">
+                <Clock size={14} />
+                <span>
+                  Last updated: {lastUpdated ? formatLastUpdated(lastUpdated) : "—"}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-[#A09DAB]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 rounded bg-[#C9A84C] inline-block"></span> Silver (₹/g)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 rounded bg-[#3b82f6] inline-block"></span> USD/INR
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="h-[300px] flex items-center justify-center text-sm text-[#7A7585]">
+            {isSyncing ? "Fetching live rates..." : "No rate history yet. Click \"Force API Sync\" to fetch the first data point."}
+          </div>
+        )}
       </div>
 
       {/* Linked Products Rules */}
@@ -203,7 +302,7 @@ export default function LiveMarketDashboard() {
         <div className="p-6 border-b border-[#E8E8E8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold text-[#1A1A1A]">Dynamic Pricing Registry</h3>
-            <p className="text-xs text-[#7A7585] mt-1">If "Market Sync" is active, product price equates to: <strong>(Weight × Live Silver Rate) + Making Margin</strong>.</p>
+            <p className="text-xs text-[#7A7585] mt-1">If &ldquo;Market Sync&rdquo; is active, product price equates to: <strong>(Weight &times; Live Silver Rate) + Making Margin</strong>.</p>
           </div>
           <div className="relative w-full sm:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7585]" />
@@ -215,7 +314,7 @@ export default function LiveMarketDashboard() {
             />
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -240,7 +339,7 @@ export default function LiveMarketDashboard() {
                       <p className="text-xs text-[#A09DAB]">{p.carat} {p.colour}</p>
                     </td>
                     <td className="px-6 py-4 font-mono font-medium">{p.weight}</td>
-                    
+
                     {/* Toggle */}
                     <td className="px-6 py-4">
                       <div className="flex justify-center">
