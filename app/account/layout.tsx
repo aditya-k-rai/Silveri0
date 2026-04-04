@@ -20,11 +20,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const { user, userDoc, loading } = useAuthContext();
 
+  const isAdmin = userDoc?.role === 'admin';
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
-  }, [loading, user, router]);
+    // Redirect admins to admin panel — they shouldn't use the customer account
+    if (!loading && isAdmin) {
+      router.push('/admin');
+    }
+  }, [loading, user, isAdmin, router]);
 
   if (loading) {
     return (
@@ -34,7 +40,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
     );
   }
 
-  if (!user) return null;
+  if (!user || isAdmin) return null;
 
   const displayName = userDoc?.name || user.displayName || 'User';
   const displayEmail = userDoc?.email || user.email || '';

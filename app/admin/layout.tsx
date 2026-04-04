@@ -25,12 +25,18 @@ const NAV_LINKS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { userDoc } = useAuthContext();
+  const { userDoc, loading } = useAuthContext();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Skip admin layout for login page — it has its own full-screen layout
   if (pathname === '/admin/login') {
     return <>{children}</>;
+  }
+
+  // Block non-admin users from the admin panel
+  if (!loading && userDoc && userDoc.role !== 'admin') {
+    router.push('/');
+    return null;
   }
 
   const isActive = (href: string) =>
