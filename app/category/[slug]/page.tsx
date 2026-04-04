@@ -2,9 +2,9 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ChevronRight, SlidersHorizontal, X, Heart, ShoppingCart } from 'lucide-react';
+import { ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
+import ProductCard from '@/components/product/ProductCard';
 
 export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -132,47 +132,7 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
             <p className="text-muted text-sm mb-4">{filteredProducts.length} products</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map((product) => (
-                <div key={product.id} className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-silver/30">
-                  <Link href={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
-                    {product.primaryImage ? (
-                      <Image
-                        src={product.primaryImage}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-silver/30 flex items-center justify-center">
-                        <span className="text-muted text-sm">No Image</span>
-                      </div>
-                    )}
-                    <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <button className="flex-1 bg-gold text-warm-black py-2 rounded text-xs font-medium hover:bg-gold-light transition-colors flex items-center justify-center gap-1">
-                        <ShoppingCart size={14} />
-                        Add to Cart
-                      </button>
-                      <button className="w-9 h-9 bg-white rounded flex items-center justify-center hover:bg-cream transition-colors shadow-sm">
-                        <Heart size={16} className="text-warm-black" />
-                      </button>
-                    </div>
-                  </Link>
-                  <div className="p-3">
-                    <span className="text-muted text-[10px] uppercase tracking-wider">
-                      {product.carat} · {product.colour}
-                    </span>
-                    <Link href={`/product/${product.id}`}>
-                      <h3 className="font-[family-name:var(--font-heading)] text-base font-medium text-warm-black mt-0.5 line-clamp-1 hover:text-gold transition-colors">
-                        {product.name}
-                      </h3>
-                    </Link>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-warm-black font-semibold">
-                        ₹{product.price.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
             {filteredProducts.length === 0 && (

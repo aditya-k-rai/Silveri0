@@ -2,7 +2,8 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
@@ -17,9 +18,11 @@ const sampleReviews = [
 
 export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
+  const router = useRouter();
   const products = useProductStore((s) => s.products);
   const loading = useProductStore((s) => s.loading);
   const incrementViews = useProductStore((s) => s.incrementViews);
+  const incrementLikes = useProductStore((s) => s.incrementLikes);
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
 
@@ -35,6 +38,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   }, [product?.id]);
 
   const [addedToCart, setAddedToCart] = useState(false);
+  const [liked, setLiked] = useState(false);
 
   if (loading) {
     return (
@@ -126,30 +130,61 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
             {product.weight && <p className="text-sm text-muted mb-6">Weight: {product.weight}</p>}
 
-            {/* Add to Cart / Wishlist */}
-            <div className="flex gap-3 mb-6">
+            {/* Add to Cart / Buy Now / Wishlist */}
+            <div className="flex gap-3 mb-3">
               <button
                 onClick={handleAddToCart}
                 disabled={product.stock <= 0}
-                className="flex-1 flex items-center justify-center gap-2 bg-gold text-warm-black py-3.5 rounded-lg font-medium hover:bg-gold-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  addedToCart ? 'bg-green-500 text-white' : 'border-2 border-silver text-warm-black hover:border-gold hover:bg-gold/5'
+                }`}
               >
                 <ShoppingCart size={18} />
                 {addedToCart ? 'Added!' : 'Add to Cart'}
               </button>
               <button
+                onClick={() => {
+                  handleAddToCart();
+                  router.push('/checkout');
+                }}
+                disabled={product.stock <= 0}
+                className="flex-1 flex items-center justify-center gap-2 bg-gold text-warm-black py-3.5 rounded-lg font-semibold hover:bg-gold-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Buy Now
+              </button>
+              <button
                 onClick={handleWishlist}
-                className={`w-14 h-14 flex items-center justify-center rounded-lg border-2 transition-colors ${
-                  isWishlisted ? 'border-red-400 bg-red-50' : 'border-silver hover:border-gold'
+                className={`w-14 h-14 shrink-0 flex items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+                  isWishlisted ? 'border-red-400 bg-red-50 scale-105' : 'border-silver hover:border-red-400'
                 }`}
               >
                 <Heart size={20} className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-muted'} />
               </button>
             </div>
 
-            {/* Engagement stats */}
-            <div className="flex items-center gap-4 text-xs text-muted mb-6">
-              <span>{product.views.toLocaleString('en-IN')} views</span>
-              <span>{product.likes.toLocaleString('en-IN')} likes</span>
+            {/* Engagement — Like + Stats */}
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() => {
+                  if (liked) return;
+                  setLiked(true);
+                  incrementLikes(product.id);
+                  updateProductDoc(product.id, { likes: (product.likes ?? 0) + 1 });
+                }}
+                disabled={liked}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  liked
+                    ? 'bg-blue-500 text-white'
+                    : 'border border-silver text-muted hover:bg-blue-500 hover:text-white hover:border-blue-500'
+                }`}
+              >
+                <ThumbsUp size={15} className={liked ? 'fill-current' : ''} />
+                {liked ? 'Liked!' : 'Like'}
+              </button>
+              <div className="flex items-center gap-3 text-xs text-muted">
+                <span className="flex items-center gap-1"><Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views</span>
+                <span className="flex items-center gap-1"><ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes</span>
+              </div>
             </div>
 
             {/* Trust badges */}

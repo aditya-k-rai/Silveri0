@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Component, ReactNode, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { Box, ImageIcon } from 'lucide-react';
+import { Box, ImageIcon, AlertTriangle } from 'lucide-react';
 
 const JewelryViewer = dynamic(() => import('@/components/3d/JewelryViewer'), {
   ssr: false,
@@ -17,6 +17,34 @@ const JewelryViewer = dynamic(() => import('@/components/3d/JewelryViewer'), {
   ),
 });
 
+// Error boundary to catch 3D viewer crashes
+class ViewerErrorBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onError: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="aspect-square bg-silver/20 rounded-xl flex flex-col items-center justify-center gap-3">
+          <AlertTriangle size={32} className="text-muted" />
+          <p className="text-muted text-sm">3D model could not be loaded</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface ProductGalleryProps {
   name: string;
   primaryImage: string | null;
@@ -26,8 +54,13 @@ interface ProductGalleryProps {
 }
 
 export default function ProductGallery({ name, primaryImage, hoverImage, colour, model3dFileName }: ProductGalleryProps) {
-  const has3D = !!model3dFileName;
-  const [viewMode, setViewMode] = useState<'images' | '3d'>(has3D ? '3d' : 'images');
+  // Only enable 3D if the filename looks like a real uploaded model URL (not just a placeholder name)
+  const has3D = !!model3dFileName && (
+    model3dFileName.startsWith('http') || model3dFileName.startsWith('/')
+  );
+  // Always default to images — 3D is opt-in
+  const [viewMode, setViewMode] = useState<'images' | '3d'>('images');
+  const [viewerFailed, setViewerFailed] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);
 
   const images = [primaryImage, hoverImage].filter(Boolean) as string[];
@@ -40,13 +73,15 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
     ? 'platinum'
     : 'silver';
 
-  // Build a URL for the 3D model file — stored in public/models/
-  const modelUrl = model3dFileName ? `/models/${model3dFileName}` : '';
+  const modelUrl = model3dFileName || '';
+
+  // If 3D failed, force images mode
+  const show3D = viewMode === '3d' && has3D && !viewerFailed;
 
   return (
     <div className="space-y-4">
-      {/* Toggle Buttons (only show if 3D model exists) */}
-      {has3D && (
+      {/* Toggle Buttons (only show if valid 3D model exists and hasn't failed) */}
+      {has3D && !viewerFailed && (
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode('3d')}
@@ -73,15 +108,17 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
         </div>
       )}
 
-      {/* 3D Viewer */}
-      {viewMode === '3d' && has3D ? (
-        <JewelryViewer
-          modelUrl={modelUrl}
-          fileName={model3dFileName!}
-          className="aspect-square"
-          materialPreset={materialPreset as 'silver' | 'gold' | 'rose-gold' | 'platinum'}
-          autoRotate={true}
-        />
+      {/* 3D Viewer (wrapped in error boundary) */}
+      {show3D ? (
+        <ViewerErrorBoundary onError={() => { setViewerFailed(true); setViewMode('images'); }}>
+          <JewelryViewer
+            modelUrl={modelUrl}
+            fileName={model3dFileName!}
+            className="aspect-square"
+            materialPreset={materialPreset as 'silver' | 'gold' | 'rose-gold' | 'platinum'}
+            autoRotate={true}
+          />
+        </ViewerErrorBoundary>
       ) : (
         /* Image Gallery */
         <>
@@ -96,15 +133,6 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
               />
             ) : (
               <span className="text-muted">Product Image</span>
-            )}
-            {has3D && (
-              <button
-                onClick={() => setViewMode('3d')}
-                className="absolute bottom-4 right-4 bg-warm-black/80 backdrop-blur-sm text-white px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-medium hover:bg-warm-black transition-colors"
-              >
-                <Box size={14} />
-                View in 3D
-              </button>
             )}
           </div>
 

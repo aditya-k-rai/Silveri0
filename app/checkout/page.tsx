@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { useAuthContext } from "@/context/AuthContext";
 
 /* ---------- Indian states ---------- */
 const INDIAN_STATES = [
@@ -27,13 +28,25 @@ const STEPS = [
 
 export default function CheckoutPage() {
   const { items, removeItem, updateQuantity, clearCart } = useCartStore();
+  const { userDoc } = useAuthContext();
+  const savedAddresses = (userDoc?.addresses as { id: string; label: string; fullName: string; phone: string; line1: string; line2?: string; city: string; state: string; pincode: string; isDefault: boolean }[]) || [];
+
   const [step, setStep] = useState(0);
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
+
+  // Pre-fill with default address if available
+  const defaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
   const [address, setAddress] = useState({
-    fullName: "", phone: "", addressLine1: "", addressLine2: "",
-    city: "", state: "", pincode: "",
+    fullName: defaultAddr?.fullName || "",
+    phone: defaultAddr?.phone || "",
+    addressLine1: defaultAddr?.line1 || "",
+    addressLine2: defaultAddr?.line2 || "",
+    city: defaultAddr?.city || "",
+    state: defaultAddr?.state || "",
+    pincode: defaultAddr?.pincode || "",
   });
+  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(defaultAddr?.id || null);
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
@@ -163,9 +176,55 @@ export default function CheckoutPage() {
 
       {/* Step 1 — Address */}
       {step === 1 && (
-        <div className="bg-white border border-silver/40 rounded-2xl p-6 md:p-8">
-          <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-6">Shipping Address</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="space-y-6">
+          {/* Saved addresses */}
+          {savedAddresses.length > 0 && (
+            <div className="bg-white border border-silver/40 rounded-2xl p-6">
+              <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold mb-4">Saved Addresses</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {savedAddresses.map((addr) => (
+                  <button
+                    key={addr.id}
+                    onClick={() => {
+                      setSelectedAddrId(addr.id);
+                      setAddress({
+                        fullName: addr.fullName,
+                        phone: addr.phone,
+                        addressLine1: addr.line1,
+                        addressLine2: addr.line2 || "",
+                        city: addr.city,
+                        state: addr.state,
+                        pincode: addr.pincode,
+                      });
+                    }}
+                    className={`text-left p-4 rounded-xl border-2 transition-colors ${
+                      selectedAddrId === addr.id
+                        ? "border-gold bg-gold/5"
+                        : "border-silver/40 hover:border-silver"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-semibold flex items-center gap-1.5">
+                        <MapPin size={14} className="text-gold" />
+                        {addr.label || "Address"}
+                      </span>
+                      {addr.isDefault && (
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded-full">Default</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted">{addr.fullName}, {addr.line1}, {addr.city} — {addr.pincode}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual address form */}
+          <div className="bg-white border border-silver/40 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-6">
+              {savedAddresses.length > 0 ? "Or Enter New Address" : "Shipping Address"}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input label="Full Name" value={address.fullName} onChange={(v) => updateAddress("fullName", v)} />
             <Input label="Phone Number" value={address.phone} onChange={(v) => updateAddress("phone", v)} type="tel" placeholder="+91" />
             <div className="md:col-span-2">
@@ -198,6 +257,7 @@ export default function CheckoutPage() {
             >
               Continue to Review
             </button>
+          </div>
           </div>
         </div>
       )}

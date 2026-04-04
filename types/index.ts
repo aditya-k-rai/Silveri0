@@ -82,10 +82,11 @@ export interface Review {
 
 export interface UserAddress {
   id: string;
+  label: string;
   fullName: string;
   phone: string;
-  addressLine1: string;
-  addressLine2?: string;
+  line1: string;
+  line2?: string;
   city: string;
   state: string;
   pincode: string;
