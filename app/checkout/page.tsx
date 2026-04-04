@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
+import { useCartStore } from "@/store/cartStore";
 
 /* ---------- Indian states ---------- */
 const INDIAN_STATES = [
@@ -16,19 +18,15 @@ const INDIAN_STATES = [
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
 ];
 
-/* ---------- sample cart ---------- */
-const CART_ITEMS = [
-  { id: "1", name: "Silver Elegance Ring", price: 2499, qty: 1, material: "925 Sterling Silver" },
-  { id: "2", name: "Luna Necklace", price: 3899, qty: 1, material: "Pure Silver" },
-];
-
 const STEPS = [
+  { label: "Cart", icon: <ShoppingCart size={16} /> },
   { label: "Address", icon: <MapPin size={16} /> },
   { label: "Review", icon: <Package size={16} /> },
   { label: "Payment", icon: <CreditCard size={16} /> },
 ];
 
 export default function CheckoutPage() {
+  const { items, removeItem, updateQuantity, clearCart } = useCartStore();
   const [step, setStep] = useState(0);
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
@@ -37,13 +35,32 @@ export default function CheckoutPage() {
     city: "", state: "", pincode: "",
   });
 
-  const subtotal = CART_ITEMS.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
   const shipping = subtotal > 2000 ? 0 : 99;
   const total = subtotal - discount + shipping;
 
   const updateAddress = (field: string, value: string) =>
     setAddress((p) => ({ ...p, [field]: value }));
+
+  // Empty cart view
+  if (items.length === 0 && step === 0) {
+    return (
+      <section className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="w-20 h-20 mx-auto rounded-full bg-silver/20 flex items-center justify-center mb-6">
+          <ShoppingCart size={32} className="text-muted" />
+        </div>
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-warm-black mb-3">Your cart is empty</h1>
+        <p className="text-muted mb-6">Looks like you haven&apos;t added anything yet.</p>
+        <Link
+          href="/category/all"
+          className="inline-flex items-center gap-2 px-8 py-3 bg-gold text-white font-medium rounded-xl hover:bg-gold-dark transition-colors"
+        >
+          Browse Products
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section className="max-w-4xl mx-auto px-4 py-8">
@@ -75,8 +92,77 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      {/* Step 1 — Address */}
+      {/* Step 0 — Cart Items */}
       {step === 0 && (
+        <div className="space-y-6">
+          <div className="bg-white border border-silver/40 rounded-2xl p-6">
+            <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold mb-4">Your Cart ({items.length} items)</h2>
+            <div className="divide-y divide-silver/30">
+              {items.map((item) => (
+                <div key={item.productId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
+                  <div className="w-20 h-20 rounded-lg bg-silver/20 shrink-0 overflow-hidden relative">
+                    {item.image ? (
+                      <Image src={item.image} alt={item.name} fill className="object-cover" sizes="80px" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[10px] text-muted">IMG</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/product/${item.productId}`} className="text-sm font-medium truncate block hover:text-gold transition-colors">
+                      {item.name}
+                    </Link>
+                    <p className="text-sm text-warm-black font-semibold mt-1">₹{item.price.toLocaleString("en-IN")}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      className="w-8 h-8 rounded-lg border border-silver flex items-center justify-center hover:bg-silver/20 transition-colors"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                    <button
+                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      className="w-8 h-8 rounded-lg border border-silver flex items-center justify-center hover:bg-silver/20 transition-colors"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => removeItem(item.productId)}
+                    className="p-2 text-muted hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Order Summary */}
+          <div className="bg-white border border-silver/40 rounded-2xl p-6">
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted">Subtotal</span><span>₹{subtotal.toLocaleString("en-IN")}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Shipping</span><span>{shipping === 0 ? "Free" : `₹${shipping}`}</span></div>
+              <div className="flex justify-between text-base font-semibold border-t border-silver/30 pt-3 mt-3">
+                <span>Total</span><span>₹{(subtotal + shipping).toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setStep(1)}
+            className="w-full py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors"
+          >
+            Proceed to Checkout
+          </button>
+        </div>
+      )}
+
+      {/* Step 1 — Address */}
+      {step === 1 && (
         <div className="bg-white border border-silver/40 rounded-2xl p-6 md:p-8">
           <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-6">Shipping Address</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -102,23 +188,28 @@ export default function CheckoutPage() {
             </div>
             <Input label="Pincode" value={address.pincode} onChange={(v) => updateAddress("pincode", v)} maxLength={6} />
           </div>
-          <button
-            onClick={() => setStep(1)}
-            className="mt-8 w-full md:w-auto px-10 py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors"
-          >
-            Continue to Review
-          </button>
+          <div className="flex gap-3 mt-8">
+            <button onClick={() => setStep(0)} className="px-6 py-3.5 border border-silver rounded-xl text-sm font-medium hover:bg-silver/10 transition-colors">
+              Back
+            </button>
+            <button
+              onClick={() => setStep(2)}
+              className="flex-1 py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors"
+            >
+              Continue to Review
+            </button>
+          </div>
         </div>
       )}
 
       {/* Step 2 — Review */}
-      {step === 1 && (
+      {step === 2 && (
         <div className="space-y-6">
           {/* Address summary */}
           <div className="bg-white border border-silver/40 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold">Shipping To</h2>
-              <button onClick={() => setStep(0)} className="text-sm text-gold hover:underline">Edit</button>
+              <button onClick={() => setStep(1)} className="text-sm text-gold hover:underline">Edit</button>
             </div>
             <p className="text-sm text-muted">
               {address.fullName || "Name"}, {address.addressLine1 || "Address"}, {address.city || "City"}, {address.state || "State"} — {address.pincode || "000000"}
@@ -130,16 +221,22 @@ export default function CheckoutPage() {
           <div className="bg-white border border-silver/40 rounded-2xl p-6">
             <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold mb-4">Order Items</h2>
             <div className="divide-y divide-silver/30">
-              {CART_ITEMS.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
-                  <div className="w-16 h-16 rounded-lg bg-silver/30 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] text-muted">IMG</span>
+              {items.map((item) => (
+                <div key={item.productId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
+                  <div className="w-16 h-16 rounded-lg bg-silver/30 shrink-0 overflow-hidden relative">
+                    {item.image ? (
+                      <Image src={item.image} alt={item.name} fill className="object-cover" sizes="64px" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[10px] text-muted">IMG</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium truncate">{item.name}</h3>
-                    <p className="text-xs text-muted">{item.material} &middot; Qty: {item.qty}</p>
+                    <p className="text-xs text-muted">Qty: {item.quantity}</p>
                   </div>
-                  <span className="font-medium text-sm">₹{item.price.toLocaleString("en-IN")}</span>
+                  <span className="font-medium text-sm">₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
                 </div>
               ))}
             </div>
@@ -189,11 +286,11 @@ export default function CheckoutPage() {
           </div>
 
           <div className="flex gap-3">
-            <button onClick={() => setStep(0)} className="px-6 py-3.5 border border-silver rounded-xl text-sm font-medium hover:bg-silver/10 transition-colors">
+            <button onClick={() => setStep(1)} className="px-6 py-3.5 border border-silver rounded-xl text-sm font-medium hover:bg-silver/10 transition-colors">
               Back
             </button>
             <button
-              onClick={() => setStep(2)}
+              onClick={() => setStep(3)}
               className="flex-1 py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors"
             >
               Proceed to Payment
@@ -203,7 +300,7 @@ export default function CheckoutPage() {
       )}
 
       {/* Step 3 — Payment */}
-      {step === 2 && (
+      {step === 3 && (
         <div className="bg-white border border-silver/40 rounded-2xl p-6 md:p-10 text-center">
           <div className="w-16 h-16 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-6">
             <CreditCard size={28} className="text-gold" />
@@ -215,14 +312,14 @@ export default function CheckoutPage() {
           </p>
           <button
             onClick={() => {
-              // In production, integrate Razorpay checkout here
+              clearCart();
               window.location.href = `/order/ORD-${Date.now().toString(36).toUpperCase()}`;
             }}
             className="px-12 py-4 bg-gold hover:bg-gold-dark text-white font-semibold rounded-xl transition-colors text-lg"
           >
             Pay ₹{total.toLocaleString("en-IN")}
           </button>
-          <button onClick={() => setStep(1)} className="block mx-auto mt-4 text-sm text-muted hover:text-gold transition-colors">
+          <button onClick={() => setStep(2)} className="block mx-auto mt-4 text-sm text-muted hover:text-gold transition-colors">
             Back to Review
           </button>
         </div>

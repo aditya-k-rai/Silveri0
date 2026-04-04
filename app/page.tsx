@@ -18,8 +18,6 @@ export default function HomePage() {
   const featuredProducts = activeProducts.filter((p) => p.isFeatured);
   const newArrivals = activeProducts.filter((p) => p.isNewArrival);
 
-  const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
-
   if (loading) return null;
 
   return (
@@ -69,7 +67,7 @@ export default function HomePage() {
             {featuredProducts.map((product) => (
               <Link
                 key={product.id}
-                href={`/product/${toSlug(product.name)}`}
+                href={`/product/${product.id}`}
                 className="group bg-silver-800 border border-silver-700 rounded-xl overflow-hidden hover:border-silver-500 transition-all duration-300 hover:shadow-lg hover:shadow-silver-900/50"
               >
                 <div className="relative aspect-square bg-gradient-to-br from-silver-700 to-silver-800">
@@ -156,7 +154,7 @@ export default function HomePage() {
             {newArrivals.map((product) => (
               <Link
                 key={`new-${product.id}`}
-                href={`/product/${toSlug(product.name)}`}
+                href={`/product/${product.id}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-silver-200"
               >
                 <div className="relative aspect-square bg-gradient-to-br from-silver-100 to-silver-50">
@@ -200,7 +198,7 @@ export default function HomePage() {
             {activeProducts.map((product) => (
               <Link
                 key={`all-${product.id}`}
-                href={`/product/${toSlug(product.name)}`}
+                href={`/product/${product.id}`}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-silver-200"
               >
                 <div className="relative aspect-square bg-gradient-to-br from-silver-100 to-silver-50">

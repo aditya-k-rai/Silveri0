@@ -14,8 +14,6 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   const [selectedColours, setSelectedColours] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
 
-  const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
-
   // Filter active products, then by category slug
   const activeProducts = products.filter((p) => p.status === 'Active');
   const categoryFiltered = params.slug === 'all'
@@ -128,7 +126,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-silver/30">
-                  <Link href={`/product/${toSlug(product.name)}`} className="block relative aspect-square overflow-hidden">
+                  <Link href={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
                     {product.primaryImage ? (
                       <Image
                         src={product.primaryImage}
@@ -156,7 +154,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
                     <span className="text-muted text-[10px] uppercase tracking-wider">
                       {product.carat} · {product.colour}
                     </span>
-                    <Link href={`/product/${toSlug(product.name)}`}>
+                    <Link href={`/product/${product.id}`}>
                       <h3 className="font-[family-name:var(--font-heading)] text-base font-medium text-warm-black mt-0.5 line-clamp-1 hover:text-gold transition-colors">
                         {product.name}
                       </h3>

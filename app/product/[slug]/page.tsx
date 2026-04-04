@@ -22,9 +22,7 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
 
-  const toSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-');
-
-  const product = products.find((p) => toSlug(p.name) === params.slug);
+  const product = products.find((p) => p.id === params.slug);
 
   // Track view once on mount
   useEffect(() => {
