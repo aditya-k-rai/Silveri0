@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
+import { updateProductDoc } from '@/lib/firebase/products';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 
@@ -15,14 +16,8 @@ const sampleReviews = [
 ];
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    const unsub = useProductStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useProductStore.persist.hasHydrated()) setHydrated(true);
-    return () => unsub();
-  }, []);
-
   const products = useProductStore((s) => s.products);
+  const loading = useProductStore((s) => s.loading);
   const incrementViews = useProductStore((s) => s.incrementViews);
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
@@ -35,13 +30,14 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   useEffect(() => {
     if (product) {
       incrementViews(product.id);
+      updateProductDoc(product.id, { views: (product.views ?? 0) + 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
 
   const [addedToCart, setAddedToCart] = useState(false);
 
-  if (!hydrated) return null;
+  if (loading) return null;
 
   if (!product) {
     return (

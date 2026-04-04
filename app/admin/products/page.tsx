@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
+import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -32,10 +33,13 @@ export default function AdminProductsPage() {
       return 0;
     });
 
-  const toggleFlag = (e: React.MouseEvent, id: string, field: 'isFeatured' | 'isNewArrival') => {
+  const toggleFlag = async (e: React.MouseEvent, id: string, field: 'isFeatured' | 'isNewArrival') => {
     e.stopPropagation();
     const p = products.find(prod => prod.id === id);
-    if(p) updateProduct(id, { [field]: !p[field] });
+    if (!p) return;
+    const updates = { [field]: !p[field] };
+    updateProduct(id, updates);
+    await saveProductToFirestore({ ...p, ...updates });
   };
 
   const openEditor = (prod: Product | null) => {
@@ -74,13 +78,15 @@ export default function AdminProductsPage() {
 
   const closeEditor = () => setEditingParams(null);
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     if (!editingParams) return;
     if (editingParams.id === "NEW") {
-      const newProd = { ...editingParams, id: `P${Math.floor(100 + Math.random() * 900)}` };
+      const newProd = { ...editingParams, id: `P${Date.now()}` };
       addProduct(newProd);
+      await saveProductToFirestore(newProd);
     } else {
       updateProduct(editingParams.id, editingParams);
+      await saveProductToFirestore(editingParams);
     }
     closeEditor();
   };

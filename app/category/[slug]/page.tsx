@@ -1,20 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, SlidersHorizontal, X, Heart, ShoppingCart } from 'lucide-react';
-import { useProductStore, Product } from '@/store/productStore';
+import { useProductStore } from '@/store/productStore';
 
 export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    const unsub = useProductStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useProductStore.persist.hasHydrated()) setHydrated(true);
-    return () => unsub();
-  }, []);
-
   const products = useProductStore((s) => s.products);
+  const loading = useProductStore((s) => s.loading);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedColours, setSelectedColours] = useState<string[]>([]);
@@ -55,7 +49,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
       ? 'New Arrivals'
       : params.slug.charAt(0).toUpperCase() + params.slug.slice(1);
 
-  if (!hydrated) return null;
+  if (loading) return null;
 
   return (
     <div className="bg-cream min-h-screen">
