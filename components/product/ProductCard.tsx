@@ -141,30 +141,6 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
             </span>
           )}
 
-          {/* Desktop Hover Overlay */}
-          <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:flex items-end ${
-            isDark ? 'bg-gradient-to-t from-black/60 via-transparent' : 'bg-gradient-to-t from-black/50 via-transparent'
-          }`}>
-            <div className="w-full p-3 flex gap-2">
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock <= 0}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 ${
-                  addedToCart ? 'bg-green-500 text-white' : 'bg-white text-silver-900 hover:bg-gold hover:text-white'
-                }`}
-              >
-                <ShoppingCart size={14} />
-                {product.stock <= 0 ? 'Sold Out' : addedToCart ? 'Added!' : 'Add to Cart'}
-              </button>
-              <button
-                onClick={handleBuyNow}
-                disabled={product.stock <= 0}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-gold text-white hover:bg-gold-dark transition-all disabled:opacity-40"
-              >
-                Buy Now
-              </button>
-            </div>
-          </div>
         </div>
       </Link>
 
@@ -212,21 +188,34 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
           </span>
         </div>
 
-        {/* Add to Cart Button */}
-        <button
-          onClick={handleAddToCart}
-          disabled={product.stock <= 0}
-          className={`w-full flex items-center justify-center gap-2 mt-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
-            addedToCart
-              ? 'bg-green-500 text-white'
-              : isDark
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={handleAddToCart}
+            disabled={product.stock <= 0}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+              addedToCart
+                ? 'bg-green-500 text-white'
+                : isDark
+                  ? 'border border-silver-500 text-silver-200 hover:bg-silver-700'
+                  : 'border-2 border-silver-900 text-silver-900 hover:bg-silver-900 hover:text-white'
+            }`}
+          >
+            <ShoppingCart size={14} />
+            {product.stock <= 0 ? 'Sold Out' : addedToCart ? 'Added!' : 'Add to Cart'}
+          </button>
+          <button
+            onClick={handleBuyNow}
+            disabled={product.stock <= 0}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+              isDark
                 ? 'bg-gold text-silver-900 hover:bg-gold-light'
-                : 'border-2 border-silver-900 text-silver-900 hover:bg-silver-900 hover:text-white'
-          }`}
-        >
-          <ShoppingCart size={15} />
-          {product.stock <= 0 ? 'Sold Out' : addedToCart ? 'Added!' : 'Add to Cart'}
-        </button>
+                : 'bg-gold text-white hover:bg-gold-dark'
+            }`}
+          >
+            Buy Now
+          </button>
+        </div>
       </div>
     </div>
   );
