@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
@@ -12,6 +12,7 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
   display: "swap",
+  preload: true,
 });
 
 const jost = Jost({
@@ -19,7 +20,15 @@ const jost = Jost({
   subsets: ["latin"],
   weight: ["300", "400", "500"],
   display: "swap",
+  preload: true,
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#1A1A1A',
+};
 
 export const metadata: Metadata = {
   title: {
