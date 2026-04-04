@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import { Upload, MessageCircle, Info, Sparkles, Send, Box, Camera, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
 
 // Simulated Pricing Rates per gram (INR)
 const PURITY_RATES: Record<string, number> = {
@@ -63,7 +61,6 @@ export default function CustomJewelryPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#F5F3EF] flex flex-col">
-        <Header />
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white p-8 md:p-12 rounded-3xl border border-[#E8E8E8] max-w-lg w-full text-center shadow-xl">
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -81,14 +78,12 @@ export default function CustomJewelryPage() {
             </Link>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#F5F3EF] flex flex-col font-[family-name:var(--font-body)]">
-      <Header />
       
       <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
         
@@ -302,7 +297,6 @@ export default function CustomJewelryPage() {
         </form>
       </main>
 
-      <Footer />
     </div>
   );
 }

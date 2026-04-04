@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
@@ -15,14 +15,15 @@ const sampleReviews = [
   { userName: 'Rahul M.', rating: 4, comment: 'Great quality silver. Lovely design.', date: '1 month ago' },
 ];
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
+export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const products = useProductStore((s) => s.products);
   const loading = useProductStore((s) => s.loading);
   const incrementViews = useProductStore((s) => s.incrementViews);
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
 
-  const product = products.find((p) => p.id === params.slug);
+  const product = products.find((p) => p.id === slug);
 
   // Track view once on mount
   useEffect(() => {
@@ -35,7 +36,13 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
   const [addedToCart, setAddedToCart] = useState(false);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="bg-cream min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!product) {
     return (

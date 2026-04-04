@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, SlidersHorizontal, X, Heart, ShoppingCart } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
+export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const products = useProductStore((s) => s.products);
   const loading = useProductStore((s) => s.loading);
   const [sortBy, setSortBy] = useState('newest');
@@ -16,11 +17,11 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
 
   // Filter active products, then by category slug
   const activeProducts = products.filter((p) => p.status === 'Active');
-  const categoryFiltered = params.slug === 'all'
+  const categoryFiltered = slug === 'all'
     ? activeProducts
-    : params.slug === 'new-arrivals'
+    : slug === 'new-arrivals'
       ? activeProducts.filter((p) => p.isNewArrival)
-      : activeProducts.filter((p) => p.category.toLowerCase() === params.slug);
+      : activeProducts.filter((p) => p.category.toLowerCase() === slug);
 
   // Get unique colours for filter sidebar
   const allColours = [...new Set(categoryFiltered.map((p) => p.colour))];
@@ -41,13 +42,19 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     );
   };
 
-  const categoryTitle = params.slug === 'all'
+  const categoryTitle = slug === 'all'
     ? 'Our Collection'
-    : params.slug === 'new-arrivals'
+    : slug === 'new-arrivals'
       ? 'New Arrivals'
-      : params.slug.charAt(0).toUpperCase() + params.slug.slice(1);
+      : slug.charAt(0).toUpperCase() + slug.slice(1);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-cream min-h-screen">

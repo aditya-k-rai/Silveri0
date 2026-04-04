@@ -7,7 +7,6 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  orderBy,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './client';
@@ -23,7 +22,7 @@ function getProductsRef() {
 export async function fetchProducts(): Promise<Product[]> {
   const ref = getProductsRef();
   if (!ref) return [];
-  const snap = await getDocs(query(ref, orderBy('name')));
+  const snap = await getDocs(ref);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
 }
 
@@ -31,10 +30,17 @@ export function subscribeToProducts(
   callback: (products: Product[]) => void
 ): Unsubscribe | null {
   const ref = getProductsRef();
-  if (!ref) return null;
-  return onSnapshot(query(ref, orderBy('name')), (snap) => {
+  if (!ref) {
+    // Firebase not available — return empty list so loading completes
+    callback([]);
+    return null;
+  }
+  return onSnapshot(query(ref), (snap) => {
     const products = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
     callback(products);
+  }, (error) => {
+    console.error('Firestore products subscription error:', error);
+    callback([]);
   });
 }
 

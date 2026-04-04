@@ -18,7 +18,13 @@ export default function HomePage() {
   const featuredProducts = activeProducts.filter((p) => p.isFeatured);
   const newArrivals = activeProducts.filter((p) => p.isNewArrival);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
