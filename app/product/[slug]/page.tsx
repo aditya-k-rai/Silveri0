@@ -7,7 +7,10 @@ import { ChevronRight, Star, Shield, Truck, RotateCcw, ShoppingCart, Heart, Thum
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
+import { useAuthContext } from '@/context/AuthContext';
 import { updateProductDoc } from '@/lib/firebase/products';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 
@@ -25,6 +28,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const incrementLikes = useProductStore((s) => s.incrementLikes);
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
+  const { user, userDoc } = useAuthContext();
 
   const product = products.find((p) => p.id === slug);
 
@@ -39,6 +43,23 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   const [addedToCart, setAddedToCart] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [likedBy, setLikedBy] = useState<{ name: string; photo?: string }[]>([]);
+  const [showLikedBy, setShowLikedBy] = useState(false);
+
+  // Fetch likedBy list from Firestore
+  useEffect(() => {
+    if (!product || !db) return;
+    getDoc(doc(db, 'products', product.id)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setLikedBy(data.likedBy || []);
+        // Check if current user already liked
+        if (user && (data.likedBy || []).some((u: { uid?: string }) => u.uid === user.uid)) {
+          setLiked(true);
+        }
+      }
+    });
+  }, [product?.id, user?.uid]);
 
   if (loading) {
     return (
@@ -162,29 +183,89 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </button>
             </div>
 
-            {/* Engagement — Like + Stats */}
-            <div className="flex items-center gap-4 mb-6">
-              <button
-                onClick={() => {
-                  if (liked) return;
-                  setLiked(true);
-                  incrementLikes(product.id);
-                  updateProductDoc(product.id, { likes: (product.likes ?? 0) + 1 });
-                }}
-                disabled={liked}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  liked
-                    ? 'bg-blue-500 text-white'
-                    : 'border border-silver text-muted hover:bg-blue-500 hover:text-white hover:border-blue-500'
-                }`}
-              >
-                <ThumbsUp size={15} className={liked ? 'fill-current' : ''} />
-                {liked ? 'Liked!' : 'Like'}
-              </button>
-              <div className="flex items-center gap-3 text-xs text-muted">
-                <span className="flex items-center gap-1"><Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views</span>
-                <span className="flex items-center gap-1"><ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes</span>
+            {/* Engagement — Like + Stats + Liked By */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={async () => {
+                    if (liked || !user) return;
+                    setLiked(true);
+                    incrementLikes(product.id);
+                    const likeEntry = { uid: user.uid, name: userDoc?.name || user.displayName || 'User', photo: user.photoURL || '' };
+                    setLikedBy((prev) => [...prev, likeEntry]);
+                    if (db) {
+                      await updateDoc(doc(db, 'products', product.id), {
+                        likes: (product.likes ?? 0) + 1,
+                        likedBy: arrayUnion(likeEntry),
+                      });
+                    }
+                  }}
+                  disabled={liked || !user}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    liked
+                      ? 'bg-blue-500 text-white'
+                      : !user
+                        ? 'border border-silver text-muted opacity-50 cursor-not-allowed'
+                        : 'border border-silver text-muted hover:bg-blue-500 hover:text-white hover:border-blue-500'
+                  }`}
+                  title={!user ? 'Login to like' : liked ? 'Already liked' : 'Like this product'}
+                >
+                  <ThumbsUp size={15} className={liked ? 'fill-current' : ''} />
+                  {liked ? 'Liked!' : 'Like'}
+                </button>
+                <div className="flex items-center gap-3 text-xs text-muted">
+                  <span className="flex items-center gap-1"><Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views</span>
+                  <span className="flex items-center gap-1"><ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes</span>
+                </div>
               </div>
+
+              {/* Liked by section */}
+              {likedBy.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowLikedBy(!showLikedBy)}
+                    className="text-xs text-muted hover:text-warm-black transition-colors flex items-center gap-1.5"
+                  >
+                    <div className="flex -space-x-2">
+                      {likedBy.slice(0, 3).map((u, i) => (
+                        u.photo ? (
+                          <img key={i} src={u.photo} alt="" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
+                        ) : (
+                          <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                        )
+                      ))}
+                    </div>
+                    <span>
+                      {likedBy.length === 1
+                        ? `${likedBy[0].name} liked this`
+                        : likedBy.length <= 3
+                          ? `${likedBy.map(u => u.name).join(', ')} liked this`
+                          : `${likedBy.slice(0, 2).map(u => u.name).join(', ')} and ${likedBy.length - 2} others liked this`
+                      }
+                    </span>
+                  </button>
+
+                  {/* Expanded liked by list */}
+                  {showLikedBy && (
+                    <div className="mt-2 bg-white border border-silver/40 rounded-xl p-3 max-h-48 overflow-y-auto">
+                      {likedBy.map((u, i) => (
+                        <div key={i} className="flex items-center gap-2.5 py-1.5">
+                          {u.photo ? (
+                            <img src={u.photo} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-sm text-warm-black">{u.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Trust badges */}
