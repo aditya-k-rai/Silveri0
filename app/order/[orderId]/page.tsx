@@ -1,17 +1,33 @@
 "use client";
 
-import React, { use } from "react";
+import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, Clock } from "lucide-react";
-import { useOrderStore } from "@/store/orderStore";
+import { CheckCircle2, Package, ArrowRight, Clock, Loader2 } from "lucide-react";
+import { fetchOrderById } from "@/lib/firebase/orders";
+import { Order } from "@/types";
 
 type Props = { params: Promise<{ orderId: string }> };
 
 export default function OrderConfirmationPage({ params }: Props) {
   const { orderId } = use(params);
-  const { orders } = useOrderStore();
-  
-  const order = orders.find(o => o.id === orderId);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchOrderById(orderId).then((data) => {
+      setOrder(data);
+      setLoading(false);
+    });
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <section className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <Loader2 size={32} className="mx-auto text-gold animate-spin mb-4" />
+        <p className="text-sm text-muted">Loading order...</p>
+      </section>
+    );
+  }
 
   if (!order) {
     return (
@@ -43,23 +59,21 @@ export default function OrderConfirmationPage({ params }: Props) {
           <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold mb-6 flex items-center gap-2">
             <Clock size={18} className="text-purple-600" /> Live Tracking
           </h2>
-          
+
           {order.events && order.events.length > 0 ? (
             <div className="space-y-6">
               {order.events.map((ev, idx) => (
                 <div key={idx} className="relative pl-8">
-                  {/* Vertical Line */}
-                  {idx !== order.events.length - 1 && (
+                  {idx !== order.events!.length - 1 && (
                     <div className="absolute left-[11px] top-6 bottom-[-24px] w-px bg-silver/60 z-0"></div>
                   )}
-                  {/* Node */}
-                  <div className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center z-10 ${idx === order.events.length - 1 ? 'bg-gold' : 'bg-silver/40'}`}>
+                  <div className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center z-10 ${idx === order.events!.length - 1 ? 'bg-gold' : 'bg-silver/40'}`}>
                     <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
                   </div>
-                  
+
                   <div className="flex flex-col">
                     <span className="font-semibold text-warm-black">{ev.status}</span>
-                    <span className="text-xs text-muted mt-0.5">{ev.date} • {ev.time}</span>
+                    <span className="text-xs text-muted mt-0.5">{ev.date} &bull; {ev.time}</span>
                     {ev.note && (
                       <span className="text-xs text-muted/80 mt-2 bg-silver/10 px-3 py-2 rounded-lg border border-silver/30 inline-block">
                         {ev.note}

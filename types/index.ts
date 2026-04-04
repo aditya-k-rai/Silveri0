@@ -52,6 +52,14 @@ export interface OrderItem {
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
+export interface OrderEvent {
+  status: string;
+  date: string;
+  time: string;
+  note?: string;
+  customerNotified: boolean;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -62,9 +70,13 @@ export interface Order {
   shipping: number;
   total: number;
   promoCode?: string;
-  paymentId: string;
-  razorpayOrderId: string;
+  paymentId?: string;
+  razorpayOrderId?: string;
   status: OrderStatus;
+  events?: OrderEvent[];
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

@@ -1,20 +1,54 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Package, ChevronRight } from "lucide-react";
-
-import { useOrderStore } from "@/store/orderStore";
+import { Package, ChevronRight, Loader2 } from "lucide-react";
+import { useAuthContext } from "@/context/AuthContext";
+import { subscribeToUserOrders } from "@/lib/firebase/orders";
+import { Order } from "@/types";
 
 const STATUS_COLORS: Record<string, string> = {
-  Delivered: "bg-green-50 text-green-700",
-  Shipped: "bg-blue-50 text-blue-700",
-  Processing: "bg-amber-50 text-amber-700",
-  Cancelled: "bg-red-50 text-red-700",
+  delivered: "bg-green-50 text-green-700",
+  shipped: "bg-blue-50 text-blue-700",
+  processing: "bg-amber-50 text-amber-700",
+  pending: "bg-purple-50 text-purple-700",
+  cancelled: "bg-red-50 text-red-700",
 };
 
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-IN", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
 export default function OrdersPage() {
-  const { orders } = useOrderStore();
-  
+  const { user } = useAuthContext();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+    const unsub = subscribeToUserOrders(user.uid, (data) => {
+      setOrders(data);
+      setLoading(false);
+    });
+    return () => { if (unsub) unsub(); };
+  }, [user?.uid]);
+
+  if (loading) {
+    return (
+      <div className="bg-white border border-silver/40 rounded-2xl p-10 text-center">
+        <Loader2 size={32} className="mx-auto text-gold animate-spin mb-4" />
+        <p className="text-sm text-muted">Loading orders...</p>
+      </div>
+    );
+  }
+
   if (orders.length === 0) {
     return (
       <div className="bg-white border border-silver/40 rounded-2xl p-10 text-center">
@@ -40,11 +74,11 @@ export default function OrdersPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <span className="font-medium text-sm">{order.id}</span>
-              <span className="text-xs text-muted ml-3">{order.date}</span>
+              <span className="text-xs text-muted ml-3">{formatDate(order.createdAt)}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? "bg-silver/20 text-muted"}`}>
-                {order.status}
+                {capitalize(order.status)}
               </span>
               <ChevronRight size={16} className="text-muted" />
             </div>

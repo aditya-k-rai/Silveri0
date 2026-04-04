@@ -1,17 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard, Clock, X, CheckCircle, Send, MessageCircle } from "lucide-react";
-import { useOrderStore, Order } from "@/store/orderStore";
+import React, { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, MapPin, Phone, Package, CreditCard, Clock, X, CheckCircle, Send, MessageCircle, Loader2 } from "lucide-react";
+import { subscribeToOrders, updateOrder } from "@/lib/firebase/orders";
+import { Order, OrderEvent } from "@/types";
 
-const STATUSES = ["All", "New", "Processing", "Shipped", "Delivered", "Cancelled"];
+const STATUSES = ["All", "pending", "processing", "shipped", "delivered", "cancelled"];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
 
 const STATUS_COLORS: Record<string, string> = {
-  New: "bg-purple-50 text-purple-700",
-  Delivered: "bg-green-50 text-green-700",
-  Shipped: "bg-blue-50 text-blue-700",
-  Processing: "bg-amber-50 text-amber-700",
-  Cancelled: "bg-red-50 text-red-700",
+  pending: "bg-purple-50 text-purple-700",
+  delivered: "bg-green-50 text-green-700",
+  shipped: "bg-blue-50 text-blue-700",
+  processing: "bg-amber-50 text-amber-700",
+  cancelled: "bg-red-50 text-red-700",
 };
 
 interface StatusUpdateParams {
@@ -20,8 +29,19 @@ interface StatusUpdateParams {
   newStatus: string;
 }
 
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-IN", { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+
+function formatAddress(order: Order): string {
+  if (!order.address) return "—";
+  const a = order.address;
+  return [a.line1, a.line2, a.city, a.state, a.pincode].filter(Boolean).join(", ");
+}
+
 export default function AdminOrdersPage() {
-  const { orders, updateOrderStatus } = useOrderStore();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
@@ -32,6 +52,14 @@ export default function AdminOrdersPage() {
   const [eventNote, setEventNote] = useState("");
   const [notifyCustomer, setNotifyCustomer] = useState(true);
 
+  useEffect(() => {
+    const unsub = subscribeToOrders((data) => {
+      setOrders(data);
+      setLoading(false);
+    });
+    return () => { if (unsub) unsub(); };
+  }, []);
+
   const filtered = activeTab === "All" ? orders : orders.filter((o) => o.status === activeTab);
 
   const openStatusModal = (e: React.ChangeEvent<HTMLSelectElement>, id: string, currentStatus: string) => {
@@ -41,7 +69,6 @@ export default function AdminOrdersPage() {
 
     const now = new Date();
     setEventDate(now.toISOString().split("T")[0]);
-    // Format to HH:MM based on local standard
     setEventTime(now.toTimeString().split(" ")[0].slice(0, 5));
     setEventNote("");
     setNotifyCustomer(true);
@@ -49,19 +76,28 @@ export default function AdminOrdersPage() {
     setPendingStatusUpdate({ id, currentStatus, newStatus });
   };
 
-  const confirmStatusUpdate = () => {
+  const confirmStatusUpdate = async () => {
     if (!pendingStatusUpdate) return;
-    
+
+    const order = orders.find(o => o.id === pendingStatusUpdate.id);
+    if (!order) return;
+
     const [hours, minutes] = eventTime.split(":");
     const h = parseInt(hours);
     const formattedTime = `${h % 12 || 12}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
 
-    updateOrderStatus(pendingStatusUpdate.id, pendingStatusUpdate.newStatus, {
-      status: pendingStatusUpdate.newStatus,
+    const newEvent: OrderEvent = {
+      status: STATUS_LABELS[pendingStatusUpdate.newStatus] || pendingStatusUpdate.newStatus,
       date: eventDate,
       time: formattedTime,
       note: eventNote || undefined,
-      customerNotified: notifyCustomer
+      customerNotified: notifyCustomer,
+    };
+
+    await updateOrder(pendingStatusUpdate.id, {
+      status: pendingStatusUpdate.newStatus as Order["status"],
+      events: [...(order.events || []), newEvent],
+      updatedAt: new Date(),
     });
 
     setPendingStatusUpdate(null);
@@ -77,15 +113,13 @@ export default function AdminOrdersPage() {
     if (hours < 12) greeting = "Morning";
     else if (hours < 17) greeting = "Afternoon";
 
-    const cleanPhone = order.phone.replace(/\D/g, "");
-    if (!cleanPhone.startsWith("91") && cleanPhone.length === 10) {
-      // Assuming India if prefix missing and length is 10
-      // Prefix 91 already exists in Initial Orders data but just in case
-    }
+    const phone = order.customerPhone || order.address?.phone || "";
+    const cleanPhone = phone.replace(/\D/g, "");
+    const customerName = order.customerName || order.address?.fullName || "Customer";
 
-    const message = `Good ${greeting} ${order.customer}! 🌟
+    const message = `Good ${greeting} ${customerName}! 🌟
 
-Your order *${order.id}* from *Silveri* has been updated to: *${pendingStatusUpdate.newStatus}*.
+Your order *${order.id}* from *Silveri* has been updated to: *${STATUS_LABELS[pendingStatusUpdate.newStatus] || pendingStatusUpdate.newStatus}*.
 ${eventNote ? `\n📝 _Note: ${eventNote}_` : ""}
 
 📍 *Status Date:* ${eventDate} at ${eventTime}
@@ -103,6 +137,14 @@ Thank you for choosing Silveri! ✨`;
     setExpandedOrder(expandedOrder === id ? null : id);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="text-[#C9A84C] animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Status filter tabs */}
@@ -117,7 +159,7 @@ Thank you for choosing Silveri! ✨`;
                 : "bg-white border border-[#E8E8E8] text-[#7A7585] hover:text-[#1A1A1A]"
             }`}
           >
-            {s}
+            {s === "All" ? "All" : STATUS_LABELS[s] || s}
             {s !== "All" && (
               <span className="ml-1.5 text-xs">
                 ({orders.filter((o) => o.status === s).length})
@@ -145,6 +187,9 @@ Thank you for choosing Silveri! ✨`;
               {filtered.map((o) => {
                 const isExpanded = expandedOrder === o.id;
                 const totalQuantity = o.items.reduce((sum, item) => sum + item.quantity, 0);
+                const customerName = o.customerName || o.address?.fullName || "—";
+                const customerEmail = o.customerEmail || "—";
+                const customerPhone = o.customerPhone || o.address?.phone || "—";
 
                 return (
                   <React.Fragment key={o.id}>
@@ -155,21 +200,21 @@ Thank you for choosing Silveri! ✨`;
                       <td className="px-5 py-4 font-medium text-[#1A1A1A]">{o.id}</td>
                       <td className="px-5 py-4">
                         <div>
-                          <p className="font-medium text-[#1A1A1A]">{o.customer}</p>
-                          <p className="text-xs text-[#7A7585]">{o.email}</p>
+                          <p className="font-medium text-[#1A1A1A]">{customerName}</p>
+                          <p className="text-xs text-[#7A7585]">{customerEmail}</p>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-[#7A7585]">{o.date}</td>
+                      <td className="px-5 py-4 text-[#7A7585]">{formatDate(o.createdAt)}</td>
                       <td className="px-5 py-4 text-center font-medium">{totalQuantity}</td>
                       <td className="px-5 py-4 text-right font-medium text-[#1A1A1A]">₹{o.total.toLocaleString("en-IN")}</td>
                       <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={o.status}
                           onChange={(e) => openStatusModal(e, o.id, o.status)}
-                          className={`text-xs font-medium px-2.5 py-1.5 rounded-full border border-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 transition-colors ${STATUS_COLORS[o.status]}`}
+                          className={`text-xs font-medium px-2.5 py-1.5 rounded-full border border-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 transition-colors ${STATUS_COLORS[o.status] || ""}`}
                         >
                           {STATUSES.filter((s) => s !== "All").map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
                           ))}
                         </select>
                       </td>
@@ -180,7 +225,7 @@ Thank you for choosing Silveri! ✨`;
                       <tr className="bg-[#FDFAF5]/30 border-b border-[#E8E8E8]/50">
                         <td colSpan={7} className="px-5 pb-6">
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 pl-8">
-                            
+
                             {/* Items Ordered */}
                             <div className="bg-white border border-[#E8E8E8] rounded-xl p-5">
                               <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-4">
@@ -188,11 +233,11 @@ Thank you for choosing Silveri! ✨`;
                               </h4>
                               <div className="space-y-3">
                                 {o.items.map(item => (
-                                  <div key={item.sku} className="flex justify-between items-start border-b border-[#E8E8E8] last:border-0 pb-3 last:pb-0">
+                                  <div key={item.productId} className="flex justify-between items-start border-b border-[#E8E8E8] last:border-0 pb-3 last:pb-0">
                                     <div>
                                       <p className="text-sm font-medium text-[#1A1A1A]">{item.name}</p>
-                                      <p className="text-[10px] text-[#A09DAB] mb-0.5">SKU: {item.sku}</p>
-                                      <p className="text-xs text-[#7A7585]">Qty: {item.quantity} × ₹{item.price.toLocaleString("en-IN")}</p>
+                                      <p className="text-[10px] text-[#A09DAB] mb-0.5">ID: {item.productId}</p>
+                                      <p className="text-xs text-[#7A7585]">Qty: {item.quantity} &times; ₹{item.price.toLocaleString("en-IN")}</p>
                                     </div>
                                     <span className="text-sm font-semibold whitespace-nowrap ml-4">
                                       ₹{(item.price * item.quantity).toLocaleString("en-IN")}
@@ -212,23 +257,23 @@ Thank you for choosing Silveri! ✨`;
                                 <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
                                   <Phone size={16} className="text-blue-500" /> Contact Info
                                 </h4>
-                                <p className="text-sm text-[#444] mb-1"><span className="text-[#7A7585] w-16 inline-block">Phone:</span> {o.phone}</p>
-                                <p className="text-sm text-[#444]"><span className="text-[#7A7585] w-16 inline-block">Email:</span> {o.email}</p>
+                                <p className="text-sm text-[#444] mb-1"><span className="text-[#7A7585] w-16 inline-block">Phone:</span> {customerPhone}</p>
+                                <p className="text-sm text-[#444]"><span className="text-[#7A7585] w-16 inline-block">Email:</span> {customerEmail}</p>
                               </div>
 
                               <div className="bg-white border border-[#E8E8E8] rounded-xl p-4">
                                 <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
                                   <MapPin size={16} className="text-rose-500" /> Delivery Address
                                 </h4>
-                                <p className="text-sm text-[#444] leading-relaxed">{o.location}</p>
+                                <p className="text-sm text-[#444] leading-relaxed">{formatAddress(o)}</p>
                               </div>
 
                               <div className="bg-white border border-[#E8E8E8] rounded-xl p-4">
                                 <h4 className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] mb-3">
                                   <CreditCard size={16} className="text-green-600" /> Payment Summary
                                 </h4>
-                                <p className="text-sm text-[#444] mb-1">Method: <span className="font-medium">Prepaid (Card)</span></p>
-                                <p className="text-sm text-[#444]">Payment Status: <span className="text-green-600 font-medium">Completed</span></p>
+                                <p className="text-sm text-[#444] mb-1">Method: <span className="font-medium">{o.paymentId ? "Prepaid (Card)" : "—"}</span></p>
+                                <p className="text-sm text-[#444]">Payment Status: <span className={`font-medium ${o.paymentId ? "text-green-600" : "text-muted"}`}>{o.paymentId ? "Completed" : "Pending"}</span></p>
                               </div>
                             </div>
 
@@ -241,21 +286,19 @@ Thank you for choosing Silveri! ✨`;
                                 <div className="space-y-4">
                                   {o.events.map((ev, idx) => (
                                     <div key={idx} className="relative pl-6">
-                                      {/* Vertical Line */}
-                                      {idx !== o.events.length - 1 && (
+                                      {idx !== o.events!.length - 1 && (
                                         <div className="absolute left-[9px] top-6 bottom-[-20px] w-px bg-[#E8E8E8] z-0"></div>
                                       )}
-                                      {/* Node */}
-                                      <div className={`absolute left-0 top-1 w-[19px] h-[19px] rounded-full flex items-center justify-center z-10 ${idx === o.events.length - 1 ? 'bg-[#C9A84C]' : 'bg-[#E8E8E8]'}`}>
+                                      <div className={`absolute left-0 top-1 w-[19px] h-[19px] rounded-full flex items-center justify-center z-10 ${idx === o.events!.length - 1 ? 'bg-[#C9A84C]' : 'bg-[#E8E8E8]'}`}>
                                         <div className="w-2 h-2 rounded-full bg-white"></div>
                                       </div>
-                                      
+
                                       <div className="flex flex-col">
                                         <span className="text-sm font-semibold text-[#1A1A1A]">{ev.status}</span>
                                         <span className="text-[10px] text-[#A09DAB] mt-0.5">{ev.date} at {ev.time}</span>
                                         {ev.note && (
                                           <span className="text-xs text-[#7A7585] mt-1.5 bg-[#F5F3EF] px-2.5 py-1.5 rounded-md inline-block">
-                                            "{ev.note}"
+                                            &ldquo;{ev.note}&rdquo;
                                           </span>
                                         )}
                                       </div>
@@ -281,6 +324,7 @@ Thank you for choosing Silveri! ✨`;
           <p className="text-center py-10 text-[#7A7585] text-sm">No orders found for this status.</p>
         )}
       </div>
+
       {/* STATUS UPDATE MODAL */}
       {pendingStatusUpdate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -289,7 +333,7 @@ Thank you for choosing Silveri! ✨`;
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h3 className="text-xl font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A]">Update Status</h3>
-                <p className="text-sm text-[#7A7585] mt-1">Order {pendingStatusUpdate.id} ➔ <span className="font-semibold text-[#C9A84C]">{pendingStatusUpdate.newStatus}</span></p>
+                <p className="text-sm text-[#7A7585] mt-1">Order {pendingStatusUpdate.id} &#10142; <span className="font-semibold text-[#C9A84C]">{STATUS_LABELS[pendingStatusUpdate.newStatus] || pendingStatusUpdate.newStatus}</span></p>
               </div>
               <button onClick={() => setPendingStatusUpdate(null)} className="p-2 hover:bg-[#F5F3EF] rounded-full text-[#7A7585] transition-colors">
                 <X size={20} />
@@ -307,10 +351,10 @@ Thank you for choosing Silveri! ✨`;
                   <input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Dispatch / Tracking Note (Optional)</label>
-                <textarea 
+                <textarea
                   value={eventNote} onChange={(e) => setEventNote(e.target.value)}
                   placeholder="e.g. Tracking ID: AW309192, Shipped via BlueDart"
                   rows={2}
@@ -328,7 +372,7 @@ Thank you for choosing Silveri! ✨`;
                 </div>
               </label>
 
-              <button 
+              <button
                 type="button"
                 onClick={handleWhatsAppNotify}
                 className="flex items-center justify-center gap-3 w-full p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-700 hover:bg-green-500/20 transition-colors mt-2"
@@ -350,7 +394,6 @@ Thank you for choosing Silveri! ✨`;
           </div>
         </div>
       )}
-
     </div>
   );
 }
