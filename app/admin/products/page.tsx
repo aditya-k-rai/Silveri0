@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
-import { uploadBase64Image, deleteStoragePath } from "@/lib/firebase/storage";
+import { deleteStoragePath } from "@/lib/firebase/storage";
+import { storage } from "@/lib/firebase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -106,33 +107,15 @@ export default function AdminProductsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const compressImage = (base64: string, maxWidth = 1200, quality = 0.8): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) {
-          h = (h * maxWidth) / w;
-          w = maxWidth;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/webp', quality));
-      };
-      img.src = base64;
-    });
-  };
-
-  // Upload image immediately on selection
-  const uploadImageNow = async (base64: string, productId: string, field: string, index: number): Promise<string> => {
-    const compressed = await compressImage(base64);
-    const path = `products/${productId}/${index}-${field}`;
-    const url = await uploadBase64Image(path, compressed);
-    setUploadedPaths((prev) => [...prev, path]);
+  // Upload file directly to Firebase Storage (no base64 conversion)
+  const uploadFileNow = async (file: File, productId: string, field: string, index: number): Promise<string> => {
+    if (!storage) throw new Error('Storage not initialized');
+    const { ref: storageRef, uploadBytes: upload, getDownloadURL: getURL } = await import('firebase/storage');
+    const { storage: storageInstance } = await import('@/lib/firebase/client');
+    const fileRef = storageRef(storageInstance, `products/${productId}/${index}-${field}`);
+    const snapshot = await upload(fileRef, file);
+    const url = await getURL(snapshot.ref);
+    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${field}`]);
     return url;
   };
 
@@ -209,31 +192,22 @@ export default function AdminProductsPage() {
     const { field, index } = IMAGE_FIELD_MAP[type];
     const productId = editingParams.id;
 
-    // Read file, compress, upload immediately — show spinner on that slot
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      if (!event.target?.result) return;
-      const base64 = event.target.result as string;
+    // Mark as uploading and upload file directly
+    setUploadingFields((prev) => new Set(prev).add(type));
 
-      // Mark field as uploading
-      setUploadingFields((prev) => new Set(prev).add(type));
-
-      try {
-        const url = await uploadImageNow(base64, productId, String(field), index);
-        // Update editingParams with the final URL (not base64)
-        setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
-      } catch (err) {
-        console.error(`Failed to upload ${field}:`, err);
-        alert(`Failed to upload image. Please try again.`);
-      } finally {
-        setUploadingFields((prev) => {
-          const next = new Set(prev);
-          next.delete(type);
-          return next;
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const url = await uploadFileNow(file, productId, String(field), index);
+      setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
+    } catch (err) {
+      console.error(`Failed to upload ${field}:`, err);
+      alert(`Failed to upload image. Please try again.`);
+    } finally {
+      setUploadingFields((prev) => {
+        const next = new Set(prev);
+        next.delete(type);
+        return next;
+      });
+    }
   };
 
   return (
