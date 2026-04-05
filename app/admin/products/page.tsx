@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
-import { deleteStoragePath } from "@/lib/firebase/storage";
-import { storage } from "@/lib/firebase/client";
+import { uploadProductImage, deleteStoragePath } from "@/lib/firebase/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -107,15 +106,9 @@ export default function AdminProductsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Upload file directly to Firebase Storage (no base64 conversion)
   const uploadFileNow = async (file: File, productId: string, field: string, index: number): Promise<string> => {
-    if (!storage) throw new Error('Storage not initialized');
-    const { ref: storageRef, uploadBytes: upload, getDownloadURL: getURL } = await import('firebase/storage');
-    const { storage: storageInstance } = await import('@/lib/firebase/client');
-    const fileRef = storageRef(storageInstance, `products/${productId}/${index}-${field}`);
-    const snapshot = await upload(fileRef, file);
-    const url = await getURL(snapshot.ref);
-    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${field}`]);
+    const url = await uploadProductImage(productId, file, index);
+    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${file.name}`]);
     return url;
   };
 
