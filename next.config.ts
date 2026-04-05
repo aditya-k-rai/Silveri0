@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: '*.firebasestorage.app',
+      },
+      {
+        protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
       {
@@ -48,9 +52,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' *.vercel-scripts.com *.vercel.com *.googleapis.com *.google.com *.gstatic.com",
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-              "img-src 'self' data: blob: https: firebasestorage.googleapis.com lh3.googleusercontent.com images.unsplash.com",
+              "img-src 'self' data: blob: https: firebasestorage.googleapis.com *.firebasestorage.app lh3.googleusercontent.com images.unsplash.com",
               "font-src 'self' fonts.gstatic.com",
-              "connect-src 'self' *.googleapis.com *.google.com *.firebaseio.com *.vercel.com *.vercel-insights.com wss://*.firebaseio.com",
+              "connect-src 'self' *.googleapis.com *.google.com *.firebaseio.com *.firebasestorage.app *.vercel.com *.vercel-insights.com wss://*.firebaseio.com",
               "object-src 'none'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
