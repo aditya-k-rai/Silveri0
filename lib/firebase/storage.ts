@@ -1,4 +1,4 @@
-import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './client';
 
 export async function uploadProductImage(productId: string, file: File, index: number): Promise<string> {
@@ -36,4 +36,13 @@ export async function uploadBase64Image(path: string, base64: string): Promise<s
   const storageRef = ref(storage, path);
   const snapshot = await uploadString(storageRef, base64, 'data_url');
   return getDownloadURL(snapshot.ref);
+}
+
+export async function deleteStoragePath(path: string): Promise<void> {
+  if (!storage) return;
+  try {
+    await deleteObject(ref(storage, path));
+  } catch {
+    // File may not exist — ignore
+  }
 }

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
-import { uploadBase64Image } from "@/lib/firebase/storage";
+import { uploadBase64Image, deleteStoragePath } from "@/lib/firebase/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -43,17 +43,28 @@ export default function AdminProductsPage() {
     await saveProductToFirestore({ ...p, ...updates });
   };
 
+  // Track whether this is a new product (for cancel cleanup)
+  const [isNewProduct, setIsNewProduct] = useState(false);
+  // Track storage paths uploaded during this session (for cancel cleanup)
+  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
+  // Track which fields are currently uploading
+  const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
+
   const openEditor = (prod: Product | null) => {
+    setUploadedPaths([]);
+    setUploadingFields(new Set());
     if (prod) {
+      setIsNewProduct(false);
       setEditingParams({ ...prod });
     } else {
+      setIsNewProduct(true);
       setEditingParams({
-        id: "NEW",
+        id: `P${Date.now()}`,
         name: "",
         sku: `SLV-NEW-${Math.floor(1000 + Math.random() * 9000)}`,
         price: 0,
-        makingMargin: 500, // Default making margin explicitly created
-        isLinked: false, // For dynamic market
+        makingMargin: 500,
+        isLinked: false,
         stock: 0,
         category: "Rings",
         status: "Draft",
@@ -85,32 +96,61 @@ export default function AdminProductsPage() {
 
   const closeEditor = () => setEditingParams(null);
 
+  // Cancel — delete uploaded images if this was a new product
+  const cancelEditor = async () => {
+    if (isNewProduct && uploadedPaths.length > 0) {
+      await Promise.all(uploadedPaths.map((p) => deleteStoragePath(p)));
+    }
+    closeEditor();
+  };
+
   const [isSaving, setIsSaving] = useState(false);
+
+  const compressImage = (base64: string, maxWidth = 1200, quality = 0.8): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = (h * maxWidth) / w;
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/webp', quality));
+      };
+      img.src = base64;
+    });
+  };
+
+  // Upload image immediately on selection
+  const uploadImageNow = async (base64: string, productId: string, field: string, index: number): Promise<string> => {
+    const compressed = await compressImage(base64);
+    const path = `products/${productId}/${index}-${field}`;
+    const url = await uploadBase64Image(path, compressed);
+    setUploadedPaths((prev) => [...prev, path]);
+    return url;
+  };
 
   const saveProduct = async () => {
     if (!editingParams) return;
+    if (uploadingFields.size > 0) {
+      alert("Please wait for images to finish uploading.");
+      return;
+    }
     setIsSaving(true);
     try {
-      const productId = editingParams.id === "NEW" ? `P${Date.now()}` : editingParams.id;
-      const productToSave = { ...editingParams, id: productId };
-
-      // Upload base64 images to Firebase Storage and replace with URLs
-      const imageFields: (keyof Product)[] = ['primaryImage', 'hoverImage', 'image3', 'image4', 'image5', 'image6'];
-      for (let i = 0; i < imageFields.length; i++) {
-        const field = imageFields[i];
-        const value = productToSave[field] as string | null;
-        if (value && value.startsWith('data:')) {
-          const url = await uploadBase64Image(`products/${productId}/${i}-${field}`, value);
-          (productToSave as any)[field] = url;
-        }
-      }
-
-      if (editingParams.id === "NEW") {
-        addProduct(productToSave);
+      if (isNewProduct) {
+        addProduct(editingParams);
       } else {
-        updateProduct(productToSave.id, productToSave);
+        updateProduct(editingParams.id, editingParams);
       }
-      await saveProductToFirestore(productToSave);
+      await saveProductToFirestore(editingParams);
+      setUploadedPaths([]); // Clear — save succeeded, don't delete on future cancel
       closeEditor();
     } catch (err) {
       console.error("Failed to save product:", err);
@@ -136,28 +176,61 @@ export default function AdminProductsPage() {
     return data;
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | 'image5' | 'image6' | '3d') => {
+  const IMAGE_FIELD_MAP: Record<string, { field: keyof Product; index: number }> = {
+    primary: { field: 'primaryImage', index: 0 },
+    hover: { field: 'hoverImage', index: 1 },
+    image3: { field: 'image3', index: 2 },
+    image4: { field: 'image4', index: 3 },
+    image5: { field: 'image5', index: 4 },
+    image6: { field: 'image6', index: 5 },
+  };
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | 'image5' | 'image6' | '3d') => {
     if (!editingParams || !e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
 
     if (type === '3d') {
-      setEditingParams({ ...editingParams, model3dFileName: file.name });
+      const productId = editingParams.id;
+      setUploadingFields((prev) => new Set(prev).add('3d'));
+      try {
+        const { upload3DModel } = await import('@/lib/firebase/storage');
+        const url = await upload3DModel(productId, file);
+        setEditingParams((prev) => prev ? { ...prev, model3dFileName: url } : prev);
+        setUploadedPaths((prev) => [...prev, `3d-models/${productId}/${file.name}`]);
+      } catch (err) {
+        console.error('Failed to upload 3D model:', err);
+        alert('Failed to upload 3D model.');
+      } finally {
+        setUploadingFields((prev) => { const n = new Set(prev); n.delete('3d'); return n; });
+      }
       return;
     }
 
-    const fieldMap: Record<string, keyof Product> = {
-      primary: 'primaryImage',
-      hover: 'hoverImage',
-      image3: 'image3',
-      image4: 'image4',
-      image5: 'image5',
-      image6: 'image6',
-    };
+    const { field, index } = IMAGE_FIELD_MAP[type];
+    const productId = editingParams.id;
 
+    // Read file, compress, upload immediately — show spinner on that slot
     const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setEditingParams({ ...editingParams, [fieldMap[type]]: event.target.result as string });
+    reader.onload = async (event) => {
+      if (!event.target?.result) return;
+      const base64 = event.target.result as string;
+
+      // Mark field as uploading
+      setUploadingFields((prev) => new Set(prev).add(type));
+
+      try {
+        const url = await uploadImageNow(base64, productId, String(field), index);
+        // Update editingParams with the final URL (not base64)
+        setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
+      } catch (err) {
+        console.error(`Failed to upload ${field}:`, err);
+        alert(`Failed to upload image. Please try again.`);
+      } finally {
+        setUploadingFields((prev) => {
+          const next = new Set(prev);
+          next.delete(type);
+          return next;
+        });
       }
     };
     reader.readAsDataURL(file);
@@ -186,7 +259,7 @@ export default function AdminProductsPage() {
             <option value="PriceDesc">Sort by: Price (High to Low)</option>
             <option value="StockAsc">Sort by: Stock (Low to High)</option>
             <option value="StockDesc">Sort by: Stock (High to Low)</option>
-            <option value="Carat">Sort by: Carat / Purity</option>
+            <option value="Carat">Sort by: Purity</option>
           </select>
         </div>
         <button 
@@ -332,11 +405,16 @@ export default function AdminProductsPage() {
                       <label className="block text-[10px] font-medium text-[#7A7585] mb-1.5 text-center">{label}</label>
                       <label
                         className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${
-                          editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
+                          uploadingFields.has(key) ? 'border-[#C9A84C] bg-[#FDFAF5]' : editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
                         }`}
                       >
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} />
-                        {editingParams[field] ? (
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} disabled={uploadingFields.has(key)} />
+                        {uploadingFields.has(key) ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[10px] text-[#C9A84C] font-medium">Uploading...</span>
+                          </div>
+                        ) : editingParams[field] ? (
                           <>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={editingParams[field]!} alt="" className="w-full h-full object-cover" />
@@ -358,17 +436,21 @@ export default function AdminProductsPage() {
                 {/* 3D Model Configurator */}
                 <div className="bg-white p-5 rounded-2xl border border-[#E8E8E8] flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center shrink-0">
-                    <Box className="text-[#C9A84C]" size={24} />
+                    {uploadingFields.has('3d') ? (
+                      <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Box className="text-[#C9A84C]" size={24} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[#1A1A1A]">3D Model View (.obj / .3dm)</p>
                     <p className="text-xs text-[#7A7585] truncate">
-                      {editingParams.model3dFileName ? `Attached: ${editingParams.model3dFileName}` : "No 3D file attached for Interactive AR/Viewer."}
+                      {uploadingFields.has('3d') ? "Uploading 3D model..." : editingParams.model3dFileName ? "3D model attached" : "No 3D file attached for Interactive AR/Viewer."}
                     </p>
                   </div>
-                  <label className="cursor-pointer px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium hover:bg-[#F5F3EF] transition-colors">
-                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} />
-                    {editingParams.model3dFileName ? "Replace File" : "Upload File"}
+                  <label className={`px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium transition-colors ${uploadingFields.has('3d') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#F5F3EF]'}`}>
+                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} disabled={uploadingFields.has('3d')} />
+                    {uploadingFields.has('3d') ? "Uploading..." : editingParams.model3dFileName ? "Replace File" : "Upload File"}
                   </label>
                 </div>
               </div>
@@ -436,7 +518,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Carat (Purity)</label>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Purity</label>
                       <input 
                         type="text" 
                         value={editingParams.carat}
@@ -657,14 +739,14 @@ export default function AdminProductsPage() {
 
             <div className="px-6 py-5 border-t border-[#E8E8E8] bg-white gap-3 flex shrink-0">
               <button 
-                onClick={closeEditor}
+                onClick={cancelEditor}
                 className="flex-1 py-3 rounded-xl text-sm font-medium border border-[#E8E8E8] text-[#1A1A1A] hover:bg-[#F5F3EF] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveProduct}
-                disabled={!editingParams.name || !editingParams.price || isSaving}
+                disabled={!editingParams.name || !editingParams.price || isSaving || uploadingFields.size > 0}
                 className="flex-[2] flex items-center justify-center gap-2 bg-[#1A1A1A] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
               >
                 {isSaving ? (

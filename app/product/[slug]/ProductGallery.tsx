@@ -57,9 +57,7 @@ interface ProductGalleryProps {
 }
 
 export default function ProductGallery({ name, primaryImage, hoverImage, image3, image4, image5, image6, colour, model3dFileName }: ProductGalleryProps) {
-  const has3D = !!model3dFileName && (
-    model3dFileName.startsWith('http') || model3dFileName.startsWith('/')
-  );
+  const has3D = !!model3dFileName && model3dFileName.length > 0;
   const [viewMode, setViewMode] = useState<'images' | '3d'>('images');
   const [viewerFailed, setViewerFailed] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);

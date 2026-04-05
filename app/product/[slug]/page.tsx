@@ -113,7 +113,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const specs = [
     { label: 'Category', value: product.category },
     { label: 'SKU', value: product.sku, mono: true },
-    { label: 'Purity', value: product.carat },
+    { label: 'Purity', value: product.carat, highlight: true },
     { label: 'Colour', value: product.colour2 ? `${product.colour}, ${product.colour2}` : product.colour },
     { label: 'Size', value: product.size },
     { label: 'Weight', value: product.weight },
