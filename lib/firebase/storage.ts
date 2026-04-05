@@ -2,7 +2,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject, getStorage } from 'fire
 import app from './client';
 
 // Remove spaces, special chars from filenames to avoid CORS issues
-function sanitize(name: string): string {
+export function sanitize(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 

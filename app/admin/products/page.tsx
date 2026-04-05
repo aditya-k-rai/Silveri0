@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
-import { uploadProductImage, deleteStoragePath } from "@/lib/firebase/storage";
+import { uploadProductImage, deleteStoragePath, sanitize } from "@/lib/firebase/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -107,8 +107,9 @@ export default function AdminProductsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const uploadFileNow = async (file: File, productId: string, field: string, index: number): Promise<string> => {
+    const safeName = sanitize(file.name);
     const url = await uploadProductImage(productId, file, index);
-    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${file.name}`]);
+    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${safeName}`]);
     return url;
   };
 
@@ -175,7 +176,7 @@ export default function AdminProductsPage() {
         setUploadedPaths((prev) => [...prev, `3d-models/${productId}/${file.name}`]);
       } catch (err) {
         console.error('Failed to upload 3D model:', err);
-        alert('Failed to upload 3D model.');
+        alert(`Failed to upload 3D model. ${err instanceof Error ? err.message : ''}`);
       } finally {
         setUploadingFields((prev) => { const n = new Set(prev); n.delete('3d'); return n; });
       }
@@ -193,7 +194,18 @@ export default function AdminProductsPage() {
       setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
     } catch (err) {
       console.error(`Failed to upload ${field}:`, err);
-      alert(`Failed to upload image. Please try again. ${err instanceof Error ? err.message : ''}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      
+      if (msg.includes('fetch') || msg.includes('CORS')) {
+        alert(`UPLOAD BLOCKED BY CORS. 
+        
+Please run this command in your terminal to fix it:
+gsutil cors set cors.json gs://silveri0.appspot.com
+
+(Check the console for more details)`);
+      } else {
+        alert(`Failed to upload image. ${msg}`);
+      }
     } finally {
       setUploadingFields((prev) => {
         const next = new Set(prev);
