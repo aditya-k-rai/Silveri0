@@ -193,7 +193,7 @@ export default function AdminProductsPage() {
       setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
     } catch (err) {
       console.error(`Failed to upload ${field}:`, err);
-      alert(`Failed to upload image. Please try again.`);
+      alert(`Failed to upload image. Please try again. ${err instanceof Error ? err.message : ''}`);
     } finally {
       setUploadingFields((prev) => {
         const next = new Set(prev);
@@ -346,7 +346,7 @@ export default function AdminProductsPage() {
             <div className="flex bg-white items-center justify-between px-6 py-4 border-b border-[#E8E8E8] shrink-0">
               <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A] flex items-center gap-2">
                 <Tag size={18} className="text-[#C9A84C]" />
-                {editingParams.id === "NEW" ? "New Product" : "Edit Product"}
+                {isNewProduct ? "New Product" : "Edit Product"}
               </h2>
               <button onClick={closeEditor} className="p-2 text-[#7A7585] hover:bg-[#E8E8E8]/50 rounded-full transition-colors">
                 <X size={20} />

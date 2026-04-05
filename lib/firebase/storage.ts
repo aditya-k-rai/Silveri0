@@ -2,11 +2,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { storage } from './client';
 
 export async function uploadProductImage(productId: string, file: File, index: number): Promise<string> {
-  const { app } = await import('./client');
-  if (!app) throw new Error('Firebase not initialized. Check NEXT_PUBLIC_FIREBASE_* env variables.');
-  const { getStorage: getStorageInstance } = await import('firebase/storage');
-  const s = getStorageInstance(app);
-  const storageRef = ref(s, `products/${productId}/${index}-${file.name}`);
+  if (!storage) throw new Error('Firebase Storage not initialized. Check your environment variables.');
+  const storageRef = ref(storage, `products/${productId}/${index}-${file.name}`);
   const snapshot = await uploadBytes(storageRef, file);
   return getDownloadURL(snapshot.ref);
 }
