@@ -1,6 +1,11 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject, getStorage } from 'firebase/storage';
 import app from './client';
 
+// Remove spaces, special chars from filenames to avoid CORS issues
+function sanitize(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
 function getStorageInstance() {
   if (!app) throw new Error('Firebase not initialized');
   return getStorage(app);
@@ -8,7 +13,8 @@ function getStorageInstance() {
 
 export async function uploadProductImage(productId: string, file: File, index: number): Promise<string> {
   const s = getStorageInstance();
-  const storageRef = ref(s, `products/${productId}/${index}-${file.name}`);
+  const safeName = sanitize(file.name);
+  const storageRef = ref(s, `products/${productId}/${index}-${safeName}`);
   const snapshot = await uploadBytes(storageRef, file);
   return getDownloadURL(snapshot.ref);
 }
@@ -22,21 +28,21 @@ export async function uploadUserAvatar(userId: string, file: File): Promise<stri
 
 export async function uploadCategoryImage(categoryId: string, file: File): Promise<string> {
   const s = getStorageInstance();
-  const storageRef = ref(s, `categories/${categoryId}/${file.name}`);
+  const storageRef = ref(s, `categories/${categoryId}/${sanitize(file.name)}`);
   const snapshot = await uploadBytes(storageRef, file);
   return getDownloadURL(snapshot.ref);
 }
 
 export async function uploadBannerImage(file: File, index: number): Promise<string> {
   const s = getStorageInstance();
-  const storageRef = ref(s, `banners/${index}-${file.name}`);
+  const storageRef = ref(s, `banners/${index}-${sanitize(file.name)}`);
   const snapshot = await uploadBytes(storageRef, file);
   return getDownloadURL(snapshot.ref);
 }
 
 export async function upload3DModel(productId: string, file: File): Promise<string> {
   const s = getStorageInstance();
-  const storageRef = ref(s, `3d-models/${productId}/${file.name}`);
+  const storageRef = ref(s, `3d-models/${productId}/${sanitize(file.name)}`);
   const snapshot = await uploadBytes(storageRef, file);
   return getDownloadURL(snapshot.ref);
 }
