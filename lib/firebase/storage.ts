@@ -33,11 +33,16 @@ export async function upload3DModel(productId: string, file: File): Promise<stri
 
 export async function uploadBase64Image(path: string, base64: string): Promise<string> {
   if (!storage) return '';
-  // Convert base64 to Blob — uploadBytes is much faster than uploadString
-  const res = await fetch(base64);
-  const blob = await res.blob();
+  // Convert base64 data URL to Uint8Array for fast binary upload
+  const [header, data] = base64.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/webp';
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
   const storageRef = ref(storage, path);
-  const snapshot = await uploadBytes(storageRef, blob);
+  const snapshot = await uploadBytes(storageRef, bytes, { contentType: mime });
   return getDownloadURL(snapshot.ref);
 }
 
