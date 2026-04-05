@@ -1,4 +1,4 @@
-import { ref, uploadBytes, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './client';
 
 export async function uploadProductImage(productId: string, file: File, index: number): Promise<string> {
@@ -33,8 +33,11 @@ export async function upload3DModel(productId: string, file: File): Promise<stri
 
 export async function uploadBase64Image(path: string, base64: string): Promise<string> {
   if (!storage) return '';
+  // Convert base64 to Blob — uploadBytes is much faster than uploadString
+  const res = await fetch(base64);
+  const blob = await res.blob();
   const storageRef = ref(storage, path);
-  const snapshot = await uploadString(storageRef, base64, 'data_url');
+  const snapshot = await uploadBytes(storageRef, blob);
   return getDownloadURL(snapshot.ref);
 }
 
