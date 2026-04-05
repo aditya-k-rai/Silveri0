@@ -375,7 +375,7 @@ export default function AdminProductsPage() {
                           uploadingFields.has(key) ? 'border-[#C9A84C] bg-[#FDFAF5]' : editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
                         }`}
                       >
-                        <input type="file" accept="image/webp" className="hidden" onChange={(e) => handleMediaUpload(e, key)} disabled={uploadingFields.has(key)} />
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} disabled={uploadingFields.has(key)} />
                         {uploadingFields.has(key) ? (
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
