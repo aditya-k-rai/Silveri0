@@ -18,39 +18,7 @@ interface CustomRequest {
   status: "New" | "Contacted" | "Accepted" | "Rejected";
 }
 
-const INITIAL_REQUESTS: CustomRequest[] = [
-  {
-    id: "REQ-9901",
-    phone: "+91 98765 43210",
-    date: "2026-04-04 10:30 AM",
-    purity: "18K Gold",
-    weight: 12,
-    size: "US 8",
-    complexity: "Intricate",
-    estimatedTotal: 84000,
-    description: "I want a custom engagement ring similar to the reference pictures. The center stone needs to be exactly like the second picture, but with the band style of the first picture.",
-    images: [
-      "https://images.unsplash.com/photo-1599643478514-4a52023961c2?w=500&q=80",
-      "https://images.unsplash.com/photo-1515562141207-7a8ea4114e17?w=500&q=80"
-    ],
-    status: "New"
-  },
-  {
-    id: "REQ-9902",
-    phone: "+91 87654 32100",
-    date: "2026-04-03 04:15 PM",
-    purity: "925 Silver",
-    weight: 45,
-    size: "20 Inch",
-    complexity: "Moderate",
-    estimatedTotal: 42525,
-    description: "Looking for a heavy cuban link chain. Can we ensure a double lock clasp?",
-    images: [
-      "https://images.unsplash.com/photo-1605100804763-247f67b2548e?w=500&q=80"
-    ],
-    status: "Contacted"
-  }
-];
+const INITIAL_REQUESTS: CustomRequest[] = [];
 
 const STATUSES = ["New", "Contacted", "Accepted", "Rejected"];
 

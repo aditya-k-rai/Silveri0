@@ -173,6 +173,24 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
           )}
         </div>
 
+        {/* Colour Options */}
+        {product.colour && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+              isDark ? 'bg-silver-700 text-silver-300' : 'bg-silver-100 text-silver-600'
+            }`}>
+              {product.colour}
+            </span>
+            {product.colour2 && (
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                isDark ? 'bg-silver-700 text-silver-300' : 'bg-silver-100 text-silver-600'
+              }`}>
+                {product.colour2}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Price */}
         <p className={`font-bold text-base sm:text-lg mt-2 ${isDark ? 'text-white' : 'text-silver-900'}`}>
           ₹{product.price.toLocaleString('en-IN')}

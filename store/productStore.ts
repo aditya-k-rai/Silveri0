@@ -14,11 +14,13 @@ export interface Product {
   isNewArrival: boolean;
   carat: string;
   colour: string;
+  colour2: string;
   size: string;
   height: string;
   weight: string;
   width: string;
   radius: string;
+  description: string;
   warranty: string;
   tags: string;
   views: number;
@@ -27,6 +29,8 @@ export interface Product {
   hoverImage: string | null;
   image3: string | null;
   image4: string | null;
+  image5: string | null;
+  image6: string | null;
   model3dFileName: string | null;
 }
 

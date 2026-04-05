@@ -11,14 +11,7 @@ interface Category {
   image: string | null;
 }
 
-const INITIAL_CATEGORIES: Category[] = [
-  { id: "c1", name: "Rings", slug: "rings", productCount: 24, image: null },
-  { id: "c2", name: "Necklaces", slug: "necklaces", productCount: 18, image: null },
-  { id: "c3", name: "Earrings", slug: "earrings", productCount: 22, image: null },
-  { id: "c4", name: "Bracelets", slug: "bracelets", productCount: 15, image: null },
-  { id: "c5", name: "Anklets", slug: "anklets", productCount: 10, image: null },
-  { id: "c6", name: "Pendants", slug: "pendants", productCount: 12, image: null },
-];
+const INITIAL_CATEGORIES: Category[] = [];
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);

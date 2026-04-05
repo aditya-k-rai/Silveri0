@@ -16,13 +16,7 @@ interface Promo {
   active: boolean;
 }
 
-const INITIAL_PROMOS: Promo[] = [
-  { id: "pr1", code: "WELCOME10", type: "Percentage", discount: "10", minOrder: 999, maxDiscount: 500, uses: 42, limit: 100, expiry: "2026-12-31", active: true },
-  { id: "pr2", code: "FLAT200", type: "Flat", discount: "200", minOrder: 1999, maxDiscount: null, uses: 18, limit: 50, expiry: "2026-06-30", active: true },
-  { id: "pr3", code: "SILVER15", type: "Percentage", discount: "15", minOrder: 2999, maxDiscount: 1000, uses: 7, limit: 30, expiry: "2026-09-30", active: true },
-  { id: "pr4", code: "FESTIVE20", type: "Percentage", discount: "20", minOrder: 3999, maxDiscount: 2000, uses: 50, limit: 50, expiry: "2025-11-30", active: false },
-  { id: "pr5", code: "FREESHIP", type: "Flat", discount: "99", minOrder: 0, maxDiscount: null, uses: 120, limit: 200, expiry: "2026-12-31", active: true },
-];
+const INITIAL_PROMOS: Promo[] = [];
 
 export default function AdminPromosPage() {
   const [promos, setPromos] = useState<Promo[]>(INITIAL_PROMOS);

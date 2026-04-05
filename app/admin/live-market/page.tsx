@@ -41,6 +41,7 @@ export default function LiveMarketDashboard() {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [previousSilver, setPreviousSilver] = useState(0);
   const [previousUSD, setPreviousUSD] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const { products, setProducts, updateProduct } = useProductStore();
   const [search, setSearch] = useState("");
@@ -90,6 +91,7 @@ export default function LiveMarketDashboard() {
     try {
       const result = await fetchLiveMarketRates();
 
+      setSyncError(null);
       if (result.success && result.silverRate > 0) {
         const newSilver = result.silverRate;
         const newUSD = result.usdInrRate;
@@ -133,9 +135,11 @@ export default function LiveMarketDashboard() {
         setProducts(updatedProducts);
       } else {
         console.error("Market API Fetch Failed: ", result.error);
+        setSyncError(result.error || "API returned zero rates. Check your API keys.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setSyncError(err.message || "Network error");
     } finally {
       setIsSyncing(false);
     }
@@ -196,6 +200,17 @@ export default function LiveMarketDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Sync Error */}
+      {syncError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-3 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-700">API Sync Failed</p>
+            <p className="text-xs text-red-600 mt-0.5">{syncError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

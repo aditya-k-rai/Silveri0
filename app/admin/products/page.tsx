@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
+import { uploadBase64Image } from "@/lib/firebase/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -60,11 +61,13 @@ export default function AdminProductsPage() {
         isNewArrival: false,
         carat: "22K",
         colour: "Silver",
+        colour2: "",
         size: "",
         height: "",
         weight: "",
         width: "",
         radius: "",
+        description: "",
         warranty: "",
         tags: "",
         views: 0,
@@ -73,6 +76,8 @@ export default function AdminProductsPage() {
         hoverImage: null,
         image3: null,
         image4: null,
+        image5: null,
+        image6: null,
         model3dFileName: null
       });
     }
@@ -80,17 +85,39 @@ export default function AdminProductsPage() {
 
   const closeEditor = () => setEditingParams(null);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const saveProduct = async () => {
     if (!editingParams) return;
-    if (editingParams.id === "NEW") {
-      const newProd = { ...editingParams, id: `P${Date.now()}` };
-      addProduct(newProd);
-      await saveProductToFirestore(newProd);
-    } else {
-      updateProduct(editingParams.id, editingParams);
-      await saveProductToFirestore(editingParams);
+    setIsSaving(true);
+    try {
+      const productId = editingParams.id === "NEW" ? `P${Date.now()}` : editingParams.id;
+      const productToSave = { ...editingParams, id: productId };
+
+      // Upload base64 images to Firebase Storage and replace with URLs
+      const imageFields: (keyof Product)[] = ['primaryImage', 'hoverImage', 'image3', 'image4', 'image5', 'image6'];
+      for (let i = 0; i < imageFields.length; i++) {
+        const field = imageFields[i];
+        const value = productToSave[field] as string | null;
+        if (value && value.startsWith('data:')) {
+          const url = await uploadBase64Image(`products/${productId}/${i}-${field}`, value);
+          (productToSave as any)[field] = url;
+        }
+      }
+
+      if (editingParams.id === "NEW") {
+        addProduct(productToSave);
+      } else {
+        updateProduct(productToSave.id, productToSave);
+      }
+      await saveProductToFirestore(productToSave);
+      closeEditor();
+    } catch (err) {
+      console.error("Failed to save product:", err);
+      alert("Failed to save product. Check console for details.");
+    } finally {
+      setIsSaving(false);
     }
-    closeEditor();
   };
 
   // Helper to generate a fake realistic 30 day curve based heavily on the actual current price anchor
@@ -109,7 +136,7 @@ export default function AdminProductsPage() {
     return data;
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | '3d') => {
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | 'image5' | 'image6' | '3d') => {
     if (!editingParams || !e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
 
@@ -123,6 +150,8 @@ export default function AdminProductsPage() {
       hover: 'hoverImage',
       image3: 'image3',
       image4: 'image4',
+      image5: 'image5',
+      image6: 'image6',
     };
 
     const reader = new FileReader();
@@ -290,12 +319,14 @@ export default function AdminProductsPage() {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Product Media</h3>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {([
                     { key: 'primary' as const, label: 'Image 1 (Primary)', field: 'primaryImage' as const, color: '[#C9A84C]' },
                     { key: 'hover' as const, label: 'Image 2 (Hover)', field: 'hoverImage' as const, color: 'purple-400' },
                     { key: 'image3' as const, label: 'Image 3', field: 'image3' as const, color: 'blue-400' },
                     { key: 'image4' as const, label: 'Image 4', field: 'image4' as const, color: 'emerald-400' },
+                    { key: 'image5' as const, label: 'Image 5', field: 'image5' as const, color: 'rose-400' },
+                    { key: 'image6' as const, label: 'Image 6', field: 'image6' as const, color: 'cyan-400' },
                   ]).map(({ key, label, field, color }) => (
                     <div key={key} className="bg-white p-3 rounded-2xl border border-[#E8E8E8]">
                       <label className="block text-[10px] font-medium text-[#7A7585] mb-1.5 text-center">{label}</label>
@@ -385,12 +416,22 @@ export default function AdminProductsPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour</label>
-                      <input 
-                        type="text" 
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour 1</label>
+                      <input
+                        type="text"
                         value={editingParams.colour}
                         onChange={(e) => setEditingParams({...editingParams, colour: e.target.value})}
-                        placeholder="e.g. Silver, Rose Gold"
+                        placeholder="e.g. Silver"
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour 2</label>
+                      <input
+                        type="text"
+                        value={editingParams.colour2 || ''}
+                        onChange={(e) => setEditingParams({...editingParams, colour2: e.target.value})}
+                        placeholder="e.g. Rose Gold"
                         className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
                       />
                     </div>
@@ -477,6 +518,16 @@ export default function AdminProductsPage() {
                       onChange={(e) => setEditingParams({...editingParams, tags: e.target.value})}
                       placeholder="e.g. classic, wedding, silver"
                       className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Product Description</label>
+                    <textarea
+                      value={editingParams.description || ''}
+                      onChange={(e) => setEditingParams({...editingParams, description: e.target.value})}
+                      placeholder="Describe the product — material, design, occasion, etc."
+                      rows={3}
+                      className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 resize-none"
                     />
                   </div>
                   <div>
@@ -611,12 +662,16 @@ export default function AdminProductsPage() {
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={saveProduct}
-                disabled={!editingParams.name || !editingParams.price}
+                disabled={!editingParams.name || !editingParams.price || isSaving}
                 className="flex-[2] flex items-center justify-center gap-2 bg-[#1A1A1A] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
               >
-                <Save size={16} /> Save Product Specs
+                {isSaving ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                ) : (
+                  <><Save size={16} /> Save Product Specs</>
+                )}
               </button>
             </div>
           </div>

@@ -15,10 +15,7 @@ import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 import ProductJsonLd from '@/components/seo/ProductJsonLd';
 
-const sampleReviews = [
-  { userName: 'Priya S.', rating: 5, comment: 'Absolutely beautiful! The craftsmanship is excellent.', date: '2 weeks ago' },
-  { userName: 'Rahul M.', rating: 4, comment: 'Great quality silver. Lovely design.', date: '1 month ago' },
-];
+const sampleReviews: { userName: string; rating: number; comment: string; date: string }[] = [];
 
 export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -45,6 +42,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const [liked, setLiked] = useState(false);
   const [likedBy, setLikedBy] = useState<{ name: string; photo?: string }[]>([]);
   const [showLikedBy, setShowLikedBy] = useState(false);
+  const [selectedColour, setSelectedColour] = useState(product?.colour || '');
 
   useEffect(() => {
     if (!product || !db) return;
@@ -116,7 +114,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     { label: 'Category', value: product.category },
     { label: 'SKU', value: product.sku, mono: true },
     { label: 'Purity', value: product.carat },
-    { label: 'Colour', value: product.colour },
+    { label: 'Colour', value: product.colour2 ? `${product.colour}, ${product.colour2}` : product.colour },
     { label: 'Size', value: product.size },
     { label: 'Weight', value: product.weight },
     { label: 'Height', value: product.height },
@@ -127,7 +125,9 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://silveri.in';
   const productUrl = `${siteUrl}/product/${product.id}`;
-  const productDescription = `${product.name} — ${product.carat} ${product.colour} silver jewelry by Silveri. ₹${product.price.toLocaleString('en-IN')}. ${product.weight ? `Weight: ${product.weight}.` : ''}`;
+  const productDescription = product.description
+    ? product.description.slice(0, 160)
+    : `${product.name} — ${product.carat} ${product.colour} silver jewelry by Silveri. ₹${product.price.toLocaleString('en-IN')}. ${product.weight ? `Weight: ${product.weight}.` : ''}`;
 
   return (
     <div className="bg-silver-50 min-h-screen">
@@ -162,6 +162,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             hoverImage={product.hoverImage}
             image3={product.image3}
             image4={product.image4}
+            image5={product.image5}
+            image6={product.image6}
             colour={product.colour}
             model3dFileName={product.model3dFileName}
           />
@@ -209,6 +211,28 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
               </span>
             </div>
+
+            {/* Colour Selector */}
+            {product.colour2 && (
+              <div>
+                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Select Colour</p>
+                <div className="flex gap-2">
+                  {[product.colour, product.colour2].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setSelectedColour(c)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
+                        selectedColour === c
+                          ? 'border-gold bg-gold/10 text-gold-dark'
+                          : 'border-silver-200 text-silver-600 hover:border-silver-400'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick Specs */}
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-silver-600">
@@ -307,6 +331,14 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                   }
                 </span>
               </button>
+            )}
+
+            {/* Description */}
+            {product.description && (
+              <div className="pt-4 border-t border-silver-200">
+                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Description</p>
+                <p className="text-sm text-silver-700 leading-relaxed whitespace-pre-line">{product.description}</p>
+              </div>
             )}
 
             {/* Trust Badges */}

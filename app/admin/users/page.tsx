@@ -15,29 +15,7 @@ interface UserData {
   cart: { sku: string; name: string; price: number; quantity: number }[];
 }
 
-const INITIAL_USERS: UserData[] = [
-  { 
-    id: "U001", name: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", joined: "2025-12-10", blocked: false,
-    orders: [
-      { id: "ORD-2026-156", date: "2026-04-02", amount: 6398, items: 2, status: "Delivered" },
-      { id: "ORD-2025-081", date: "2025-12-15", amount: 12102, items: 3, status: "Delivered" }
-    ],
-    wishlist: [{ sku: "SLV-RNG-001", name: "Silver Elegance Ring", price: 2499 }],
-    cart: [{ sku: "SLV-NCK-002", name: "Luna Necklace", price: 3899, quantity: 1 }]
-  },
-  { 
-    id: "U002", name: "Arjun Mehta", email: "arjun@example.com", phone: "+91 87654 32100", joined: "2026-01-05", blocked: false,
-    orders: [{ id: "ORD-2026-155", date: "2026-04-01", amount: 3899, items: 1, status: "Shipped" }],
-    wishlist: [{ sku: "SLV-BRC-004", name: "Charm Bracelet", price: 4299 }, { sku: "SLV-EAR-003", name: "Aria Earrings", price: 1899 }],
-    cart: []
-  },
-  { 
-    id: "U003", name: "Neha Reddy", email: "neha@example.com", phone: "+91 76543 21000", joined: "2025-11-20", blocked: false,
-    orders: [{ id: "ORD-2026-154", date: "2026-03-31", amount: 8750, items: 3, status: "Processing" }],
-    wishlist: [],
-    cart: [{ sku: "SLV-RNG-006", name: "Solitaire Ring", price: 5499, quantity: 2 }]
-  },
-];
+const INITIAL_USERS: UserData[] = [];
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserData[]>(INITIAL_USERS);

@@ -50,11 +50,13 @@ interface ProductGalleryProps {
   hoverImage: string | null;
   image3?: string | null;
   image4?: string | null;
+  image5?: string | null;
+  image6?: string | null;
   colour: string;
   model3dFileName: string | null;
 }
 
-export default function ProductGallery({ name, primaryImage, hoverImage, image3, image4, colour, model3dFileName }: ProductGalleryProps) {
+export default function ProductGallery({ name, primaryImage, hoverImage, image3, image4, image5, image6, colour, model3dFileName }: ProductGalleryProps) {
   const has3D = !!model3dFileName && (
     model3dFileName.startsWith('http') || model3dFileName.startsWith('/')
   );
@@ -62,7 +64,7 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
   const [viewerFailed, setViewerFailed] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);
 
-  const images = [primaryImage, hoverImage, image3, image4].filter(Boolean) as string[];
+  const images = [primaryImage, hoverImage, image3, image4, image5, image6].filter(Boolean) as string[];
 
   const materialPreset = colour.toLowerCase().includes('gold')
     ? colour.toLowerCase().includes('rose')
