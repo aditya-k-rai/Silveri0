@@ -46,6 +46,18 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const displayEmail = userDoc?.email || user.email || '';
   const photoURL = userDoc?.photoURL || user.photoURL || '';
 
+  // Orders and Wishlist are standalone pages — no sidebar
+  const standalonePaths = ['/account/orders', '/account/wishlist'];
+  const isStandalone = standalonePaths.includes(pathname);
+
+  if (isStandalone) {
+    return (
+      <section className="max-w-6xl mx-auto px-4 py-8">
+        {children}
+      </section>
+    );
+  }
+
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-[family-name:var(--font-heading)] font-semibold text-warm-black mb-8">My Account</h1>

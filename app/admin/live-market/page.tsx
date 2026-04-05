@@ -180,7 +180,7 @@ export default function LiveMarketDashboard() {
           <p className="text-sm text-[#7A7585]">Configure dynamic pricing driven by real-time commodities.</p>
         </div>
         <div className="flex items-center gap-4">
-          <p className="text-xs text-[#7A7585] hidden sm:block">Automated Syncs: 6:00 AM, 11:30 AM, 8:00 PM (IST)</p>
+          <p className="text-xs text-[#7A7585] hidden sm:block">Auto Sync: Daily at 6:00 AM (IST)</p>
           <div className="flex flex-col items-end gap-1.5">
             <button
               onClick={forceSync}

@@ -13,6 +13,7 @@ import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
+import ProductJsonLd from '@/components/seo/ProductJsonLd';
 
 const sampleReviews = [
   { userName: 'Priya S.', rating: 5, comment: 'Absolutely beautiful! The craftsmanship is excellent.', date: '2 weeks ago' },
@@ -124,8 +125,23 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     { label: 'Warranty', value: product.warranty },
   ].filter((s) => s.value);
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://silveri.in';
+  const productUrl = `${siteUrl}/product/${product.id}`;
+  const productDescription = `${product.name} — ${product.carat} ${product.colour} silver jewelry by Silveri. ₹${product.price.toLocaleString('en-IN')}. ${product.weight ? `Weight: ${product.weight}.` : ''}`;
+
   return (
     <div className="bg-silver-50 min-h-screen">
+      <title>{`${product.name} | Silveri`}</title>
+      <meta name="description" content={productDescription} />
+      <meta property="og:title" content={`${product.name} | Silveri`} />
+      <meta property="og:description" content={productDescription} />
+      <meta property="og:type" content="product" />
+      <meta property="og:url" content={productUrl} />
+      {product.primaryImage && <meta property="og:image" content={product.primaryImage} />}
+      <meta property="product:price:amount" content={String(product.price)} />
+      <meta property="product:price:currency" content="INR" />
+      <meta property="product:availability" content={product.stock > 0 ? 'in stock' : 'out of stock'} />
+      <ProductJsonLd product={product} url={`/product/${product.id}`} />
       <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-silver-400 mb-6">
