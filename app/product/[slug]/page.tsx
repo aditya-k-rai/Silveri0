@@ -160,6 +160,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             name={product.name}
             primaryImage={product.primaryImage}
             hoverImage={product.hoverImage}
+            image3={product.image3}
+            image4={product.image4}
             colour={product.colour}
             model3dFileName={product.model3dFileName}
           />

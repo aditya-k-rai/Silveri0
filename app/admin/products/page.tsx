@@ -71,6 +71,8 @@ export default function AdminProductsPage() {
         likes: 0,
         primaryImage: null,
         hoverImage: null,
+        image3: null,
+        image4: null,
         model3dFileName: null
       });
     }
@@ -107,24 +109,26 @@ export default function AdminProductsPage() {
     return data;
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | '3d') => {
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | '3d') => {
     if (!editingParams || !e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    
+
     if (type === '3d') {
       setEditingParams({ ...editingParams, model3dFileName: file.name });
       return;
     }
 
-    // For images, generate a base64 local preview
+    const fieldMap: Record<string, keyof Product> = {
+      primary: 'primaryImage',
+      hover: 'hoverImage',
+      image3: 'image3',
+      image4: 'image4',
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        if (type === 'primary') {
-          setEditingParams({ ...editingParams, primaryImage: event.target.result as string });
-        } else if (type === 'hover') {
-          setEditingParams({ ...editingParams, hoverImage: event.target.result as string });
-        }
+        setEditingParams({ ...editingParams, [fieldMap[type]]: event.target.result as string });
       }
     };
     reader.readAsDataURL(file);
@@ -286,54 +290,38 @@ export default function AdminProductsPage() {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-[#1A1A1A] uppercase tracking-wider">Product Media</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Primary Image */}
-                  <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
-                    <label className="block text-xs font-medium text-[#7A7585] mb-2 text-center">Primary Image (Default)</label>
-                    <label 
-                      className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${editingParams.primaryImage ? 'border-[#C9A84C]' : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'}`}
-                    >
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'primary')} />
-                      {editingParams.primaryImage ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={editingParams.primaryImage} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-white text-xs font-medium">Replace</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { key: 'primary' as const, label: 'Image 1 (Primary)', field: 'primaryImage' as const, color: '[#C9A84C]' },
+                    { key: 'hover' as const, label: 'Image 2 (Hover)', field: 'hoverImage' as const, color: 'purple-400' },
+                    { key: 'image3' as const, label: 'Image 3', field: 'image3' as const, color: 'blue-400' },
+                    { key: 'image4' as const, label: 'Image 4', field: 'image4' as const, color: 'emerald-400' },
+                  ]).map(({ key, label, field, color }) => (
+                    <div key={key} className="bg-white p-3 rounded-2xl border border-[#E8E8E8]">
+                      <label className="block text-[10px] font-medium text-[#7A7585] mb-1.5 text-center">{label}</label>
+                      <label
+                        className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${
+                          editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
+                        }`}
+                      >
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} />
+                        {editingParams[field] ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={editingParams[field]!} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-white text-xs font-medium">Replace</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center p-3">
+                            <Upload size={18} className="text-[#A09DAB] mb-1 mx-auto" />
+                            <span className="text-[10px] text-[#7A7585]">Upload</span>
                           </div>
-                        </>
-                      ) : (
-                        <div className="text-center p-4">
-                          <Upload size={20} className="text-[#A09DAB] mb-2 mx-auto" />
-                          <span className="text-[10px] text-[#7A7585]">Upload Primary</span>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-
-                  {/* Hover Image */}
-                  <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
-                    <label className="block text-xs font-medium text-[#7A7585] mb-2 text-center">Secondary Image (Hover)</label>
-                    <label 
-                      className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${editingParams.hoverImage ? 'border-purple-400' : 'border-[#E8E8E8] hover:border-purple-300 bg-[#FDFAF5]'}`}
-                    >
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, 'hover')} />
-                      {editingParams.hoverImage ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={editingParams.hoverImage} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-white text-xs font-medium">Replace</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center p-4">
-                          <ImageIcon size={20} className="text-[#A09DAB] mb-2 mx-auto" />
-                          <span className="text-[10px] text-[#7A7585]">Upload Hover</span>
-                        </div>
-                      )}
-                    </label>
-                  </div>
+                        )}
+                      </label>
+                    </div>
+                  ))}
                 </div>
 
                 {/* 3D Model Configurator */}

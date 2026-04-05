@@ -25,6 +25,8 @@ export interface Product {
   likes: number;
   primaryImage: string | null;
   hoverImage: string | null;
+  image3: string | null;
+  image4: string | null;
   model3dFileName: string | null;
 }
 

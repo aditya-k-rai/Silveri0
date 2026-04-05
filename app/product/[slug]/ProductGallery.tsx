@@ -48,11 +48,13 @@ interface ProductGalleryProps {
   name: string;
   primaryImage: string | null;
   hoverImage: string | null;
+  image3?: string | null;
+  image4?: string | null;
   colour: string;
   model3dFileName: string | null;
 }
 
-export default function ProductGallery({ name, primaryImage, hoverImage, colour, model3dFileName }: ProductGalleryProps) {
+export default function ProductGallery({ name, primaryImage, hoverImage, image3, image4, colour, model3dFileName }: ProductGalleryProps) {
   const has3D = !!model3dFileName && (
     model3dFileName.startsWith('http') || model3dFileName.startsWith('/')
   );
@@ -60,7 +62,7 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
   const [viewerFailed, setViewerFailed] = useState(false);
   const [activeThumb, setActiveThumb] = useState(0);
 
-  const images = [primaryImage, hoverImage].filter(Boolean) as string[];
+  const images = [primaryImage, hoverImage, image3, image4].filter(Boolean) as string[];
 
   const materialPreset = colour.toLowerCase().includes('gold')
     ? colour.toLowerCase().includes('rose')
@@ -106,11 +108,11 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
           </div>
         )}
 
-        {/* View 3D Button — floating on image */}
+        {/* View 3D Button — always visible on image when 3D model exists */}
         {has3D && !viewerFailed && (
           <button
             onClick={() => setViewMode(viewMode === '3d' ? 'images' : '3d')}
-            className={`absolute top-3 left-3 z-10 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-lg transition-all duration-200 ${
+            className={`absolute top-3 left-3 z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg transition-all duration-200 ${
               viewMode === '3d'
                 ? 'bg-gold text-warm-black hover:bg-gold-light'
                 : 'bg-white/90 backdrop-blur-md text-silver-800 hover:bg-white border border-silver-200'
@@ -125,15 +127,15 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
         )}
       </div>
 
-      {/* Thumbnails — only show in image mode */}
-      {!show3D && images.length > 1 && (
-        <div className="flex gap-3 mt-4 max-w-[520px]">
+      {/* Thumbnails */}
+      {(images.length > 0 || (has3D && !viewerFailed)) && (
+        <div className="flex gap-2 sm:gap-3 mt-4 max-w-[520px] overflow-x-auto">
           {images.map((img, i) => (
             <button
               key={i}
-              onClick={() => setActiveThumb(i)}
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 overflow-hidden relative cursor-pointer transition-all duration-200 ${
-                activeThumb === i
+              onClick={() => { setActiveThumb(i); setViewMode('images'); }}
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 overflow-hidden relative cursor-pointer transition-all duration-200 shrink-0 ${
+                viewMode === 'images' && activeThumb === i
                   ? 'border-gold shadow-md shadow-gold/20 scale-105'
                   : 'border-silver-200 hover:border-gold/50'
               }`}
@@ -146,9 +148,9 @@ export default function ProductGallery({ name, primaryImage, hoverImage, colour,
           {has3D && !viewerFailed && (
             <button
               onClick={() => setViewMode('3d')}
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 overflow-hidden flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-200 ${
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-200 shrink-0 ${
                 viewMode === '3d'
-                  ? 'border-gold bg-gold/10 shadow-md shadow-gold/20'
+                  ? 'border-gold bg-gold/10 shadow-md shadow-gold/20 scale-105'
                   : 'border-silver-200 bg-silver-50 hover:border-gold/50'
               }`}
             >
