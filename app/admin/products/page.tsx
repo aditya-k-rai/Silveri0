@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
-import { uploadProductImage, deleteStoragePath, sanitize } from "@/lib/firebase/storage";
+// Images stored as compressed base64 directly in Firestore (no Firebase Storage needed)
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
@@ -43,21 +43,10 @@ export default function AdminProductsPage() {
     await saveProductToFirestore({ ...p, ...updates });
   };
 
-  // Track whether this is a new product (for cancel cleanup)
-  const [isNewProduct, setIsNewProduct] = useState(false);
-  // Track storage paths uploaded during this session (for cancel cleanup)
-  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
-  // Track which fields are currently uploading
-  const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
-
   const openEditor = (prod: Product | null) => {
-    setUploadedPaths([]);
-    setUploadingFields(new Set());
     if (prod) {
-      setIsNewProduct(false);
       setEditingParams({ ...prod });
     } else {
-      setIsNewProduct(true);
       setEditingParams({
         id: `P${Date.now()}`,
         name: "",
@@ -95,39 +84,50 @@ export default function AdminProductsPage() {
   };
 
   const closeEditor = () => setEditingParams(null);
-
-  // Cancel — delete uploaded images if this was a new product
-  const cancelEditor = async () => {
-    if (isNewProduct && uploadedPaths.length > 0) {
-      await Promise.all(uploadedPaths.map((p) => deleteStoragePath(p)));
-    }
-    closeEditor();
-  };
+  const cancelEditor = () => closeEditor();
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const uploadFileNow = async (file: File, productId: string, field: string, index: number): Promise<string> => {
-    const safeName = sanitize(file.name);
-    const url = await uploadProductImage(productId, file, index);
-    setUploadedPaths((prev) => [...prev, `products/${productId}/${index}-${safeName}`]);
-    return url;
+  // Compress image to small base64 for Firestore storage
+  const compressToBase64 = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = Math.round((h * maxWidth) / w);
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        // Try WebP first, fallback to JPEG
+        let result = canvas.toDataURL('image/webp', quality);
+        if (!result.startsWith('data:image/webp')) {
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(result);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const saveProduct = async () => {
     if (!editingParams) return;
-    if (uploadingFields.size > 0) {
-      alert("Please wait for images to finish uploading.");
-      return;
-    }
     setIsSaving(true);
     try {
-      if (isNewProduct) {
+      const isNew = !products.some(p => p.id === editingParams.id);
+      if (isNew) {
         addProduct(editingParams);
       } else {
         updateProduct(editingParams.id, editingParams);
       }
       await saveProductToFirestore(editingParams);
-      setUploadedPaths([]); // Clear — save succeeded, don't delete on future cancel
       closeEditor();
     } catch (err) {
       console.error("Failed to save product:", err);
@@ -167,51 +167,20 @@ export default function AdminProductsPage() {
     const file = e.target.files[0];
 
     if (type === '3d') {
-      const productId = editingParams.id;
-      setUploadingFields((prev) => new Set(prev).add('3d'));
-      try {
-        const { upload3DModel } = await import('@/lib/firebase/storage');
-        const url = await upload3DModel(productId, file);
-        setEditingParams((prev) => prev ? { ...prev, model3dFileName: url } : prev);
-        setUploadedPaths((prev) => [...prev, `3d-models/${productId}/${file.name}`]);
-      } catch (err) {
-        console.error('Failed to upload 3D model:', err);
-        alert(`Failed to upload 3D model. ${err instanceof Error ? err.message : ''}`);
-      } finally {
-        setUploadingFields((prev) => { const n = new Set(prev); n.delete('3d'); return n; });
-      }
+      // 3D models: store filename only (viewer loads from public folder or URL)
+      setEditingParams((prev) => prev ? { ...prev, model3dFileName: file.name } : prev);
       return;
     }
 
-    const { field, index } = IMAGE_FIELD_MAP[type];
-    const productId = editingParams.id;
-
-    // Mark as uploading and upload file directly
-    setUploadingFields((prev) => new Set(prev).add(type));
+    const { field } = IMAGE_FIELD_MAP[type];
 
     try {
-      const url = await uploadFileNow(file, productId, String(field), index);
-      setEditingParams((prev) => prev ? { ...prev, [field]: url } : prev);
+      // Compress image and store as base64 in Firestore
+      const base64 = await compressToBase64(file);
+      setEditingParams((prev) => prev ? { ...prev, [field]: base64 } : prev);
     } catch (err) {
-      console.error(`Failed to upload ${field}:`, err);
-      const msg = err instanceof Error ? err.message : String(err);
-      
-      if (msg.includes('fetch') || msg.includes('CORS')) {
-        alert(`UPLOAD BLOCKED BY CORS. 
-        
-Please run this command in your terminal to fix it:
-gsutil cors set cors.json gs://silveri0.appspot.com
-
-(Check the console for more details)`);
-      } else {
-        alert(`Failed to upload image. ${msg}`);
-      }
-    } finally {
-      setUploadingFields((prev) => {
-        const next = new Set(prev);
-        next.delete(type);
-        return next;
-      });
+      console.error(`Failed to process ${String(field)}:`, err);
+      alert(`Failed to process image. Please try a different image.`);
     }
   };
 
@@ -358,7 +327,7 @@ gsutil cors set cors.json gs://silveri0.appspot.com
             <div className="flex bg-white items-center justify-between px-6 py-4 border-b border-[#E8E8E8] shrink-0">
               <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold text-[#1A1A1A] flex items-center gap-2">
                 <Tag size={18} className="text-[#C9A84C]" />
-                {isNewProduct ? "New Product" : "Edit Product"}
+                {editingParams.id.startsWith('P') && !products.some(p => p.id === editingParams.id) ? "New Product" : "Edit Product"}
               </h2>
               <button onClick={closeEditor} className="p-2 text-[#7A7585] hover:bg-[#E8E8E8]/50 rounded-full transition-colors">
                 <X size={20} />
@@ -384,16 +353,11 @@ gsutil cors set cors.json gs://silveri0.appspot.com
                       <label className="block text-[10px] font-medium text-[#7A7585] mb-1.5 text-center">{label}</label>
                       <label
                         className={`w-full aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group ${
-                          uploadingFields.has(key) ? 'border-[#C9A84C] bg-[#FDFAF5]' : editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
+                          editingParams[field] ? `border-${color}` : 'border-[#E8E8E8] hover:border-[#C9A84C]/50 bg-[#FDFAF5]'
                         }`}
                       >
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} disabled={uploadingFields.has(key)} />
-                        {uploadingFields.has(key) ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-                            <span className="text-[10px] text-[#C9A84C] font-medium">Uploading...</span>
-                          </div>
-                        ) : editingParams[field] ? (
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaUpload(e, key)} />
+                        {editingParams[field] ? (
                           <>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={editingParams[field]!} alt="" className="w-full h-full object-cover" />
@@ -415,21 +379,17 @@ gsutil cors set cors.json gs://silveri0.appspot.com
                 {/* 3D Model Configurator */}
                 <div className="bg-white p-5 rounded-2xl border border-[#E8E8E8] flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center shrink-0">
-                    {uploadingFields.has('3d') ? (
-                      <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Box className="text-[#C9A84C]" size={24} />
-                    )}
+                    <Box className="text-[#C9A84C]" size={24} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[#1A1A1A]">3D Model View (.obj / .3dm)</p>
                     <p className="text-xs text-[#7A7585] truncate">
-                      {uploadingFields.has('3d') ? "Uploading 3D model..." : editingParams.model3dFileName ? "3D model attached" : "No 3D file attached for Interactive AR/Viewer."}
+                      {editingParams.model3dFileName ? `Attached: ${editingParams.model3dFileName}` : "No 3D file attached for Interactive AR/Viewer."}
                     </p>
                   </div>
-                  <label className={`px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium transition-colors ${uploadingFields.has('3d') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#F5F3EF]'}`}>
-                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} disabled={uploadingFields.has('3d')} />
-                    {uploadingFields.has('3d') ? "Uploading..." : editingParams.model3dFileName ? "Replace File" : "Upload File"}
+                  <label className="cursor-pointer px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium hover:bg-[#F5F3EF] transition-colors">
+                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} />
+                    {editingParams.model3dFileName ? "Replace File" : "Upload File"}
                   </label>
                 </div>
               </div>
@@ -725,7 +685,7 @@ gsutil cors set cors.json gs://silveri0.appspot.com
               </button>
               <button
                 onClick={saveProduct}
-                disabled={!editingParams.name || !editingParams.price || isSaving || uploadingFields.size > 0}
+                disabled={!editingParams.name || !editingParams.price || isSaving}
                 className="flex-[2] flex items-center justify-center gap-2 bg-[#1A1A1A] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors disabled:opacity-50"
               >
                 {isSaving ? (
