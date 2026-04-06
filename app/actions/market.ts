@@ -1,46 +1,29 @@
 "use server";
 
-const TROY_OUNCE_TO_GRAMS = 31.1035;
-
 export async function fetchLiveMarketRates() {
   try {
-    // 1. Fetch Metals.dev — Silver in USD per Troy Ounce
-    const metalsUrl = `https://api.metals.dev/v1/latest?api_key=${process.env.METALS_DEV_API_KEY}&currency=USD&unit=toz`;
-    const metalsRes = await fetch(metalsUrl, {
+    const apiKey = process.env.METALS_DEV_API_KEY;
+    if (!apiKey) throw new Error("METALS_DEV_API_KEY not set");
+
+    const url = `https://api.metals.dev/v1/latest?api_key=${apiKey}&currency=INR&unit=g`;
+    const res = await fetch(url, {
       cache: 'no-store',
       headers: { 'Accept': 'application/json' },
     });
-    const metalsData = await metalsRes.json();
+    const data = await res.json();
 
-    const silverUsdPerToz = metalsData?.metals?.silver || 0;
-    const metalsTimestamp = metalsData?.timestamp || null;
+    if (data.status !== 'success') throw new Error("API returned error");
 
-    // 2. Fetch FRED — USD to INR exchange rate (DEXINUS)
-    const fredUrl = `${process.env.NEXT_PUBLIC_FRED_API_URL}?series_id=DEXINUS&api_key=${process.env.FRED_API_KEY}&file_type=json&sort_order=desc&limit=1`;
-    const fredRes = await fetch(fredUrl, {
-      cache: 'no-store',
-      headers: { 'Accept': 'application/json' },
-    });
-    const fredData = await fredRes.json();
-
-    const observation = fredData?.observations?.[0];
-    const usdInrRate = parseFloat(observation?.value || "0");
-    const fredObservationDate = observation?.date || null;
-
-    // 3. Convert: USD/toz → INR/gram
-    // silverRate (INR per gram) = (silverUsdPerToz × usdInrRate) / 31.1035
-    const silverRate = usdInrRate > 0 && silverUsdPerToz > 0
-      ? parseFloat(((silverUsdPerToz * usdInrRate) / TROY_OUNCE_TO_GRAMS).toFixed(2))
-      : 0;
+    const silverRate = data.metals?.silver || 0;
+    const usdInrRate = data.currencies?.USD || 0;
 
     return {
       success: true,
       silverRate,
-      silverUsdPerToz,
       usdInrRate,
       fetchedAt: new Date().toISOString(),
-      fredObservationDate,
-      metalsTimestamp,
+      fredObservationDate: null,
+      metalsTimestamp: data.timestamps?.metal || null,
       error: null
     };
 
@@ -49,7 +32,6 @@ export async function fetchLiveMarketRates() {
     return {
       success: false,
       silverRate: 0,
-      silverUsdPerToz: 0,
       usdInrRate: 0,
       fetchedAt: new Date().toISOString(),
       fredObservationDate: null,
