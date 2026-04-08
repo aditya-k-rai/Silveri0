@@ -18,7 +18,20 @@ interface ChartPoint {
 function formatChartLabel(date: Date): { label: string; date: string; time: string } {
   const d = date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
   const t = date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-  return { label: `${d} ${t}`, date: d, time: t };
+  return { label: d, date: d, time: t };
+}
+
+// Keep only the latest entry per day
+function dedupeByDay(entries: MarketRateEntry[]): MarketRateEntry[] {
+  const map = new Map<string, MarketRateEntry>();
+  for (const entry of entries) {
+    const dayKey = entry.fetchedAt.toISOString().split("T")[0];
+    const existing = map.get(dayKey);
+    if (!existing || entry.fetchedAt.getTime() > existing.fetchedAt.getTime()) {
+      map.set(dayKey, entry);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.fetchedAt.getTime() - b.fetchedAt.getTime());
 }
 
 function formatLastUpdated(date: Date): string {
@@ -55,7 +68,8 @@ export default function LiveMarketDashboard() {
   }, []);
 
   const loadHistory = async () => {
-    const history = await fetchRecentRates(40);
+    const rawHistory = await fetchRecentRates(120); // Fetch more to cover 40 days after dedup
+    const history = dedupeByDay(rawHistory).slice(-40); // Keep latest 40 days only
     if (history.length > 0) {
       const points = history.map((entry) => {
         const fmt = formatChartLabel(entry.fetchedAt);
@@ -125,14 +139,18 @@ export default function LiveMarketDashboard() {
           fredObservationDate: result.fredObservationDate || undefined,
         });
 
-        // Add to chart
+        // Add/replace today's point in chart (one per day)
         const fmt = formatChartLabel(fetchedAt);
+        const todayLabel = fmt.label;
         const newPoint: ChartPoint = {
           ...fmt,
           silverRate: newSilver,
           usdInr: newUSD,
         };
-        setChartData((prev) => [...prev, newPoint]);
+        setChartData((prev) => {
+          const withoutToday = prev.filter((p) => p.label !== todayLabel);
+          return [...withoutToday, newPoint].slice(-40);
+        });
 
         // Recalculate linked product prices
         const updatedProducts = products.map(p => {
