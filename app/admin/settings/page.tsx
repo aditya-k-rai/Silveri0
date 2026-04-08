@@ -1,40 +1,192 @@
 "use client";
 
-import { useState } from "react";
-import { Upload, Save, Globe, Mail, Phone, MessageCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Upload, Save, Globe, Mail, MessageCircle, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
+
+const SETTINGS_DOC = "siteSettings";
+const SETTINGS_COLLECTION = "settings";
+
+const compressBanner = (file: File, maxWidth = 1920, quality = 0.75): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      let result = canvas.toDataURL("image/webp", quality);
+      if (!result.startsWith("data:image/webp")) result = canvas.toDataURL("image/jpeg", quality);
+      resolve(result);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+};
 
 export default function AdminSettingsPage() {
+  const [heroBanner, setHeroBanner] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [announcement, setAnnouncement] = useState("Free shipping on orders above ₹2,000!");
   const [announcementEnabled, setAnnouncementEnabled] = useState(true);
   const [socials, setSocials] = useState({
-    instagram: "https://instagram.com/silveri",
-    facebook: "https://facebook.com/silveri",
-    twitter: "https://twitter.com/silveri",
-    website: "https://silveri.in",
+    instagram: "",
+    facebook: "",
+    twitter: "",
+    website: "",
   });
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // Load settings from Firestore
+  useEffect(() => {
+    if (!db) { setLoading(false); return; }
+    getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.heroBanner) setHeroBanner(data.heroBanner);
+        if (data.announcement !== undefined) setAnnouncement(data.announcement);
+        if (data.announcementEnabled !== undefined) setAnnouncementEnabled(data.announcementEnabled);
+        if (data.socials) setSocials((prev) => ({ ...prev, ...data.socials }));
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Image too large. Please use an image under 4MB.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const base64 = await compressBanner(file, 1920, 0.7);
+      setHeroBanner(base64);
+    } catch (err) {
+      console.error("Failed to compress banner:", err);
+      alert("Failed to process image. Please try another.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
+
+  const removeBanner = () => {
+    setHeroBanner(null);
+  };
+
+  const handleSave = async () => {
+    if (!db) return;
+    setSaving(true);
+    try {
+      await setDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), {
+        heroBanner,
+        announcement,
+        announcementEnabled,
+        socials,
+        updatedAt: new Date().toISOString(),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      alert("Failed to save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="text-[#C9A84C] animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-3xl">
       {/* Hero Banner */}
       <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6">
         <h3 className="font-[family-name:var(--font-heading)] font-semibold text-lg mb-4">Hero Banner</h3>
-        <div className="border-2 border-dashed border-[#E8E8E8] rounded-2xl p-10 text-center hover:border-[#C9A84C]/40 transition-colors cursor-pointer">
-          <Upload size={32} className="mx-auto text-[#7A7585] mb-3" />
-          <p className="text-sm text-[#7A7585] mb-1">Drag and drop an image, or click to browse</p>
-          <p className="text-xs text-[#7A7585]">Recommended: 1920 x 720px, JPG/PNG, max 2MB</p>
-          <input type="file" accept="image/*" className="hidden" />
+
+        <div
+          onClick={() => !uploading && fileRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const file = e.dataTransfer.files?.[0];
+            if (file && file.type.startsWith("image/")) {
+              const dt = new DataTransfer();
+              dt.items.add(file);
+              if (fileRef.current) {
+                fileRef.current.files = dt.files;
+                fileRef.current.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+            }
+          }}
+          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer ${
+            uploading ? "border-[#C9A84C]/60 bg-[#FDFAF5]" : "border-[#E8E8E8] hover:border-[#C9A84C]/40"
+          }`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 size={32} className="mx-auto text-[#C9A84C] mb-3 animate-spin" />
+              <p className="text-sm text-[#7A7585]">Compressing image...</p>
+            </>
+          ) : (
+            <>
+              <Upload size={32} className="mx-auto text-[#7A7585] mb-3" />
+              <p className="text-sm text-[#7A7585] mb-1">Drag and drop an image, or click to browse</p>
+              <p className="text-xs text-[#7A7585]">Recommended: 1920 x 720px, JPG/PNG, max 4MB</p>
+            </>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleBannerUpload}
+          />
         </div>
-        <div className="mt-4 flex gap-3">
-          <div className="w-24 h-16 rounded-lg bg-[#E8E8E8]/40 flex items-center justify-center text-[10px] text-[#7A7585]">
-            Current
+
+        {/* Banner Preview */}
+        {heroBanner && (
+          <div className="mt-4 relative inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroBanner}
+              alt="Hero banner preview"
+              className="h-24 rounded-xl object-cover border border-[#E8E8E8]"
+            />
+            <button
+              onClick={removeBanner}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+            >
+              <X size={12} />
+            </button>
           </div>
-        </div>
+        )}
+        {!heroBanner && (
+          <div className="mt-4 flex gap-3">
+            <div className="w-24 h-16 rounded-lg bg-[#E8E8E8]/40 flex items-center justify-center text-[10px] text-[#7A7585]">
+              <ImageIcon size={16} className="text-[#7A7585]" />
+            </div>
+            <p className="text-xs text-[#7A7585] self-center">No banner uploaded</p>
+          </div>
+        )}
       </div>
 
       {/* Announcement */}
@@ -83,6 +235,7 @@ export default function AdminSettingsPage() {
                   type="url"
                   value={socials[s.key]}
                   onChange={(e) => setSocials((p) => ({ ...p, [s.key]: e.target.value }))}
+                  placeholder={`https://${s.key}.com/yourpage`}
                   className="w-full border border-[#E8E8E8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
                 />
               </div>
@@ -95,9 +248,11 @@ export default function AdminSettingsPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={handleSave}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-[#C9A84C] text-white font-medium rounded-xl hover:bg-[#8A6E2F] transition-colors"
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-8 py-3 bg-[#C9A84C] text-white font-medium rounded-xl hover:bg-[#8A6E2F] transition-colors disabled:opacity-60"
         >
-          <Save size={16} /> Save Settings
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          {saving ? "Saving..." : "Save Settings"}
         </button>
         {saved && <span className="text-sm text-green-700 font-medium">Settings saved!</span>}
       </div>

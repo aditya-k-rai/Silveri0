@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import ProductCard from '@/components/product/ProductCard';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 const exploreCategories = [
   { name: 'Wedding', slug: 'wedding', image: '' },
@@ -19,6 +22,20 @@ export default function HomePage() {
   const featuredProducts = activeProducts.filter((p) => p.isFeatured);
   const newArrivals = activeProducts.filter((p) => p.isNewArrival);
 
+  const [heroBanner, setHeroBanner] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState<{ text: string; enabled: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'settings', 'siteSettings')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.heroBanner) setHeroBanner(data.heroBanner);
+        if (data.announcement) setAnnouncement({ text: data.announcement, enabled: data.announcementEnabled ?? true });
+      }
+    }).catch(() => {});
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -29,30 +46,53 @@ export default function HomePage() {
 
   return (
     <>
+      {/* ====== ANNOUNCEMENT BAR ====== */}
+      {announcement?.enabled && announcement.text && (
+        <div className="bg-gold text-silver-900 text-center py-2 px-4 text-xs sm:text-sm font-medium tracking-wide">
+          {announcement.text}
+        </div>
+      )}
+
       {/* ====== HERO SECTION ====== */}
       <section className="relative bg-gradient-to-br from-silver-100 via-white to-silver-200 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gold/5 via-transparent to-transparent" />
+        {heroBanner ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={heroBanner} alt="Silveri" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/30" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gold/5 via-transparent to-transparent" />
+        )}
         <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28 lg:py-36 text-center">
-          <p className="text-silver-500 text-xs uppercase tracking-[0.3em] mb-5">Luxury Silver Jewelry</p>
-          <h1 className="font-[family-name:var(--font-heading)] text-5xl md:text-6xl lg:text-7xl font-light text-silver-900 mb-5 leading-tight">
+          <p className={`text-xs uppercase tracking-[0.3em] mb-5 ${heroBanner ? 'text-white/70' : 'text-silver-500'}`}>Luxury Silver Jewelry</p>
+          <h1 className={`font-[family-name:var(--font-heading)] text-5xl md:text-6xl lg:text-7xl font-light mb-5 leading-tight ${heroBanner ? 'text-white' : 'text-silver-900'}`}>
             Timeless{' '}
-            <span className="font-medium bg-gradient-to-r from-gold-dark via-gold to-gold-light bg-clip-text text-transparent">
+            <span className={`font-medium ${heroBanner ? 'text-gold-light' : 'bg-gradient-to-r from-gold-dark via-gold to-gold-light bg-clip-text text-transparent'}`}>
               Elegance
             </span>
           </h1>
-          <p className="text-silver-500 text-base md:text-lg max-w-lg mx-auto mb-10 font-light leading-relaxed">
+          <p className={`text-base md:text-lg max-w-lg mx-auto mb-10 font-light leading-relaxed ${heroBanner ? 'text-white/80' : 'text-silver-500'}`}>
             Discover our handcrafted collection of luxury silver jewelry for every occasion
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/category/all"
-              className="inline-flex items-center justify-center gap-2 bg-silver-900 text-white px-8 py-3.5 rounded-full text-sm font-medium hover:bg-silver-800 transition-all hover:shadow-xl hover:shadow-silver-900/20"
+              className={`inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all hover:shadow-xl ${
+                heroBanner
+                  ? 'bg-white text-silver-900 hover:bg-silver-100 hover:shadow-white/20'
+                  : 'bg-silver-900 text-white hover:bg-silver-800 hover:shadow-silver-900/20'
+              }`}
             >
               Shop Now <ArrowRight size={16} />
             </Link>
             <Link
               href="/category/new-arrivals"
-              className="inline-flex items-center justify-center gap-2 bg-white/70 backdrop-blur-sm text-silver-800 px-8 py-3.5 rounded-full text-sm font-medium hover:bg-white transition-all border border-silver-300 hover:border-silver-400 hover:shadow-lg"
+              className={`inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all hover:shadow-lg ${
+                heroBanner
+                  ? 'bg-white/20 backdrop-blur-sm text-white border border-white/40 hover:bg-white/30'
+                  : 'bg-white/70 backdrop-blur-sm text-silver-800 border border-silver-300 hover:bg-white hover:border-silver-400'
+              }`}
             >
               New Arrivals
             </Link>

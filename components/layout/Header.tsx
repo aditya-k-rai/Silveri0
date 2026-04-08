@@ -49,9 +49,30 @@ export default function Header() {
 
   return (
     <>
+      {/* SVG Filter for Liquid Glass - rendered once, hidden */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
+        <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence" />
+          <feComponentTransfer in="turbulence" result="mapped">
+            <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+            <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+            <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+          </feComponentTransfer>
+          <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+          <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lightingColor="white" result="specLight">
+            <fePointLight x="-200" y="-200" z="300" />
+          </feSpecularLighting>
+          <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
+          <feDisplacementMap in="SourceGraphic" in2="softMap" scale="150" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+
       {/* ===== DESKTOP HEADER ===== */}
-      <header className="sticky top-0 z-50 hidden md:block bg-white/80 backdrop-blur-xl border-b border-silver-200/60">
-        <div className="max-w-7xl mx-auto px-6">
+      <header className="liquidGlass-wrapper sticky top-0 z-50 hidden md:block border-b border-silver-200/60">
+        <div className="liquidGlass-effect" />
+        <div className="liquidGlass-tint" />
+        <div className="liquidGlass-shine" />
+        <div className="liquidGlass-content max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between h-[72px]">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 shrink-0">
@@ -152,8 +173,11 @@ export default function Header() {
       </header>
 
       {/* ===== MOBILE HEADER ===== */}
-      <header className="sticky top-0 z-50 md:hidden bg-white/90 backdrop-blur-xl border-b border-silver-200/60">
-        <div className="flex items-center justify-between h-14 px-4">
+      <header className="liquidGlass-wrapper sticky top-0 z-50 md:hidden border-b border-silver-200/60">
+        <div className="liquidGlass-effect" />
+        <div className="liquidGlass-tint" />
+        <div className="liquidGlass-shine" />
+        <div className="liquidGlass-content flex items-center justify-between h-14 px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-7 h-7 bg-silver-900 rounded-lg flex items-center justify-center">
@@ -228,8 +252,11 @@ export default function Header() {
       )}
 
       {/* ===== MOBILE BOTTOM TAB BAR ===== */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 backdrop-blur-xl border-t border-silver-200/60 safe-area-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="liquidGlass-wrapper fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-silver-200/60 safe-area-bottom">
+        <div className="liquidGlass-effect" />
+        <div className="liquidGlass-tint" />
+        <div className="liquidGlass-shine" />
+        <div className="liquidGlass-content flex items-center justify-around h-16 px-2">
           {navLinks.map(({ href, icon: Icon, label }) => {
             const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
             return (
