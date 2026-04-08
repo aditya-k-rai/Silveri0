@@ -55,7 +55,7 @@ export default function LiveMarketDashboard() {
   }, []);
 
   const loadHistory = async () => {
-    const history = await fetchRecentRates(30);
+    const history = await fetchRecentRates(40);
     if (history.length > 0) {
       const points = history.map((entry) => {
         const fmt = formatChartLabel(entry.fetchedAt);
@@ -80,10 +80,21 @@ export default function LiveMarketDashboard() {
         setPreviousSilver(prev.silverRate);
         setPreviousUSD(prev.usdInr);
       }
-    }
 
-    // Auto-sync on mount to get fresh data
-    await doSync(history);
+      // Check if already synced today — if not, auto-sync once (daily at load)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastSyncDate = new Date(latest.fetchedAt);
+      lastSyncDate.setHours(0, 0, 0, 0);
+
+      if (lastSyncDate.getTime() < today.getTime()) {
+        // Not synced today yet — auto-sync
+        await doSync(history);
+      }
+    } else {
+      // No history at all — do initial sync
+      await doSync();
+    }
   };
 
   const doSync = async (existingHistory?: MarketRateEntry[]) => {
@@ -145,7 +156,24 @@ export default function LiveMarketDashboard() {
     }
   };
 
-  const forceSync = () => doSync();
+  const alreadySyncedToday = (() => {
+    if (!lastUpdated) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastDate = new Date(lastUpdated);
+    lastDate.setHours(0, 0, 0, 0);
+    return lastDate.getTime() >= today.getTime();
+  })();
+
+  const forceSync = () => {
+    if (alreadySyncedToday) {
+      const confirm = window.confirm(
+        "Already synced today. API quota is limited to 90 requests/month (1 per day).\n\nAre you sure you want to use another request?"
+      );
+      if (!confirm) return;
+    }
+    doSync();
+  };
 
   const toggleLink = (id: string, currentTargetWeightStr: string, currentMargin: number) => {
     const p = products.find(prod => prod.id === id);
@@ -184,18 +212,29 @@ export default function LiveMarketDashboard() {
           <p className="text-sm text-[#7A7585]">Configure dynamic pricing driven by real-time commodities.</p>
         </div>
         <div className="flex items-center gap-4">
-          <p className="text-xs text-[#7A7585] hidden sm:block">Auto Sync: Daily at 6:00 AM (IST)</p>
           <div className="flex flex-col items-end gap-1.5">
-            <button
-              onClick={forceSync}
-              disabled={isSyncing}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors ${isSyncing ? "opacity-75 cursor-not-allowed" : ""}`}
-            >
-              <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} />
-              {isSyncing ? "Fetching APIs..." : "Force API Sync"}
-            </button>
+            <div className="flex items-center gap-3">
+              {alreadySyncedToday && (
+                <span className="text-xs text-emerald-600 font-medium hidden sm:block">Synced today</span>
+              )}
+              {!alreadySyncedToday && (
+                <span className="text-xs text-[#7A7585] hidden sm:block">Auto-syncs once daily on load</span>
+              )}
+              <button
+                onClick={forceSync}
+                disabled={isSyncing}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-xl transition-colors ${
+                  alreadySyncedToday
+                    ? "bg-[#E8E8E8] text-[#7A7585] hover:bg-[#D4D4D8]"
+                    : "bg-[#1A1A1A] text-white hover:bg-black"
+                } ${isSyncing ? "opacity-75 cursor-not-allowed" : ""}`}
+              >
+                <RefreshCcw size={16} className={isSyncing ? "animate-spin" : ""} />
+                {isSyncing ? "Fetching APIs..." : "Force API Sync"}
+              </button>
+            </div>
             <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
-              <AlertTriangle size={12} /> Limit: 20 per month
+              <AlertTriangle size={12} /> Quota: 90 requests/month (1 per day recommended)
             </p>
           </div>
         </div>
@@ -260,7 +299,7 @@ export default function LiveMarketDashboard() {
 
       {/* Historical Chart */}
       <div className="bg-white p-6 rounded-2xl border border-[#E8E8E8] shadow-sm">
-        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">Market Rate History</h3>
+        <h3 className="text-[#1A1A1A] font-semibold mb-6 flex items-center gap-2">Market Rate History <span className="text-xs font-normal text-[#7A7585]">(Last 40 days)</span></h3>
         {chartData.length > 0 ? (
           <>
             <div className="w-full h-[300px]">
@@ -307,7 +346,7 @@ export default function LiveMarketDashboard() {
           </>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-[#7A7585]">
-            {isSyncing ? "Fetching live rates..." : "No rate history yet. Click \"Force API Sync\" to fetch the first data point."}
+            {isSyncing ? "Fetching live rates..." : "No rate history yet. The API syncs automatically once daily, or click \"Force API Sync\" to fetch now."}
           </div>
         )}
       </div>

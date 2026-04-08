@@ -34,7 +34,7 @@ export async function saveMarketRate(entry: Omit<MarketRateEntry, 'fetchedAt'> &
   });
 }
 
-export async function fetchRecentRates(count: number = 21): Promise<MarketRateEntry[]> {
+export async function fetchRecentRates(count: number = 40): Promise<MarketRateEntry[]> {
   const ref = getRatesRef();
   if (!ref) return [];
   const q = query(ref, orderBy('fetchedAt', 'desc'), limit(count));
