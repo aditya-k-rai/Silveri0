@@ -10,9 +10,13 @@ import {
   BarChart3,
   Users,
   Plus,
+  X,
+  Minus,
 } from "lucide-react";
 import {
   LineChart,
+  BarChart,
+  Bar,
   Line,
   XAxis,
   YAxis,
@@ -58,6 +62,12 @@ const METRIC_CONFIG: Record<MetricKey, { label: string; format: (v: number) => s
 };
 
 // ─── Build daily data for a period ──────────────────────────────
+function toSafeDate(d: any): Date {
+  if (d instanceof Date) return d;
+  if (d?.toDate) return d.toDate();
+  return new Date(d);
+}
+
 function buildDailyData(orders: Order[], startDate: Date, endDate: Date) {
   const map: Record<string, { revenue: number; orders: number; visitors: number }> = {};
   const cur = new Date(startDate);
@@ -66,11 +76,11 @@ function buildDailyData(orders: Order[], startDate: Date, endDate: Date) {
     cur.setDate(cur.getDate() + 1);
   }
   orders.forEach((o) => {
-    const key = getDayKey(o.createdAt);
+    const key = getDayKey(toSafeDate(o.createdAt));
     if (map[key]) {
       map[key].revenue += o.total;
       map[key].orders += 1;
-      map[key].visitors += 1; // Approximate visitors from orders
+      map[key].visitors += 1;
     }
   });
   return Object.entries(map)
@@ -126,6 +136,17 @@ function ReportTooltip({
 }
 
 // ─── Main Report Page ────────────────────────────────────────────
+const DATE_RANGES = [
+  { label: "Today", days: 0 },
+  { label: "Last 7 days", days: 7 },
+  { label: "Last 30 days", days: 30 },
+  { label: "Last 90 days", days: 90 },
+  { label: "Last 365 days", days: 365 },
+];
+
+const VIZ_OPTIONS = ["Line", "Bar"] as const;
+type VizType = (typeof VIZ_OPTIONS)[number];
+
 export default function AdminReportsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,8 +154,15 @@ export default function AdminReportsPage() {
   const [queryExpanded, setQueryExpanded] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
 
+  // Date range
+  const [rangeDays, setRangeDays] = useState(30);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   // Right sidebar state
   const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(["orders", "visitors"]);
+  const [vizType, setVizType] = useState<VizType>("Line");
+  const [showVizPicker, setShowVizPicker] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"freeform" | "cohorts">("freeform");
 
   useEffect(() => {
     const unsub = subscribeToOrders((data) => {
@@ -153,18 +181,24 @@ export default function AdminReportsPage() {
     const end = new Date(now);
     end.setHours(23, 59, 59, 999);
     const start = new Date(now);
-    start.setDate(start.getDate() - 29);
+    start.setDate(start.getDate() - Math.max(rangeDays - 1, 0));
     start.setHours(0, 0, 0, 0);
 
     const prevEnd = new Date(start);
     prevEnd.setDate(prevEnd.getDate() - 1);
     prevEnd.setHours(23, 59, 59, 999);
     const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - 29);
+    prevStart.setDate(prevStart.getDate() - Math.max(rangeDays - 1, 0));
     prevStart.setHours(0, 0, 0, 0);
 
-    const currentOrds = orders.filter((o) => o.createdAt >= start && o.createdAt <= end);
-    const prevOrds = orders.filter((o) => o.createdAt >= prevStart && o.createdAt <= prevEnd);
+    const toTime = (d: any) => (d instanceof Date ? d.getTime() : d?.toDate ? d.toDate().getTime() : new Date(d).getTime());
+    const startT = start.getTime();
+    const endT = end.getTime();
+    const prevStartT = prevStart.getTime();
+    const prevEndT = prevEnd.getTime();
+
+    const currentOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
+    const prevOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
 
     return {
       currentPeriod: { start, end },
@@ -172,8 +206,9 @@ export default function AdminReportsPage() {
       currentOrders: currentOrds,
       previousOrders: prevOrds,
     };
-  }, [orders, now]);
+  }, [orders, now, rangeDays]);
 
+  const rangeLabel = DATE_RANGES.find((r) => r.days === rangeDays)?.label || `Last ${rangeDays} days`;
   const currentLabel = fmtPeriod(currentPeriod.start, currentPeriod.end);
   const previousLabel = fmtPeriod(previousPeriod.start, previousPeriod.end);
 
@@ -275,16 +310,43 @@ export default function AdminReportsPage() {
 
         {/* Filter Chips */}
         <div className="px-6 pb-4 flex flex-wrap items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors">
-            <Clock size={14} className="text-[#7A7585]" />
-            Last 30 days
-          </button>
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors">
+          {/* Date Range Picker */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors"
+            >
+              <Clock size={14} className="text-[#7A7585]" />
+              {rangeLabel}
+              <ChevronDown size={12} className="text-[#7A7585]" />
+            </button>
+            {showDatePicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#E8E8E8] rounded-xl shadow-xl w-[200px] py-1">
+                  {DATE_RANGES.map((r) => (
+                    <button
+                      key={r.days}
+                      onClick={() => { setRangeDays(r.days); setShowDatePicker(false); }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                        rangeDays === r.days
+                          ? "bg-[#F5F3EF] text-[#1A1A1A] font-medium"
+                          : "text-[#7A7585] hover:bg-[#FAFAFA]"
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A]">
             {previousLabel}
           </button>
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors">
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E8E8E8] rounded-lg text-sm font-medium text-[#1A1A1A]">
             ₹ INR
-          </button>
+          </span>
         </div>
 
         {/* Query Indicator */}
@@ -351,49 +413,25 @@ export default function AdminReportsPage() {
         <div className="px-6 pb-4">
           <div className="w-full h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "#A1A1AA" }}
-                  dy={10}
-                  minTickGap={50}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "#A1A1AA" }}
-                  width={50}
-                />
-                <RechartsTooltip
-                  content={
-                    <ReportTooltip
-                      metricLabel={metricConfig.label}
-                      isRevenue={selectedMetric === "revenue"}
-                    />
-                  }
-                  cursor={{ stroke: "#E8E8E8", strokeWidth: 1 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="current"
-                  stroke="#1A8CFF"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 5, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previous"
-                  stroke="#1A8CFF"
-                  strokeWidth={1.5}
-                  strokeDasharray="6 4"
-                  dot={false}
-                  opacity={0.35}
-                />
-              </LineChart>
+              {vizType === "Bar" ? (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} dy={10} minTickGap={50} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} width={50} />
+                  <RechartsTooltip content={<ReportTooltip metricLabel={metricConfig.label} isRevenue={selectedMetric === "revenue"} />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                  <Bar dataKey="current" fill="#1A8CFF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="previous" fill="#1A8CFF" opacity={0.25} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              ) : (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} dy={10} minTickGap={50} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} width={50} />
+                  <RechartsTooltip content={<ReportTooltip metricLabel={metricConfig.label} isRevenue={selectedMetric === "revenue"} />} cursor={{ stroke: "#E8E8E8", strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="current" stroke="#1A8CFF" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="previous" stroke="#1A8CFF" strokeWidth={1.5} strokeDasharray="6 4" dot={false} opacity={0.35} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
           </div>
 
@@ -505,93 +543,166 @@ export default function AdminReportsPage() {
       <div className="hidden xl:flex flex-col w-[280px] border-l border-[#E8E8E8] bg-white shrink-0">
         {/* Tabs */}
         <div className="flex border-b border-[#E8E8E8]">
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-[#1A1A1A] border-b-2 border-[#1A1A1A]">
+          <button
+            onClick={() => setSidebarTab("freeform")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors ${
+              sidebarTab === "freeform"
+                ? "text-[#1A1A1A] border-b-2 border-[#1A1A1A]"
+                : "text-[#A1A1AA] hover:text-[#7A7585]"
+            }`}
+          >
             <BarChart3 size={14} />
             Freeform
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-[#A1A1AA] hover:text-[#7A7585] transition-colors">
+          <button
+            onClick={() => setSidebarTab("cohorts")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors ${
+              sidebarTab === "cohorts"
+                ? "text-[#1A1A1A] border-b-2 border-[#1A1A1A]"
+                : "text-[#A1A1AA] hover:text-[#7A7585]"
+            }`}
+          >
             <Users size={14} />
             Cohorts
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 space-y-6">
-          {/* Metrics */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[#1A1A1A]">Metrics</h3>
-              <button className="text-[#7A7585] hover:text-[#1A1A1A] transition-colors">
-                <Plus size={14} />
-              </button>
+        {sidebarTab === "freeform" ? (
+          <div className="flex-1 overflow-auto p-4 space-y-6">
+            {/* Metrics */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">Metrics</h3>
+                <button
+                  onClick={() => {
+                    const all: MetricKey[] = ["visitors", "orders", "revenue"];
+                    const missing = all.filter((m) => !activeMetrics.includes(m));
+                    if (missing.length > 0) setActiveMetrics([...activeMetrics, missing[0]]);
+                  }}
+                  className="text-[#7A7585] hover:text-[#1A1A1A] transition-colors"
+                  title="Add metric"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {(["visitors", "orders", "revenue"] as MetricKey[]).map((m) => {
+                  const isActive = activeMetrics.includes(m);
+                  const isSelected = selectedMetric === m;
+                  if (!isActive) return null;
+                  return (
+                    <div
+                      key={m}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isSelected
+                          ? "bg-[#F5F3EF] text-[#1A1A1A] font-medium"
+                          : "text-[#7A7585] hover:bg-[#FAFAFA]"
+                      }`}
+                    >
+                      <button
+                        onClick={() => setSelectedMetric(m)}
+                        className="flex-1 text-left"
+                      >
+                        {METRIC_CONFIG[m].label}
+                      </button>
+                      {isSelected && <Check size={14} className="text-[#1A1A1A] shrink-0" />}
+                      {activeMetrics.length > 1 && (
+                        <button
+                          onClick={() => {
+                            const next = activeMetrics.filter((x) => x !== m);
+                            setActiveMetrics(next);
+                            if (selectedMetric === m) setSelectedMetric(next[0]);
+                          }}
+                          className="text-[#A1A1AA] hover:text-red-500 transition-colors shrink-0"
+                          title="Remove metric"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Show inactive metrics as addable */}
+                {(["visitors", "orders", "revenue"] as MetricKey[])
+                  .filter((m) => !activeMetrics.includes(m))
+                  .map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setActiveMetrics([...activeMetrics, m])}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#A1A1AA] hover:text-[#7A7585] hover:bg-[#FAFAFA] transition-colors"
+                    >
+                      <Plus size={12} />
+                      {METRIC_CONFIG[m].label}
+                    </button>
+                  ))}
+              </div>
             </div>
-            <div className="space-y-1">
-              {(["visitors", "orders", "revenue"] as MetricKey[]).map((m) => {
-                const isActive = activeMetrics.includes(m);
-                const isSelected = selectedMetric === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => {
-                      setSelectedMetric(m);
-                      if (!isActive) {
-                        setActiveMetrics([...activeMetrics, m]);
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isSelected
-                        ? "bg-[#F5F3EF] text-[#1A1A1A] font-medium"
-                        : "text-[#7A7585] hover:bg-[#FAFAFA]"
-                    }`}
-                  >
-                    <span>{METRIC_CONFIG[m].label}</span>
-                    {isSelected && <Check size={14} className="text-[#1A1A1A]" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Dimensions */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[#1A1A1A]">Dimensions</h3>
-              <button className="text-[#7A7585] hover:text-[#1A1A1A] transition-colors">
-                <Plus size={14} />
-              </button>
+            {/* Dimensions */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">Dimensions</h3>
+              </div>
+              <div className="px-3 py-2 text-sm text-[#1A1A1A] bg-[#FAFAFA] rounded-lg">Day</div>
             </div>
-            <div className="px-3 py-2 text-sm text-[#1A1A1A]">Day</div>
-          </div>
 
-          {/* Visualization */}
-          <div>
-            <h3 className="text-sm font-semibold text-[#1A1A1A] mb-3">Visualization</h3>
-            <div className="flex items-center justify-between px-3 py-2 bg-[#FAFAFA] rounded-lg border border-[#E8E8E8]">
-              <span className="text-sm text-[#1A1A1A]">Line</span>
-              <ChevronDown size={14} className="text-[#7A7585]" />
+            {/* Visualization */}
+            <div>
+              <h3 className="text-sm font-semibold text-[#1A1A1A] mb-3">Visualization</h3>
+              <div className="relative">
+                <button
+                  onClick={() => setShowVizPicker(!showVizPicker)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-[#FAFAFA] rounded-lg border border-[#E8E8E8] hover:bg-[#F5F3EF] transition-colors"
+                >
+                  <span className="text-sm text-[#1A1A1A]">{vizType}</span>
+                  <ChevronDown size={14} className="text-[#7A7585]" />
+                </button>
+                {showVizPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowVizPicker(false)} />
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#E8E8E8] rounded-lg shadow-lg py-1">
+                      {VIZ_OPTIONS.map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => { setVizType(v); setShowVizPicker(false); }}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            vizType === v
+                              ? "bg-[#F5F3EF] text-[#1A1A1A] font-medium"
+                              : "text-[#7A7585] hover:bg-[#FAFAFA]"
+                          }`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Filters */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[#1A1A1A]">Filters</h3>
-              <button className="text-[#7A7585] hover:text-[#1A1A1A] transition-colors">
-                <Plus size={14} />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-[#7A7585]">Period comparison</p>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="px-2.5 py-1 bg-[#F5F3EF] border border-[#E8E8E8] rounded-md text-xs font-medium text-[#1A1A1A]">
-                  is one of
-                </span>
-                <span className="px-2.5 py-1 bg-[#F5F3EF] border border-[#E8E8E8] rounded-md text-xs font-medium text-[#1A1A1A]">
-                  Current &amp; Previous
-                </span>
+            {/* Filters */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-[#1A1A1A]">Filters</h3>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-[#7A7585]">Period comparison</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="px-2.5 py-1 bg-[#F5F3EF] border border-[#E8E8E8] rounded-md text-xs font-medium text-[#1A1A1A]">
+                    is one of
+                  </span>
+                  <span className="px-2.5 py-1 bg-[#F5F3EF] border border-[#E8E8E8] rounded-md text-xs font-medium text-[#1A1A1A]">
+                    Current &amp; Previous
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-6">
+            <p className="text-sm text-[#A1A1AA] text-center">Cohort analysis requires session tracking data. Coming soon.</p>
+          </div>
+        )}
       </div>
     </div>
   );

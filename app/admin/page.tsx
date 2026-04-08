@@ -32,6 +32,12 @@ import { Order } from "@/types";
 import Link from "next/link";
 
 // ─── Helpers ─────────────────────────────────────────────────────
+function toSafeDate(d: any): Date {
+  if (d instanceof Date) return d;
+  if (d?.toDate) return d.toDate();
+  return new Date(d);
+}
+
 function getDayKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -49,7 +55,7 @@ function buildDailyData(orders: Order[], startDate: Date, endDate: Date) {
     cur.setDate(cur.getDate() + 1);
   }
   orders.forEach((o) => {
-    const key = getDayKey(o.createdAt);
+    const key = getDayKey(toSafeDate(o.createdAt));
     if (map[key]) {
       map[key].revenue += o.total;
       map[key].orders += 1;
@@ -191,12 +197,21 @@ function StatMetric({
   );
 }
 
+const DASH_DATE_RANGES = [
+  { label: "Today", days: 0 },
+  { label: "Last 7 days", days: 7 },
+  { label: "Last 30 days", days: 30 },
+  { label: "Last 90 days", days: 90 },
+];
+
 // ─── Main Dashboard ──────────────────────────────────────────────
 export default function AdminDashboard() {
   const { products } = useProductStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [chartExpanded, setChartExpanded] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<"revenue" | "orders">("revenue");
+  const [rangeDays, setRangeDays] = useState(30);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToOrders((data) => setOrders(data));
@@ -212,18 +227,24 @@ export default function AdminDashboard() {
     const end = new Date(now);
     end.setHours(23, 59, 59, 999);
     const start = new Date(now);
-    start.setDate(start.getDate() - 29);
+    start.setDate(start.getDate() - Math.max(rangeDays - 1, 0));
     start.setHours(0, 0, 0, 0);
 
     const prevEnd = new Date(start);
     prevEnd.setDate(prevEnd.getDate() - 1);
     prevEnd.setHours(23, 59, 59, 999);
     const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - 29);
+    prevStart.setDate(prevStart.getDate() - Math.max(rangeDays - 1, 0));
     prevStart.setHours(0, 0, 0, 0);
 
-    const currentOrds = orders.filter((o) => o.createdAt >= start && o.createdAt <= end);
-    const prevOrds = orders.filter((o) => o.createdAt >= prevStart && o.createdAt <= prevEnd);
+    const toTime = (d: any) => (d instanceof Date ? d.getTime() : d?.toDate ? d.toDate().getTime() : new Date(d).getTime());
+    const startT = start.getTime();
+    const endT = end.getTime();
+    const prevStartT = prevStart.getTime();
+    const prevEndT = prevEnd.getTime();
+
+    const currentOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
+    const prevOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
 
     return {
       currentPeriod: { start, end },
@@ -231,7 +252,7 @@ export default function AdminDashboard() {
       currentOrders: currentOrds,
       previousOrders: prevOrds,
     };
-  }, [orders, now]);
+  }, [orders, now, rangeDays]);
 
   // ─── Metrics ──────────────────────────────────────────────────
   const currentRevenue = currentOrders.reduce((s, o) => s + o.total, 0);
@@ -296,15 +317,42 @@ export default function AdminDashboard() {
     <div className="space-y-5">
       {/* ─── Filter Bar ──────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors">
-          <Calendar size={14} className="text-[#7A7585]" />
-          Last 30 days
-          <ChevronDown size={14} className="text-[#7A7585]" />
-        </button>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors">
+        {/* Date Range Picker */}
+        <div className="relative">
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors"
+          >
+            <Calendar size={14} className="text-[#7A7585]" />
+            {DASH_DATE_RANGES.find((r) => r.days === rangeDays)?.label || `Last ${rangeDays} days`}
+            <ChevronDown size={14} className="text-[#7A7585]" />
+          </button>
+          {showDatePicker && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
+              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#E8E8E8] rounded-xl shadow-xl w-[180px] py-1">
+                {DASH_DATE_RANGES.map((r) => (
+                  <button
+                    key={r.days}
+                    onClick={() => { setRangeDays(r.days); setShowDatePicker(false); }}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      rangeDays === r.days
+                        ? "bg-[#F5F3EF] text-[#1A1A1A] font-medium"
+                        : "text-[#7A7585] hover:bg-[#FAFAFA]"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <span className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A]">
           <Layers size={14} className="text-[#7A7585]" />
           All channels
-        </button>
+        </span>
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A]">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
