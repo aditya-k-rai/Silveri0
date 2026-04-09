@@ -448,6 +448,7 @@ export default function AdminDashboard() {
                     tickLine={false}
                     tick={{ fontSize: 11, fill: "#A1A1AA" }}
                     width={50}
+                    allowDecimals={false}
                     tickFormatter={(v) =>
                       selectedMetric === "revenue" ? `₹${v.toLocaleString("en-IN")}` : String(v)
                     }
@@ -466,8 +467,8 @@ export default function AdminDashboard() {
                     dataKey="current"
                     stroke="#1A8CFF"
                     strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "#1A8CFF" }}
+                    dot={{ r: 3, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 1.5 }}
+                    activeDot={{ r: 5, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 2 }}
                   />
                   <Line
                     type="monotone"
@@ -475,7 +476,7 @@ export default function AdminDashboard() {
                     stroke="#1A8CFF"
                     strokeWidth={1.5}
                     strokeDasharray="6 4"
-                    dot={false}
+                    dot={{ r: 2, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 1, opacity: 0.35 }}
                     opacity={0.4}
                   />
                 </LineChart>

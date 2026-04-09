@@ -426,10 +426,10 @@ export default function AdminReportsPage() {
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
                   <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} dy={10} minTickGap={50} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} width={50} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#A1A1AA" }} width={50} allowDecimals={false} />
                   <RechartsTooltip content={<ReportTooltip metricLabel={metricConfig.label} isRevenue={selectedMetric === "revenue"} />} cursor={{ stroke: "#E8E8E8", strokeWidth: 1 }} />
-                  <Line type="monotone" dataKey="current" stroke="#1A8CFF" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 2 }} />
-                  <Line type="monotone" dataKey="previous" stroke="#1A8CFF" strokeWidth={1.5} strokeDasharray="6 4" dot={false} opacity={0.35} />
+                  <Line type="monotone" dataKey="current" stroke="#1A8CFF" strokeWidth={2} dot={{ r: 3, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 1.5 }} activeDot={{ r: 5, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="previous" stroke="#1A8CFF" strokeWidth={1.5} strokeDasharray="6 4" dot={{ r: 2, fill: "#1A8CFF", stroke: "#fff", strokeWidth: 1, opacity: 0.35 }} opacity={0.35} />
                 </LineChart>
               )}
             </ResponsiveContainer>

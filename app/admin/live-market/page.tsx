@@ -15,20 +15,28 @@ interface ChartPoint {
   usdInr: number;
 }
 
+function getDayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDayLabel(date: Date): string {
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
 function formatChartLabel(date: Date): { label: string; date: string; time: string } {
-  const d = date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  const d = formatDayLabel(date);
   const t = date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
   return { label: d, date: d, time: t };
 }
 
-// Keep only the latest entry per day
+// Keep only the latest entry per calendar day
 function dedupeByDay(entries: MarketRateEntry[]): MarketRateEntry[] {
   const map = new Map<string, MarketRateEntry>();
   for (const entry of entries) {
-    const dayKey = entry.fetchedAt.toISOString().split("T")[0];
-    const existing = map.get(dayKey);
+    const key = getDayKey(entry.fetchedAt);
+    const existing = map.get(key);
     if (!existing || entry.fetchedAt.getTime() > existing.fetchedAt.getTime()) {
-      map.set(dayKey, entry);
+      map.set(key, entry);
     }
   }
   return Array.from(map.values()).sort((a, b) => a.fetchedAt.getTime() - b.fetchedAt.getTime());
@@ -68,7 +76,7 @@ export default function LiveMarketDashboard() {
   }, []);
 
   const loadHistory = async () => {
-    const rawHistory = await fetchRecentRates(120); // Fetch more to cover 40 days after dedup
+    const rawHistory = await fetchRecentRates(200); // Fetch all to cover 40 days after dedup
     const history = dedupeByDay(rawHistory).slice(-40); // Keep latest 40 days only
     if (history.length > 0) {
       const points = history.map((entry) => {
@@ -141,14 +149,14 @@ export default function LiveMarketDashboard() {
 
         // Add/replace today's point in chart (one per day)
         const fmt = formatChartLabel(fetchedAt);
-        const todayLabel = fmt.label;
+        const todayDateLabel = formatDayLabel(fetchedAt);
         const newPoint: ChartPoint = {
           ...fmt,
           silverRate: newSilver,
           usdInr: newUSD,
         };
         setChartData((prev) => {
-          const withoutToday = prev.filter((p) => p.label !== todayLabel);
+          const withoutToday = prev.filter((p) => p.date !== todayDateLabel);
           return [...withoutToday, newPoint].slice(-40);
         });
 
