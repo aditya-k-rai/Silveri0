@@ -134,6 +134,17 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
             <Heart size={16} className={isWishlisted ? 'fill-current' : ''} />
           </button>
 
+          {/* New Arrival Ribbon */}
+          {product.isNewArrival && (
+            <div className="absolute top-0 left-0 z-20 overflow-hidden">
+              <div className="bg-[#D6006E] text-white text-[10px] font-bold tracking-wider px-4 py-1 shadow-md"
+                style={{ clipPath: 'polygon(0 0, 100% 0, 90% 100%, 0 100%)' }}
+              >
+                NEW
+              </div>
+            </div>
+          )}
+
           {/* Sold Out Badge */}
           {product.stock <= 0 && (
             <span className="absolute bottom-3 left-3 z-10 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg">
