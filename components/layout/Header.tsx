@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { fetchRecentRates } from '@/lib/firebase/marketRates';
 import {
   Home,
   Grid3X3,
@@ -164,7 +165,22 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [silverRate, setSilverRate] = useState<number | null>(null);
   const { user, loading } = useAuthContext();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRecentRates(1)
+      .then((rates) => {
+        if (cancelled) return;
+        const latest = rates[rates.length - 1];
+        if (latest?.silverRate) setSilverRate(latest.silverRate);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const cartItems = useCartStore((state) => state.items);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -240,14 +256,19 @@ export default function Header() {
 
               {/* Right Actions */}
               <div className="flex items-center gap-1.5 shrink-0">
-                {/* Silver Price Badge */}
-                <Link
-                  href="/admin/live-market"
-                  className="hidden lg:flex items-center gap-2 px-4 py-2 border border-silver-200 rounded-full hover:bg-silver-50 transition-colors mr-1"
+                {/* Silver Price Badge (display-only) */}
+                <div
+                  className="hidden lg:flex items-center gap-2 px-4 py-2 border border-silver-200 rounded-full mr-1 select-none"
+                  title="Today's silver price per gram"
                 >
                   <span className="text-sm font-medium text-silver-700">Silver Price</span>
+                  <span className="text-sm font-semibold text-silver-900 tabular-nums">
+                    {silverRate
+                      ? `₹${silverRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}/g`
+                      : '—'}
+                  </span>
                   <span className="w-6 h-6 rounded-full bg-gold flex items-center justify-center text-white text-xs font-bold">₹</span>
-                </Link>
+                </div>
 
                 {/* Wishlist */}
                 <Link
