@@ -108,6 +108,13 @@ export default function Footer() {
             </a>
           </div>
         </div>
+
+        {/* Developer */}
+        <div className="mt-4 pt-4 border-t border-silver-800 text-center">
+          <p className="text-silver-500 text-xs">
+            Developed By <span className="text-silver-300 font-medium">Shivam Sharma</span>
+          </p>
+        </div>
       </div>
     </footer>
   );
