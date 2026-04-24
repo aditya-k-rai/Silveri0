@@ -46,15 +46,19 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   useEffect(() => {
     if (!product || !db) return;
-    getDoc(doc(db, 'products', product.id)).then((snap) => {
+    const productId = product.id;
+    const userUid = user?.uid;
+    getDoc(doc(db, 'products', productId)).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
         setLikedBy(data.likedBy || []);
-        if (user && (data.likedBy || []).some((u: { uid?: string }) => u.uid === user.uid)) {
+        if (userUid && (data.likedBy || []).some((u: { uid?: string }) => u.uid === userUid)) {
           setLiked(true);
         }
       }
     });
+    // product/user references captured via IDs above
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, user?.uid]);
 
   if (loading) {
@@ -314,6 +318,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 <div className="flex -space-x-2">
                   {likedBy.slice(0, 3).map((u, i) => (
                     u.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img key={i} src={u.photo} alt="" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
                     ) : (
                       <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
@@ -465,6 +470,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               {likedBy.map((u, i) => (
                 <div key={i} className="flex items-center gap-3 py-2.5 border-b border-silver-100 last:border-0">
                   {u.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover" />
                   ) : (
                     <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">

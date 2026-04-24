@@ -2,8 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Search, ShieldOff, Shield, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
+
+interface Address {
+  id?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  isDefault?: boolean;
+}
 
 interface UserData {
   id: string;
@@ -13,21 +23,21 @@ interface UserData {
   photoURL: string;
   role: string;
   blocked: boolean;
-  createdAt: any;
+  createdAt: Timestamp | Date | string | number | null;
   orderCount?: number;
   totalSpent?: number;
   wishlist?: string[];
-  addresses?: any[];
+  addresses?: Address[];
 }
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!db);
   const [search, setSearch] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!db) { setLoading(false); return; }
+    if (!db) return;
     const unsub = onSnapshot(collection(db, "users"), (snap) => {
       const data = snap.docs.map((d) => ({
         id: d.id,
@@ -56,9 +66,14 @@ export default function AdminUsersPage() {
     setExpandedUser(expandedUser === id ? null : id);
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: UserData["createdAt"]) => {
     if (!timestamp) return "—";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date =
+      timestamp instanceof Timestamp
+        ? timestamp.toDate()
+        : timestamp instanceof Date
+        ? timestamp
+        : new Date(timestamp);
     return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   };
 

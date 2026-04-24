@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, FolderTree, ClipboardList,
-  Users, Tags, Settings, Menu, X, Box, LogOut, Sparkles, LineChart, BarChart3
+  Users, Tags, Settings, Menu, X, LogOut, Sparkles, LineChart, BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";

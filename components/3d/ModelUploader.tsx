@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, File, X, Eye, Trash2, Download, Box } from 'lucide-react';
+import { Upload, File, X, Eye, Trash2, Box } from 'lucide-react';
 import JewelryViewer from './JewelryViewer';
 
 interface ModelFile {
@@ -13,7 +13,6 @@ interface ModelFile {
 }
 
 interface ModelUploaderProps {
-  productId: string;
   existingModels?: ModelFile[];
   onUpload?: (file: File) => Promise<string>;
   onDelete?: (modelId: string) => Promise<void>;
@@ -23,7 +22,6 @@ const ACCEPTED_FORMATS = '.obj,.3dm';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export default function ModelUploader({
-  productId,
   existingModels = [],
   onUpload,
   onDelete,
@@ -91,7 +89,7 @@ export default function ModelUploader({
       }
       setModels((prev) => prev.filter((m) => m.id !== modelId));
       if (previewModel?.id === modelId) setPreviewModel(null);
-    } catch (err) {
+    } catch {
       setError('Failed to delete model');
     }
   };

@@ -58,7 +58,13 @@ export default function HomePage() {
         {heroBanner ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={heroBanner} alt="Silveri" className="absolute inset-0 w-full h-full object-cover" />
+            <img
+              src={heroBanner}
+              alt="Silveri"
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             <div className="absolute inset-0 bg-black/30" />
           </>
         ) : (

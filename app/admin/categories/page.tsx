@@ -5,12 +5,10 @@ import {
   Plus,
   X,
   Upload,
-  Image as ImageIcon,
   Save,
   Trash2,
   ChevronDown,
   ChevronUp,
-  GripVertical,
   Loader2,
   FolderTree,
 } from "lucide-react";

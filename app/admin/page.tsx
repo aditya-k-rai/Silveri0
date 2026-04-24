@@ -2,9 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import {
-  IndianRupee,
-  ShoppingBag,
-  Package,
   TrendingUp,
   TrendingDown,
   ChevronDown,
@@ -32,10 +29,14 @@ import { Order } from "@/types";
 import Link from "next/link";
 
 // ─── Helpers ─────────────────────────────────────────────────────
-function toSafeDate(d: any): Date {
+type DateLike = Date | { toDate: () => Date } | string | number;
+
+function toSafeDate(d: DateLike): Date {
   if (d instanceof Date) return d;
-  if (d?.toDate) return d.toDate();
-  return new Date(d);
+  if (typeof d === "object" && d !== null && "toDate" in d && typeof d.toDate === "function") {
+    return d.toDate();
+  }
+  return new Date(d as string | number);
 }
 
 function getDayKey(date: Date) {
@@ -78,6 +79,15 @@ function formatTooltipDate(dateStr: string) {
 }
 
 // ─── Custom Chart Tooltip ────────────────────────────────────────
+interface TooltipPayloadItem {
+  payload?: {
+    current: number;
+    previous: number;
+    currentDate: string;
+    previousDate: string;
+  };
+}
+
 function ChartTooltip({
   active,
   payload,
@@ -85,7 +95,7 @@ function ChartTooltip({
   isRevenue,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: TooltipPayloadItem[];
   metricLabel: string;
   isRevenue: boolean;
 }) {
@@ -123,7 +133,7 @@ function ChartTooltip({
 }
 
 // ─── Sparkline Component ─────────────────────────────────────────
-function Sparkline({ data, dataKey, color }: { data: any[]; dataKey: string; color: string }) {
+function Sparkline({ data, dataKey, color }: { data: Record<string, unknown>[]; dataKey: string; color: string }) {
   return (
     <div className="w-[72px] h-[32px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -163,7 +173,7 @@ function StatMetric({
   label: string;
   value: string;
   trend: number;
-  sparkData: any[];
+  sparkData: Record<string, unknown>[];
   sparkKey: string;
   sparkColor: string;
   isSelected: boolean;
@@ -237,7 +247,7 @@ export default function AdminDashboard() {
     prevStart.setDate(prevStart.getDate() - Math.max(rangeDays - 1, 0));
     prevStart.setHours(0, 0, 0, 0);
 
-    const toTime = (d: any) => (d instanceof Date ? d.getTime() : d?.toDate ? d.toDate().getTime() : new Date(d).getTime());
+    const toTime = (d: DateLike) => toSafeDate(d).getTime();
     const startT = start.getTime();
     const endT = end.getTime();
     const prevStartT = prevStart.getTime();
@@ -260,8 +270,6 @@ export default function AdminDashboard() {
 
   const currentOrderCount = currentOrders.length;
   const previousOrderCount = previousOrders.length;
-
-  const activeProducts = products.filter((p) => p.status === "Active").length;
 
   const currentAvgOrder = currentOrderCount > 0 ? Math.round(currentRevenue / currentOrderCount) : 0;
   const previousAvgOrder =

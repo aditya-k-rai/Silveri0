@@ -27,8 +27,9 @@ export async function fetchLiveMarketRates() {
       error: null
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to fetch market rates:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return {
       success: false,
       silverRate: 0,
@@ -36,7 +37,7 @@ export async function fetchLiveMarketRates() {
       fetchedAt: new Date().toISOString(),
       fredObservationDate: null,
       metalsTimestamp: null,
-      error: error.message
+      error: message
     };
   }
 }

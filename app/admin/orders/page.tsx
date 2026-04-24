@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   ChevronDown,
-  ChevronUp,
   MapPin,
   Phone,
   Package,
@@ -15,7 +14,6 @@ import {
   MessageCircle,
   Loader2,
   Search,
-  GripVertical,
   Eye,
   EyeOff,
   Columns3,

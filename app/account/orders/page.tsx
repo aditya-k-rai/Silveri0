@@ -26,13 +26,10 @@ function formatDate(date: Date) {
 export default function OrdersPage() {
   const { user } = useAuthContext();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!user?.uid);
 
   useEffect(() => {
-    if (!user?.uid) {
-      setLoading(false);
-      return;
-    }
+    if (!user?.uid) return;
     const unsub = subscribeToUserOrders(user.uid, (data) => {
       setOrders(data);
       setLoading(false);

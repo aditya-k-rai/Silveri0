@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, History, Activity, Eye, Heart, Minus } from "lucide-react";
+import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
 // Images stored as compressed base64 directly in Firestore (no Firebase Storage needed)
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
 export default function AdminProductsPage() {
-  const { products, setProducts, updateProduct, addProduct } = useProductStore();
+  const { products, updateProduct, addProduct } = useProductStore();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("Name");
 
@@ -732,7 +732,7 @@ export default function AdminProductsPage() {
                     contentStyle={{ borderRadius: '12px', border: '1px solid #E8E8E8', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     itemStyle={{ fontSize: '14px', fontWeight: 600, color: '#C9A84C' }}
                     labelStyle={{ color: '#7A7585', fontSize: '12px' }}
-                    formatter={(value: any) => [`₹${value}`, 'Price']}
+                    formatter={(value) => [`₹${value ?? ''}`, 'Price']}
                   />
                   <Line type="monotone" name="Listed Price" dataKey="price" stroke="#C9A84C" strokeWidth={3} dot={{ r: 0 }} activeDot={{ r: 6, fill: "#1A1A1A" }} />
                 </LineChart>

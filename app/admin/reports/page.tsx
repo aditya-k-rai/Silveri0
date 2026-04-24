@@ -11,7 +11,6 @@ import {
   Users,
   Plus,
   X,
-  Minus,
 } from "lucide-react";
 import {
   LineChart,
@@ -62,10 +61,14 @@ const METRIC_CONFIG: Record<MetricKey, { label: string; format: (v: number) => s
 };
 
 // ─── Build daily data for a period ──────────────────────────────
-function toSafeDate(d: any): Date {
+type DateLike = Date | { toDate: () => Date } | string | number;
+
+function toSafeDate(d: DateLike): Date {
   if (d instanceof Date) return d;
-  if (d?.toDate) return d.toDate();
-  return new Date(d);
+  if (typeof d === "object" && d !== null && "toDate" in d && typeof d.toDate === "function") {
+    return d.toDate();
+  }
+  return new Date(d as string | number);
 }
 
 function buildDailyData(orders: Order[], startDate: Date, endDate: Date) {
@@ -95,6 +98,15 @@ function formatTooltipDate(dateStr: string) {
 }
 
 // ─── Custom Chart Tooltip ────────────────────────────────────────
+interface ReportTooltipPayload {
+  payload?: {
+    current: number;
+    previous: number;
+    currentDate: string;
+    previousDate: string;
+  };
+}
+
 function ReportTooltip({
   active,
   payload,
@@ -102,7 +114,7 @@ function ReportTooltip({
   isRevenue,
 }: {
   active?: boolean;
-  payload?: any[];
+  payload?: ReportTooltipPayload[];
   metricLabel: string;
   isRevenue: boolean;
 }) {
@@ -191,7 +203,7 @@ export default function AdminReportsPage() {
     prevStart.setDate(prevStart.getDate() - Math.max(rangeDays - 1, 0));
     prevStart.setHours(0, 0, 0, 0);
 
-    const toTime = (d: any) => (d instanceof Date ? d.getTime() : d?.toDate ? d.toDate().getTime() : new Date(d).getTime());
+    const toTime = (d: DateLike) => toSafeDate(d).getTime();
     const startT = start.getTime();
     const endT = end.getTime();
     const prevStartT = prevStart.getTime();
@@ -504,7 +516,7 @@ export default function AdminReportsPage() {
                 </tr>
 
                 {/* Daily rows */}
-                {tableRows.map((row, i) => (
+                {tableRows.map((row) => (
                   <tr
                     key={row.currentDate}
                     className="border-b border-[#E8E8E8]/50 last:border-0 hover:bg-[#FAFAFA]/50 transition-colors"

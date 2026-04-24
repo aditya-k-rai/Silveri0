@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Stale nested build artifacts
+    "silveri/**",
+    "**/.next/**",
+    "node_modules/**",
   ]),
 ]);
 

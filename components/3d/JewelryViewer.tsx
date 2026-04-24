@@ -1,14 +1,12 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, ContactShadows, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { loadModel } from '@/lib/3d/loaders';
 import {
   RotateCcw,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
   Eye,
   Loader2,
@@ -103,22 +101,6 @@ function ModelLoader({
   }
 
   return <primitive ref={groupRef} object={model} />;
-}
-
-function AutoRotate({ enabled }: { enabled: boolean }) {
-  const { camera } = useThree();
-  const angleRef = useRef(0);
-
-  useFrame((_, delta) => {
-    if (!enabled) return;
-    angleRef.current += delta * 0.3;
-    const radius = camera.position.length();
-    camera.position.x = Math.sin(angleRef.current) * radius;
-    camera.position.z = Math.cos(angleRef.current) * radius;
-    camera.lookAt(0, 0, 0);
-  });
-
-  return null;
 }
 
 export default function JewelryViewer({

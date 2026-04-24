@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, RefreshCcw, DollarSign, Gem, Search, AlertTriangle, Clock } from "lucide-react";
 import { useProductStore } from "@/store/productStore";
@@ -70,56 +70,7 @@ export default function LiveMarketDashboard() {
 
   const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
-  // Load historical data from Firebase on mount
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
-    const rawHistory = await fetchRecentRates(200); // Fetch all to cover 40 days after dedup
-    const history = dedupeByDay(rawHistory).slice(-40); // Keep latest 40 days only
-    if (history.length > 0) {
-      const points = history.map((entry) => {
-        const fmt = formatChartLabel(entry.fetchedAt);
-        return {
-          ...fmt,
-          silverRate: entry.silverRate,
-          usdInr: entry.usdInr,
-        };
-      });
-      setChartData(points);
-
-      // Set current from the latest entry
-      const latest = history[history.length - 1];
-      setCurrentSilver(latest.silverRate);
-      setCurrentUSD(latest.usdInr);
-      setLastUpdated(latest.fetchedAt);
-      setFredDate(latest.fredObservationDate || null);
-
-      // Set previous from second-to-last for diff calculation
-      if (history.length >= 2) {
-        const prev = history[history.length - 2];
-        setPreviousSilver(prev.silverRate);
-        setPreviousUSD(prev.usdInr);
-      }
-
-      // Check if already synced today — if not, auto-sync once (daily at load)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const lastSyncDate = new Date(latest.fetchedAt);
-      lastSyncDate.setHours(0, 0, 0, 0);
-
-      if (lastSyncDate.getTime() < today.getTime()) {
-        // Not synced today yet — auto-sync
-        await doSync(history);
-      }
-    } else {
-      // No history at all — do initial sync
-      await doSync();
-    }
-  };
-
-  const doSync = async (existingHistory?: MarketRateEntry[]) => {
+  const doSync = useCallback(async () => {
     setIsSyncing(true);
     try {
       const result = await fetchLiveMarketRates();
@@ -174,13 +125,60 @@ export default function LiveMarketDashboard() {
         console.error("Market API Fetch Failed: ", result.error);
         setSyncError(result.error || "API returned zero rates. Check your API keys.");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setSyncError(err.message || "Network error");
+      const message = err instanceof Error ? err.message : "Network error";
+      setSyncError(message);
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [currentSilver, currentUSD, products, setProducts]);
+
+  const loadHistory = useCallback(async () => {
+    const rawHistory = await fetchRecentRates(200);
+    const history = dedupeByDay(rawHistory).slice(-40);
+    if (history.length > 0) {
+      const points = history.map((entry) => {
+        const fmt = formatChartLabel(entry.fetchedAt);
+        return {
+          ...fmt,
+          silverRate: entry.silverRate,
+          usdInr: entry.usdInr,
+        };
+      });
+      setChartData(points);
+
+      const latest = history[history.length - 1];
+      setCurrentSilver(latest.silverRate);
+      setCurrentUSD(latest.usdInr);
+      setLastUpdated(latest.fetchedAt);
+      setFredDate(latest.fredObservationDate || null);
+
+      if (history.length >= 2) {
+        const prev = history[history.length - 2];
+        setPreviousSilver(prev.silverRate);
+        setPreviousUSD(prev.usdInr);
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastSyncDate = new Date(latest.fetchedAt);
+      lastSyncDate.setHours(0, 0, 0, 0);
+
+      if (lastSyncDate.getTime() < today.getTime()) {
+        await doSync();
+      }
+    } else {
+      await doSync();
+    }
+  }, [doSync]);
+
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    loadHistory();
+  }, [loadHistory]);
 
   const alreadySyncedToday = (() => {
     if (!lastUpdated) return false;

@@ -29,8 +29,9 @@ export async function GET() {
     }
 
     return NextResponse.json({ success: true, silverRate, usdInr });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Cron sync-rates failed:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
