@@ -9,6 +9,7 @@ export interface Product {
   isLinked: boolean;
   stock: number;
   category: string;
+  subCategory: string;
   status: string;
   isFeatured: boolean;
   isNewArrival: boolean;

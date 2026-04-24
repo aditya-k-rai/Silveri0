@@ -11,6 +11,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { updateProductDoc } from '@/lib/firebase/products';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { logActivity } from '@/lib/firebase/activityLog';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 import ProductJsonLd from '@/components/seo/ProductJsonLd';
@@ -83,6 +84,19 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   const isWishlisted = wishlistItems.includes(product.id);
 
+  const activityBase = user
+    ? {
+        userId: user.uid,
+        userName: userDoc?.name || user.displayName || 'Unknown User',
+        userEmail: user.email || '',
+        userPhoto: user.photoURL || '',
+        productId: product.id,
+        productName: product.name,
+        productImage: product.primaryImage || '',
+        productPrice: product.price,
+      }
+    : null;
+
   const handleAddToCart = () => {
     addItem({
       productId: product.id,
@@ -91,13 +105,19 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       quantity: 1,
       image: product.primaryImage || '',
     });
+    if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
   const handleWishlist = () => {
-    if (isWishlisted) removeFromWishlist(product.id);
-    else addToWishlist(product.id);
+    if (isWishlisted) {
+      removeFromWishlist(product.id);
+      if (activityBase) logActivity({ ...activityBase, type: 'wishlist', action: 'removed' });
+    } else {
+      addToWishlist(product.id);
+      if (activityBase) logActivity({ ...activityBase, type: 'wishlist', action: 'added' });
+    }
   };
 
   const handleLike = async () => {

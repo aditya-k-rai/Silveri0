@@ -8,7 +8,9 @@ import { Heart, ShoppingCart, ThumbsUp, Eye } from 'lucide-react';
 import { Product, useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
+import { useAuthContext } from '@/context/AuthContext';
 import { updateProductDoc } from '@/lib/firebase/products';
+import { logActivity } from '@/lib/firebase/activityLog';
 
 interface ProductCardProps {
   product: Product;
@@ -20,11 +22,25 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
   const addItem = useCartStore((s) => s.addItem);
   const incrementLikes = useProductStore((s) => s.incrementLikes);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
+  const { user, userDoc } = useAuthContext();
   const isWishlisted = wishlistItems.includes(product.id);
   const [liked, setLiked] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
   const isDark = variant === 'dark';
+
+  const activityBase = user
+    ? {
+        userId: user.uid,
+        userName: userDoc?.name || user.displayName || 'Unknown User',
+        userEmail: user.email || '',
+        userPhoto: user.photoURL || '',
+        productId: product.id,
+        productName: product.name,
+        productImage: product.primaryImage || '',
+        productPrice: product.price,
+      }
+    : null;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -36,6 +52,9 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
       quantity: 1,
       image: product.primaryImage || '',
     });
+    if (activityBase) {
+      logActivity({ ...activityBase, type: 'cart', action: 'added' });
+    }
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 1500);
   };
@@ -50,14 +69,26 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
       quantity: 1,
       image: product.primaryImage || '',
     });
+    if (activityBase) {
+      logActivity({ ...activityBase, type: 'cart', action: 'added' });
+    }
     router.push('/checkout');
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isWishlisted) removeFromWishlist(product.id);
-    else addToWishlist(product.id);
+    if (isWishlisted) {
+      removeFromWishlist(product.id);
+      if (activityBase) {
+        logActivity({ ...activityBase, type: 'wishlist', action: 'removed' });
+      }
+    } else {
+      addToWishlist(product.id);
+      if (activityBase) {
+        logActivity({ ...activityBase, type: 'wishlist', action: 'added' });
+      }
+    }
   };
 
   const handleLike = (e: React.MouseEvent) => {

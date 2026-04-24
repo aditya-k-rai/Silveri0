@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
+import { subscribeToCategories, Category } from "@/lib/firebase/categories";
 // Images stored as compressed base64 directly in Firestore (no Firebase Storage needed)
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 
@@ -11,12 +12,19 @@ export default function AdminProductsPage() {
   const { products, updateProduct, addProduct } = useProductStore();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("Name");
+  const [dbCategories, setDbCategories] = useState<Category[]>([]);
 
   // Editor State
   const [editingParams, setEditingParams] = useState<Product | null>(null);
-  
+
   // History Modal State
   const [historyViewProduct, setHistoryViewProduct] = useState<Product | null>(null);
+
+  // Load Firestore categories for the product editor dropdown
+  useEffect(() => {
+    const unsub = subscribeToCategories((cats) => setDbCategories(cats));
+    return () => { if (unsub) unsub(); };
+  }, []);
 
 
   const filtered = products
@@ -55,7 +63,8 @@ export default function AdminProductsPage() {
         makingMargin: 500,
         isLinked: false,
         stock: 0,
-        category: "Rings",
+        category: dbCategories[0]?.name ?? "",
+        subCategory: "",
         status: "Draft",
         isFeatured: false,
         isNewArrival: false,
@@ -421,21 +430,47 @@ export default function AdminProductsPage() {
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {/* Category — loaded from Firestore /categories */}
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Category</label>
-                      <select 
+                      <select
                         value={editingParams.category}
-                        onChange={(e) => setEditingParams({...editingParams, category: e.target.value})}
+                        onChange={(e) =>
+                          setEditingParams({ ...editingParams, category: e.target.value, subCategory: "" })
+                        }
                         className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
                       >
-                        <option value="Rings">Rings</option>
-                        <option value="Necklaces">Necklaces</option>
-                        <option value="Earrings">Earrings</option>
-                        <option value="Bracelets">Bracelets</option>
-                        <option value="Anklets">Anklets</option>
-                        <option value="Pendants">Pendants</option>
+                        <option value="">Select category</option>
+                        {dbCategories.map((cat) => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))}
+                        {dbCategories.length === 0 && (
+                          <option disabled value="">No categories yet — add in Categories page</option>
+                        )}
                       </select>
                     </div>
+                    {/* Sub-category — shown only when selected category has sub-categories */}
+                    {(() => {
+                      const activeCat = dbCategories.find((c) => c.name === editingParams.category);
+                      if (!activeCat?.subCategories?.length) return null;
+                      return (
+                        <div>
+                          <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Sub-category</label>
+                          <select
+                            value={editingParams.subCategory ?? ""}
+                            onChange={(e) =>
+                              setEditingParams({ ...editingParams, subCategory: e.target.value })
+                            }
+                            className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                          >
+                            <option value="">— None —</option>
+                            {activeCat.subCategories.map((sub) => (
+                              <option key={sub.id} value={sub.name}>{sub.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour 1</label>
                       <input
