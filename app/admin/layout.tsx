@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, FolderTree, ClipboardList,
-  Users, Tags, Settings, Menu, X, LogOut, Sparkles, LineChart, BarChart3, Activity
+  Users, Tags, Settings, Menu, X, LogOut, Loader2, Sparkles, LineChart, BarChart3, Activity
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import { signOutUser } from "@/lib/firebase/auth";
 
@@ -27,18 +27,36 @@ const NAV_LINKS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { userDoc, loading } = useAuthContext();
+  const { user, userDoc, loading } = useAuthContext();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   // Skip admin layout for login page — it has its own full-screen layout
-  if (pathname === '/admin/login') {
+  const isLoginPage = pathname === '/admin/login';
+
+  // Centralized redirect logic (avoids React render-phase router.push warnings)
+  useEffect(() => {
+    if (isLoginPage || loading) return;
+    if (!user) {
+      router.replace('/admin/login');
+      return;
+    }
+    if (userDoc && userDoc.role !== 'admin') {
+      router.replace('/');
+    }
+  }, [isLoginPage, loading, user, userDoc, router]);
+
+  if (isLoginPage) {
     return <>{children}</>;
   }
 
-  // Block non-admin users from the admin panel
-  if (!loading && userDoc && userDoc.role !== 'admin') {
-    router.push('/');
-    return null;
+  // Loading or about-to-redirect: show full-screen spinner instead of flashing the admin UI
+  if (loading || !user || !userDoc || userDoc.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+        <Loader2 size={28} className="text-[#C9A84C] animate-spin" />
+      </div>
+    );
   }
 
   const isActive = (href: string) =>
@@ -48,8 +66,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const adminInitial = adminName.charAt(0).toUpperCase();
 
   const handleLogout = async () => {
-    await signOutUser();
-    router.push('/admin/login');
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOutUser();
+      router.replace('/admin/login');
+    } catch (err) {
+      console.error('[AdminLayout] Logout failed:', err);
+      // Force navigation regardless — user state is already cleared client-side
+      router.replace('/admin/login');
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const sidebar = (
@@ -97,8 +125,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="text-white text-sm font-medium truncate">{adminName}</p>
               <p className="text-white/40 text-xs truncate">{userDoc?.email || ''}</p>
             </div>
-            <button onClick={handleLogout} className="text-white/40 hover:text-red-400 transition-colors" title="Logout">
-              <LogOut size={16} />
+            <button
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="text-white/40 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={signingOut ? 'Signing out…' : 'Logout'}
+            >
+              {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
             </button>
           </div>
         </div>
@@ -125,8 +158,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-medium truncate">{adminName}</p>
                 </div>
-                <button onClick={handleLogout} className="text-white/40 hover:text-red-400 transition-colors" title="Logout">
-                  <LogOut size={16} />
+                <button
+                  onClick={handleLogout}
+                  disabled={signingOut}
+                  className="text-white/40 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={signingOut ? 'Signing out…' : 'Logout'}
+                >
+                  {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                 </button>
               </div>
             </div>

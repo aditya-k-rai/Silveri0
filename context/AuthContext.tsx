@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
 import { User } from '@/types';
@@ -67,26 +67,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
 
       if (firebaseUser && db) {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-          setUserDoc(userSnap.data() as User);
-        } else {
-          const newUser: Omit<User, 'orderCount' | 'totalSpent'> = {
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || '',
-            email: firebaseUser.email || '',
-            photoURL: firebaseUser.photoURL || '',
-            phone: '',
-            role: 'customer',
-            addresses: [],
-            wishlist: [],
-            blocked: false,
-            createdAt: new Date(),
-          };
-          await setDoc(userRef, newUser);
-          setUserDoc(newUser as User);
+          if (userSnap.exists()) {
+            const data = userSnap.data() as User;
+            // Auto-sign out blocked users — admin marked them inactive
+            if (data.blocked) {
+              await signOut(auth);
+              try {
+                await fetch('/api/auth/session', {
+                  method: 'DELETE',
+                  cache: 'no-store',
+                });
+              } catch {
+                // best-effort cookie cleanup
+              }
+              setUser(null);
+              setUserDoc(null);
+              setLoading(false);
+              return;
+            }
+            setUserDoc(data);
+          } else {
+            const newUser: Omit<User, 'orderCount' | 'totalSpent'> = {
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || '',
+              email: firebaseUser.email || '',
+              photoURL: firebaseUser.photoURL || '',
+              phone: '',
+              role: 'customer',
+              addresses: [],
+              wishlist: [],
+              blocked: false,
+              createdAt: new Date(),
+            };
+            await setDoc(userRef, newUser);
+            setUserDoc(newUser as User);
+          }
+        } catch (err) {
+          console.error('[AuthContext] Failed to load user doc:', err);
+          setUserDoc(null);
         }
       } else {
         setUserDoc(null);

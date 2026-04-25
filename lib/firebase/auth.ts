@@ -11,68 +11,60 @@ import { auth } from './client';
 
 const googleProvider = new GoogleAuthProvider();
 
-export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
+const SESSION_TIMEOUT_MS = 8000;
 
+async function createSessionCookie(idToken: string): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
   try {
-    const idToken = await result.user.getIdToken();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    await fetch('/api/auth/session', {
+    const res = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
       signal: controller.signal,
+      cache: 'no-store',
     });
-    clearTimeout(timeout);
-  } catch {
-    // Session cookie failed or timed out
+    if (!res.ok) {
+      throw new Error(`Session creation failed (${res.status})`);
+    }
+  } finally {
+    clearTimeout(timer);
   }
+}
 
+async function clearSessionCookie(): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
+  try {
+    await fetch('/api/auth/session', {
+      method: 'DELETE',
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function signInWithGoogle() {
+  const result = await signInWithPopup(auth, googleProvider);
+  const idToken = await result.user.getIdToken();
+  await createSessionCookie(idToken);
   return result.user;
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName: string) {
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName });
-
-  try {
-    const idToken = await result.user.getIdToken();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-  } catch {
-    // Session cookie failed or timed out
-  }
-
+  const idToken = await result.user.getIdToken();
+  await createSessionCookie(idToken);
   return result.user;
 }
 
 export async function signInWithEmail(email: string, password: string) {
   const result = await signInWithEmailAndPassword(auth, email, password);
-
-  // Best-effort session creation with timeout — don't block login
-  try {
-    const idToken = await result.user.getIdToken();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-  } catch {
-    // Session cookie failed or timed out — login still works via Firebase client auth
-  }
-
+  const idToken = await result.user.getIdToken();
+  await createSessionCookie(idToken);
   return result.user;
 }
 
@@ -84,6 +76,16 @@ export async function resetPassword(email: string) {
 }
 
 export async function signOutUser() {
-  await fetch('/api/auth/session', { method: 'DELETE' });
-  await signOut(auth);
+  // 1. Sign out of Firebase first — onAuthStateChanged fires and AuthContext clears local state
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.error('[signOutUser] Firebase signOut failed:', err);
+  }
+  // 2. Then clear the server session cookie. Independent of Firebase result.
+  try {
+    await clearSessionCookie();
+  } catch (err) {
+    console.error('[signOutUser] Session cookie cleanup failed:', err);
+  }
 }

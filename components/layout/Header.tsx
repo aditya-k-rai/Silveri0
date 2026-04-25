@@ -15,6 +15,7 @@ import {
   User,
   X,
   LogOut,
+  Loader2,
   Sparkles,
   ChevronRight,
 } from 'lucide-react';
@@ -166,7 +167,18 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [silverRate, setSilverRate] = useState<number | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const { user, loading } = useAuthContext();
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOutUser();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -308,11 +320,12 @@ export default function Header() {
                       )}
                     </Link>
                     <button
-                      onClick={() => signOutUser()}
-                      className="flex items-center justify-center w-9 h-9 rounded-full text-silver-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      title="Sign out"
+                      onClick={handleSignOut}
+                      disabled={signingOut}
+                      className="flex items-center justify-center w-9 h-9 rounded-full text-silver-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={signingOut ? 'Signing out…' : 'Sign out'}
                     >
-                      <LogOut size={16} />
+                      {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
                     </button>
                   </div>
                 ) : (

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword } from '@/lib/firebase/auth';
 import { useAuthContext } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -12,7 +11,6 @@ type View = 'login' | 'register' | 'forgot' | 'complete-profile';
 
 export default function LoginPage() {
   const { user, userDoc, loading } = useAuthContext();
-  const router = useRouter();
   const [view, setView] = useState<View>('login');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -38,6 +36,8 @@ export default function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState('');
 
   useEffect(() => {
+    // Don't redirect mid-submission — handlers manage redirect after session cookie is set
+    if (submitting) return;
     if (!loading && user && userDoc) {
       // Check if profile is complete (phone is mandatory)
       if (!userDoc.phone) {
@@ -46,16 +46,23 @@ export default function LoginPage() {
         window.location.href = '/';
       }
     }
-  }, [user, userDoc, loading, router]);
+  }, [user, userDoc, loading, submitting]);
 
   const handleGoogleLogin = async () => {
     setError('');
     setSubmitting(true);
     try {
       await signInWithGoogle();
-      // AuthContext will detect user and check if phone is missing
+      // signInWithGoogle now awaits the session cookie creation; safe to clear flag
+      // AuthContext useEffect will then handle redirect (or trigger profile completion)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      // Firebase popup closed by user shouldn't show as a scary error
+      if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request')) {
+        // Silent — user closed the popup intentionally
+      } else {
+        setError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
