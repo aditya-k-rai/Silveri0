@@ -12,10 +12,6 @@ export interface Product {
   weight?: number;
   tags: string[];
   images: string[];
-  model3d?: {
-    url: string;
-    fileName: string;
-  };
   isFeatured: boolean;
   isActive: boolean;
   averageRating?: number;

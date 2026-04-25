@@ -32,7 +32,6 @@ export interface Product {
   image4: string | null;
   image5: string | null;
   image6: string | null;
-  model3dFileName: string | null;
 }
 
 interface ProductStore {

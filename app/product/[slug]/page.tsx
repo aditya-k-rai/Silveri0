@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye, X, Star, Box } from 'lucide-react';
+import { ChevronRight, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye, X, Star } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
@@ -188,8 +188,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             image4={product.image4}
             image5={product.image5}
             image6={product.image6}
-            colour={product.colour}
-            model3dFileName={product.model3dFileName}
           />
 
           {/* RIGHT — Product Info */}
@@ -202,11 +200,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               <span className="inline-flex items-center gap-1.5 bg-silver-100 text-silver-600 text-xs font-medium px-3 py-1 rounded-full">
                 {product.colour}
               </span>
-              {product.model3dFileName && (
-                <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full">
-                  <Box size={12} /> 3D Available
-                </span>
-              )}
             </div>
 
             {/* Name */}

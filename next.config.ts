@@ -10,8 +10,6 @@ const nextConfig: NextConfig = {
       'lucide-react',
       'recharts',
       'framer-motion',
-      '@react-three/fiber',
-      '@react-three/drei',
     ],
   },
   poweredByHeader: false,
@@ -65,12 +63,6 @@ const nextConfig: NextConfig = {
               "form-action 'self'",
             ].join('; '),
           },
-        ],
-      },
-      {
-        source: '/models/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ];

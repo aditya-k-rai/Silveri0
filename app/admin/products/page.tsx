@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Box, Upload, Save, Tag, Activity, Eye, Heart, Minus } from "lucide-react";
+import { Plus, Search, Star, Sparkles, X, Image as ImageIcon, Upload, Save, Tag, Activity, Eye, Heart, Minus } from "lucide-react";
 import { useProductStore, Product } from "@/store/productStore";
 import { saveProduct as saveProductToFirestore } from "@/lib/firebase/products";
 import { subscribeToCategories, Category } from "@/lib/firebase/categories";
@@ -39,6 +39,13 @@ export default function AdminProductsPage() {
       if (sortBy === "StockAsc") return a.stock - b.stock;
       if (sortBy === "StockDesc") return b.stock - a.stock;
       if (sortBy === "Carat") return a.carat.localeCompare(b.carat);
+      if (sortBy === "Category") {
+        const c = (a.category || "").localeCompare(b.category || "");
+        if (c !== 0) return c;
+        const s = (a.subCategory || "").localeCompare(b.subCategory || "");
+        if (s !== 0) return s;
+        return a.name.localeCompare(b.name);
+      }
       return 0;
     });
 
@@ -87,7 +94,6 @@ export default function AdminProductsPage() {
         image4: null,
         image5: null,
         image6: null,
-        model3dFileName: null
       });
     }
   };
@@ -171,15 +177,9 @@ export default function AdminProductsPage() {
     image6: { field: 'image6', index: 5 },
   };
 
-  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | 'image5' | 'image6' | '3d') => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'primary' | 'hover' | 'image3' | 'image4' | 'image5' | 'image6') => {
     if (!editingParams || !e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-
-    if (type === '3d') {
-      // 3D models: store filename only (viewer loads from public folder or URL)
-      setEditingParams((prev) => prev ? { ...prev, model3dFileName: file.name } : prev);
-      return;
-    }
 
     const { field } = IMAGE_FIELD_MAP[type];
 
@@ -217,6 +217,7 @@ export default function AdminProductsPage() {
             <option value="StockAsc">Sort by: Stock (Low to High)</option>
             <option value="StockDesc">Sort by: Stock (High to Low)</option>
             <option value="Carat">Sort by: Purity</option>
+            <option value="Category">Sort by: Category (A-Z)</option>
           </select>
         </div>
         <button 
@@ -234,6 +235,7 @@ export default function AdminProductsPage() {
               <tr className="text-left text-[#7A7585] bg-[#FDFAF5]">
                 <th className="px-5 py-3 font-medium">Product</th>
                 <th className="px-5 py-3 font-medium">SKU / Specs</th>
+                <th className="px-5 py-3 font-medium">Category</th>
                 <th className="px-5 py-3 font-medium text-center">Media</th>
                 <th className="px-5 py-3 font-medium text-center">Featured</th>
                 <th className="px-5 py-3 font-medium text-center">New</th>
@@ -264,11 +266,23 @@ export default function AdminProductsPage() {
                     <p className="font-medium text-[#7A7585]">{p.sku}</p>
                     <p className="text-[10px] text-amber-600 font-semibold">{p.carat} • {p.colour}</p>
                   </td>
-                  
+
+                  <td className="px-5 py-4">
+                    {p.category ? (
+                      <>
+                        <p className="font-medium text-[#1A1A1A]">{p.category}</p>
+                        {p.subCategory && (
+                          <p className="text-[10px] text-[#7A7585]">{p.subCategory}</p>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[#A09DAB] text-xs">—</span>
+                    )}
+                  </td>
+
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-center gap-2">
                        {p.primaryImage && <span title="Has Image"><ImageIcon size={14} className="text-[#1A1A1A]" /></span>}
-                       {p.model3dFileName && <span title="Has 3D Model"><Box size={14} className="text-[#C9A84C]" /></span>}
                     </div>
                   </td>
 
@@ -385,22 +399,6 @@ export default function AdminProductsPage() {
                   ))}
                 </div>
 
-                {/* 3D Model Configurator */}
-                <div className="bg-white p-5 rounded-2xl border border-[#E8E8E8] flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#C9A84C]/10 flex items-center justify-center shrink-0">
-                    <Box className="text-[#C9A84C]" size={24} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1A1A1A]">3D Model View (.obj / .3dm)</p>
-                    <p className="text-xs text-[#7A7585] truncate">
-                      {editingParams.model3dFileName ? `Attached: ${editingParams.model3dFileName}` : "No 3D file attached for Interactive AR/Viewer."}
-                    </p>
-                  </div>
-                  <label className="cursor-pointer px-4 py-2 border border-[#E8E8E8] rounded-lg text-xs font-medium hover:bg-[#F5F3EF] transition-colors">
-                    <input type="file" accept=".obj,.3dm" className="hidden" onChange={(e) => handleMediaUpload(e, '3d')} />
-                    {editingParams.model3dFileName ? "Replace File" : "Upload File"}
-                  </label>
-                </div>
               </div>
 
               {/* Core Details */}
