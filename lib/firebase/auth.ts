@@ -15,6 +15,7 @@ const googleProvider = new GoogleAuthProvider();
 const SESSION_TIMEOUT_MS = 8000;
 
 async function createSessionCookie(idToken: string): Promise<void> {
+  console.log('[auth] POST /api/auth/session — creating session cookie');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
   try {
@@ -26,14 +27,18 @@ async function createSessionCookie(idToken: string): Promise<void> {
       cache: 'no-store',
     });
     if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[auth] Session cookie creation failed:', res.status, body);
       throw new Error(`Session creation failed (${res.status})`);
     }
+    console.log('[auth] Session cookie created (status', res.status + ')');
   } finally {
     clearTimeout(timer);
   }
 }
 
 async function clearSessionCookie(): Promise<void> {
+  console.log('[auth] DELETE /api/auth/session — clearing session cookie');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
   try {
@@ -42,6 +47,7 @@ async function clearSessionCookie(): Promise<void> {
       signal: controller.signal,
       cache: 'no-store',
     });
+    console.log('[auth] Session cookie cleared');
   } finally {
     clearTimeout(timer);
   }
@@ -59,14 +65,24 @@ export async function signInWithGoogle() {
 // redirect, this completes the sign-in and creates the server session
 // cookie. Returns the signed-in user, or null if no redirect was pending.
 export async function consumeGoogleRedirectResult() {
+  if (!auth) {
+    console.warn('[auth] consumeGoogleRedirectResult: Firebase auth not initialized');
+    return null;
+  }
+  console.log('[auth] Checking for pending Google redirect…');
   try {
     const result = await getRedirectResult(auth);
-    if (!result) return null;
+    if (!result) {
+      console.log('[auth] No pending redirect (getRedirectResult returned null)');
+      return null;
+    }
+    console.log('[auth] Redirect resolved for uid=', result.user.uid, 'email=', result.user.email);
     const idToken = await result.user.getIdToken();
+    console.log('[auth] Got idToken (len=' + idToken.length + ')');
     await createSessionCookie(idToken);
     return result.user;
   } catch (err) {
-    console.error('[consumeGoogleRedirectResult] Failed:', err);
+    console.error('[auth] consumeGoogleRedirectResult failed:', err);
     return null;
   }
 }

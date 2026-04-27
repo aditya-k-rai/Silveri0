@@ -5,16 +5,10 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  // Use the current site's host as authDomain on the client so the auth-handler
-  // iframe loads same-origin with the page (avoids 3rd-party storage blocks in
-  // Brave/Safari/strict-Chrome). The matching `/__/auth/*` rewrite in
-  // next.config.ts proxies to <projectId>.firebaseapp.com under the hood.
-  // Requires `https://<host>/__/auth/handler` to be added to the OAuth client's
-  // Authorized redirect URIs in Google Cloud Console (already done for
-  // silverishop.in). SSR has no `window`, so it falls back to the env var.
-  authDomain: typeof window !== 'undefined'
-    ? window.location.host
-    : process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  // Stays as <projectId>.firebaseapp.com — the only domain Firebase auto-
+  // registers with Google's OAuth client. Custom authDomain is officially
+  // supported only via Firebase Hosting; on Vercel + rewrites it's fragile.
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

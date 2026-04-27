@@ -36,18 +36,29 @@ export default function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState('');
 
   useEffect(() => {
+    console.log(
+      '[login] gate — submitting=', submitting,
+      'loading=', loading,
+      'user=', !!user,
+      'userDoc=', !!userDoc,
+      'role=', userDoc?.role ?? '—',
+      'phone=', userDoc?.phone || '(empty)'
+    );
     // Don't redirect mid-submission — handlers manage redirect after session cookie is set
     if (submitting) return;
     if (!loading && user && userDoc) {
       // Admins land in the admin panel, never the customer site
       if (userDoc.role === 'admin') {
+        console.log('[login] redirecting admin -> /admin');
         window.location.href = '/admin';
         return;
       }
       // Customers must complete their profile (phone) before continuing
       if (!userDoc.phone) {
+        console.log('[login] customer needs profile completion');
         setView('complete-profile');
       } else {
+        console.log('[login] redirecting customer -> /');
         window.location.href = '/';
       }
     }

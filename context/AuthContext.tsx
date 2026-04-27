@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const prevUid = prevUidRef.current;
       const newUid = firebaseUser?.uid ?? null;
+      console.log('[ctx] auth state ->', newUid ?? 'null', '(prev=', prevUid ?? 'null' + ')');
 
       // Save previous user's data to their personal key before switching
       if (prevUid && prevUid !== newUid) {
@@ -72,55 +73,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(firebaseUser);
 
-      if (firebaseUser && db) {
-        try {
-          const userRef = doc(db, 'users', firebaseUser.uid);
-          const userSnap = await getDoc(userRef);
+      try {
+        if (firebaseUser && db) {
+          try {
+            const userRef = doc(db, 'users', firebaseUser.uid);
+            const userSnap = await getDoc(userRef);
 
-          if (userSnap.exists()) {
-            const data = userSnap.data() as User;
-            // Auto-sign out blocked users — admin marked them inactive
-            if (data.blocked) {
-              await signOut(auth);
-              try {
-                await fetch('/api/auth/session', {
-                  method: 'DELETE',
-                  cache: 'no-store',
-                });
-              } catch {
-                // best-effort cookie cleanup
+            if (userSnap.exists()) {
+              const data = userSnap.data() as User;
+              console.log('[ctx] userDoc loaded role=', data.role, 'blocked=', data.blocked);
+              // Auto-sign out blocked users — admin marked them inactive
+              if (data.blocked) {
+                console.log('[ctx] user blocked, signing out');
+                await signOut(auth);
+                try {
+                  await fetch('/api/auth/session', {
+                    method: 'DELETE',
+                    cache: 'no-store',
+                  });
+                } catch {
+                  // best-effort cookie cleanup
+                }
+                setUser(null);
+                setUserDoc(null);
+                return;
               }
-              setUser(null);
-              setUserDoc(null);
-              setLoading(false);
-              return;
+              setUserDoc(data);
+            } else {
+              console.log('[ctx] no userDoc — creating new customer record');
+              const newUser: Omit<User, 'orderCount' | 'totalSpent'> = {
+                uid: firebaseUser.uid,
+                name: firebaseUser.displayName || '',
+                email: firebaseUser.email || '',
+                photoURL: firebaseUser.photoURL || '',
+                phone: '',
+                role: 'customer',
+                addresses: [],
+                wishlist: [],
+                blocked: false,
+                createdAt: new Date(),
+              };
+              await setDoc(userRef, newUser);
+              setUserDoc(newUser as User);
             }
-            setUserDoc(data);
-          } else {
-            const newUser: Omit<User, 'orderCount' | 'totalSpent'> = {
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName || '',
-              email: firebaseUser.email || '',
-              photoURL: firebaseUser.photoURL || '',
-              phone: '',
-              role: 'customer',
-              addresses: [],
-              wishlist: [],
-              blocked: false,
-              createdAt: new Date(),
-            };
-            await setDoc(userRef, newUser);
-            setUserDoc(newUser as User);
+          } catch (err) {
+            console.error('[ctx] userDoc fetch/create failed:', err);
+            setUserDoc(null);
           }
-        } catch (err) {
-          console.error('[AuthContext] Failed to load user doc:', err);
+        } else {
           setUserDoc(null);
         }
-      } else {
-        setUserDoc(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => unsubscribe();
