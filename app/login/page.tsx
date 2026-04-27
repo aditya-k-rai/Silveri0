@@ -127,6 +127,12 @@ export default function LoginPage() {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed';
       console.error('[login] GIS sign-in failed:', err);
       setError(msg);
+    } finally {
+      // Always reset submitting — the redirect-gate useEffect is gated on
+      // !submitting and won't switch to the complete-profile view (or hard-
+      // redirect) until this clears. Skipping this on the success path is
+      // what was causing the post-Google-login screen to take ~1–2 min
+      // (only after a manual reload).
       setSubmitting(false);
     }
   }, []);
@@ -331,6 +337,15 @@ export default function LoginPage() {
         {/* Error / Success */}
         {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4">{error}</div>}
         {success && <div className="bg-green-50 border border-green-200 text-green-600 text-sm rounded-lg px-4 py-2.5 mb-4">{success}</div>}
+
+        {/* Signing-in indicator — shown while we exchange the Google credential
+            for a Firebase session. Avoids the "nothing's happening" feeling. */}
+        {submitting && (view === 'login' || view === 'register') && (
+          <div className="bg-gold/10 border border-gold/30 text-gold-dark text-sm rounded-lg px-4 py-2.5 mb-4 flex items-center gap-2">
+            <span className="inline-block w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            Signing in…
+          </div>
+        )}
 
         {/* ====== LOGIN VIEW ====== */}
         {view === 'login' && (
