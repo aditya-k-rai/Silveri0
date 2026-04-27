@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Playfair_Display, Jost } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
@@ -60,6 +61,8 @@ export default function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
+        {/* Google Identity Services — used by /login for Sign in with Google */}
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
       </body>
     </html>
   );

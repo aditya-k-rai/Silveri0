@@ -1,5 +1,6 @@
 import {
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -54,11 +55,26 @@ async function clearSessionCookie(): Promise<void> {
 }
 
 export async function signInWithGoogle() {
-  // Redirect-based flow — far more reliable than popups in privacy-strict
-  // browsers (Brave, Safari, mobile). The browser navigates to Google,
-  // and on return the result is consumed by `consumeGoogleRedirectResult()`
-  // (called from AuthContext on mount).
+  // Legacy redirect-based flow — kept for fallback only. The default sign-in
+  // path now uses Google Identity Services (`signInWithGoogleIdToken` below),
+  // which avoids the iframe-storage issues in privacy-strict browsers.
   await signInWithRedirect(auth, googleProvider);
+}
+
+/**
+ * Sign into Firebase using a Google ID token from Google Identity Services
+ * (the in-page "Sign in with Google" button). No iframe, no popup, no
+ * redirect — works reliably in every browser including Brave/strict-Safari.
+ *
+ * Pass the `credential` field from the GIS callback as `idToken`.
+ */
+export async function signInWithGoogleIdToken(idToken: string) {
+  const credential = GoogleAuthProvider.credential(idToken);
+  const result = await signInWithCredential(auth, credential);
+  // Create the server session cookie so SSR/proxy auth works as before
+  const fbIdToken = await result.user.getIdToken();
+  await createSessionCookie(fbIdToken);
+  return result.user;
 }
 
 // Call this once on app mount. If the user is returning from a Google
