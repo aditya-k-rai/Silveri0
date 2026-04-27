@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
               "img-src 'self' data: blob: https: firebasestorage.googleapis.com *.firebasestorage.app lh3.googleusercontent.com images.unsplash.com",
               "font-src 'self' fonts.gstatic.com",
-              "connect-src 'self' *.googleapis.com *.google.com *.firebaseio.com *.firebasestorage.app *.firebaseapp.com *.googletagmanager.com *.vercel.com *.vercel-insights.com wss://*.firebaseio.com",
+              "connect-src 'self' *.googleapis.com *.google.com *.firebaseio.com *.firebasestorage.app *.firebaseapp.com *.googletagmanager.com *.google-analytics.com *.analytics.google.com *.vercel.com *.vercel-insights.com wss://*.firebaseio.com",
               "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
               "object-src 'none'",
               "frame-ancestors 'none'",

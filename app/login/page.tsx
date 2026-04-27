@@ -5,6 +5,7 @@ import { signInWithGoogle, signUpWithEmail, signInWithEmail, resetPassword } fro
 import { useAuthContext } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { EmailAuthProvider, linkWithCredential } from 'firebase/auth';
 import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 type View = 'login' | 'register' | 'forgot' | 'complete-profile';
@@ -30,6 +31,7 @@ export default function LoginPage() {
 
   // Complete profile form (after Google login)
   const [profilePhone, setProfilePhone] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
   const [profileLocation, setProfileLocation] = useState('');
 
   // Forgot password
@@ -159,21 +161,53 @@ export default function LoginPage() {
   const handleCompleteProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!profilePhone.trim() || profilePhone.length < 10) { setError('Valid 10-digit phone number is required'); return; }
+    if (!profilePhone.trim() || profilePhone.length < 10) {
+      setError('Valid 10-digit phone number is required');
+      return;
+    }
+    if (!profilePassword || profilePassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
 
     setSubmitting(true);
     try {
       if (user) {
+        // 1) Save phone + location in Firestore
         await updateDoc(doc(db, 'users', user.uid), {
           phone: profilePhone,
           location: profileLocation,
         });
+
+        // 2) Link an email/password credential so the user can also log in with
+        //    email + password later, and use the password-reset flow.
+        if (user.email) {
+          const credential = EmailAuthProvider.credential(user.email, profilePassword);
+          try {
+            await linkWithCredential(user, credential);
+          } catch (linkErr: unknown) {
+            const msg = linkErr instanceof Error ? linkErr.message : '';
+            // Already linked → fine. Anything else surfaces.
+            if (
+              !msg.includes('provider-already-linked') &&
+              !msg.includes('email-already-in-use')
+            ) {
+              throw linkErr;
+            }
+          }
+        }
+
         // Hard redirect — only customers reach this view (admins are redirected
         // earlier by the role-aware useEffect), so going to / is correct.
         window.location.href = '/';
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      const msg = err instanceof Error ? err.message : 'Failed to update profile';
+      if (msg.includes('weak-password')) {
+        setError('Password too weak. Use at least 6 characters.');
+      } else {
+        setError(msg);
+      }
       setSubmitting(false);
     }
   };
@@ -334,22 +368,68 @@ export default function LoginPage() {
           </>
         )}
 
-        {/* ====== COMPLETE PROFILE VIEW (after Google login, phone mandatory) ====== */}
+        {/* ====== COMPLETE PROFILE VIEW (after Google login — phone + password mandatory) ====== */}
         {view === 'complete-profile' && (
           <>
             <div className="bg-gold/10 border border-gold/30 rounded-lg px-4 py-3 mb-4">
-              <p className="text-sm text-gold-dark">Welcome! Please complete your profile to continue. Mobile number is required.</p>
+              <p className="text-sm text-gold-dark">
+                Welcome! Set a password so you can also sign in with email later.
+                Mobile number and password are required.
+              </p>
             </div>
             <form onSubmit={handleCompleteProfile} className="space-y-3">
+              {/* Phone — required */}
               <div className="relative">
                 <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input type="tel" placeholder="Mobile Number * (10 digits)" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full pl-10 pr-4 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold" required autoFocus />
+                <input
+                  type="tel"
+                  placeholder="Mobile Number * (10 digits)"
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="w-full pl-10 pr-4 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold"
+                  required
+                  autoFocus
+                />
               </div>
+
+              {/* Password — required (so the user can also sign in with email) */}
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Set a password * (min 6 chars)"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              {/* Location — optional */}
               <div className="relative">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input type="text" placeholder="City / Location (optional)" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold" />
+                <input
+                  type="text"
+                  placeholder="City / Location (optional)"
+                  value={profileLocation}
+                  onChange={(e) => setProfileLocation(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold"
+                />
               </div>
-              <button type="submit" disabled={submitting} className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50">
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50"
+              >
                 {submitting ? 'Saving...' : 'Continue to Silveri'}
               </button>
             </form>
