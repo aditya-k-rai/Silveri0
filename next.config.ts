@@ -37,6 +37,19 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+  async rewrites() {
+    // Proxy Firebase Auth helper endpoints to <projectId>.firebaseapp.com so
+    // they appear same-origin with the site. This is required for Google
+    // sign-in to complete in privacy-strict browsers (Brave, Safari, Chrome
+    // with strict 3rd-party-cookie blocking) — the auth-result iframe must
+    // be first-party to read its own IndexedDB.
+    const project = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!project) return [];
+    return [
+      { source: '/__/auth/:path*',     destination: `https://${project}.firebaseapp.com/__/auth/:path*` },
+      { source: '/__/firebase/:path*', destination: `https://${project}.firebaseapp.com/__/firebase/:path*` },
+    ];
+  },
   async headers() {
     return [
       {
