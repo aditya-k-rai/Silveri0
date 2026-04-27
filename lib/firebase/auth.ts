@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -47,10 +48,27 @@ async function clearSessionCookie(): Promise<void> {
 }
 
 export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const idToken = await result.user.getIdToken();
-  await createSessionCookie(idToken);
-  return result.user;
+  // Redirect-based flow — far more reliable than popups in privacy-strict
+  // browsers (Brave, Safari, mobile). The browser navigates to Google,
+  // and on return the result is consumed by `consumeGoogleRedirectResult()`
+  // (called from AuthContext on mount).
+  await signInWithRedirect(auth, googleProvider);
+}
+
+// Call this once on app mount. If the user is returning from a Google
+// redirect, this completes the sign-in and creates the server session
+// cookie. Returns the signed-in user, or null if no redirect was pending.
+export async function consumeGoogleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
+    const idToken = await result.user.getIdToken();
+    await createSessionCookie(idToken);
+    return result.user;
+  } catch (err) {
+    console.error('[consumeGoogleRedirectResult] Failed:', err);
+    return null;
+  }
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName: string) {

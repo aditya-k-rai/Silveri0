@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
+import { consumeGoogleRedirectResult } from '@/lib/firebase/auth';
 import { User } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
@@ -31,6 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Guard: if Firebase isn't initialized (missing keys), skip auth
     if (!auth) return;
+
+    // If the user just returned from a Google sign-in redirect, finish that
+    // first so the server session cookie is created before the auth listener
+    // fires its first event. Failures are logged inside the helper.
+    consumeGoogleRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const prevUid = prevUidRef.current;

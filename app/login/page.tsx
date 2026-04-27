@@ -39,7 +39,12 @@ export default function LoginPage() {
     // Don't redirect mid-submission — handlers manage redirect after session cookie is set
     if (submitting) return;
     if (!loading && user && userDoc) {
-      // Check if profile is complete (phone is mandatory)
+      // Admins land in the admin panel, never the customer site
+      if (userDoc.role === 'admin') {
+        window.location.href = '/admin';
+        return;
+      }
+      // Customers must complete their profile (phone) before continuing
       if (!userDoc.phone) {
         setView('complete-profile');
       } else {
@@ -52,18 +57,14 @@ export default function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
+      // signInWithGoogle now uses signInWithRedirect — the browser navigates
+      // to Google. Code below this line typically does NOT run, because the
+      // page is unmounting. Don't reset `submitting` in finally; we want the
+      // "Signing in…" state to stay visible until navigation completes.
       await signInWithGoogle();
-      // signInWithGoogle now awaits the session cookie creation; safe to clear flag
-      // AuthContext useEffect will then handle redirect (or trigger profile completion)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-      // Firebase popup closed by user shouldn't show as a scary error
-      if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request')) {
-        // Silent — user closed the popup intentionally
-      } else {
-        setError(msg);
-      }
-    } finally {
+      setError(msg);
       setSubmitting(false);
     }
   };
@@ -86,8 +87,7 @@ export default function LoginPage() {
         phone: regPhone,
         location: regLocation,
       });
-
-      window.location.href = '/';
+      // Redirect handled by role-aware useEffect once AuthContext loads userDoc
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
       if (msg.includes('email-already-in-use')) {
@@ -108,7 +108,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signInWithEmail(loginEmail, loginPassword);
-      window.location.href = '/';
+      // Redirect handled by role-aware useEffect once AuthContext loads userDoc
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       if (msg.includes('too-many-requests')) {
@@ -157,7 +157,8 @@ export default function LoginPage() {
           phone: profilePhone,
           location: profileLocation,
         });
-        // Hard redirect to avoid middleware/session issues
+        // Hard redirect — only customers reach this view (admins are redirected
+        // earlier by the role-aware useEffect), so going to / is correct.
         window.location.href = '/';
       }
     } catch (err: unknown) {
