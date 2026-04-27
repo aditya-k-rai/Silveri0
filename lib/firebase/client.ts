@@ -5,11 +5,16 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  // authDomain stays as <projectId>.firebaseapp.com — that's the only
-  // redirect URI registered with Google's OAuth client by default. Pointing
-  // it at our own host causes Error 400 redirect_uri_mismatch unless the
-  // custom URI is also added in Google Cloud Console → OAuth credentials.
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  // Use the current site's host as authDomain on the client so the auth-handler
+  // iframe loads same-origin with the page (avoids 3rd-party storage blocks in
+  // Brave/Safari/strict-Chrome). The matching `/__/auth/*` rewrite in
+  // next.config.ts proxies to <projectId>.firebaseapp.com under the hood.
+  // Requires `https://<host>/__/auth/handler` to be added to the OAuth client's
+  // Authorized redirect URIs in Google Cloud Console (already done for
+  // silverishop.in). SSR has no `window`, so it falls back to the env var.
+  authDomain: typeof window !== 'undefined'
+    ? window.location.host
+    : process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
