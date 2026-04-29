@@ -16,6 +16,8 @@ export interface Product {
   carat: string;
   colour: string;
   colour2: string;
+  /** Plating treatment: "" | "Gold Plated" | "Silver Plated" | "Gold & Silver Plated" */
+  plating: string;
   size: string;
   height: string;
   weight: string;

@@ -138,7 +138,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     { label: 'Category', value: product.category },
     { label: 'SKU', value: product.sku, mono: true },
     { label: 'Purity', value: product.carat, highlight: true },
-    { label: 'Colour', value: product.colour2 ? `${product.colour}, ${product.colour2}` : product.colour },
+    { label: 'Metal', value: product.colour2 ? `${product.colour}, ${product.colour2}` : product.colour },
+    { label: 'Plating', value: product.plating, highlight: true },
     { label: 'Size', value: product.size },
     { label: 'Weight', value: product.weight },
     { label: 'Height', value: product.height },
@@ -200,6 +201,11 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               <span className="inline-flex items-center gap-1.5 bg-silver-100 text-silver-600 text-xs font-medium px-3 py-1 rounded-full">
                 {product.colour}
               </span>
+              {product.plating && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full border border-amber-200">
+                  {product.plating}
+                </span>
+              )}
             </div>
 
             {/* Name */}
@@ -229,10 +235,10 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </span>
             </div>
 
-            {/* Colour Selector */}
+            {/* Metal Selector */}
             {product.colour2 && (
               <div>
-                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Select Colour</p>
+                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Select Metal</p>
                 <div className="flex gap-2">
                   {[product.colour, product.colour2].map((c) => (
                     <button

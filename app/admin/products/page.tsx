@@ -78,6 +78,7 @@ export default function AdminProductsPage() {
         carat: "22K",
         colour: "Silver",
         colour2: "",
+        plating: "",
         size: "",
         height: "",
         weight: "",
@@ -470,7 +471,7 @@ export default function AdminProductsPage() {
                       );
                     })()}
                     <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour 1</label>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Metal</label>
                       <input
                         type="text"
                         value={editingParams.colour}
@@ -480,7 +481,7 @@ export default function AdminProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Colour 2</label>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Metal 2 (optional)</label>
                       <input
                         type="text"
                         value={editingParams.colour2 || ''}
@@ -488,6 +489,20 @@ export default function AdminProductsPage() {
                         placeholder="e.g. Rose Gold"
                         className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
                       />
+                    </div>
+                    {/* Plating — optional surface treatment shown to customers */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Plating</label>
+                      <select
+                        value={editingParams.plating || ''}
+                        onChange={(e) => setEditingParams({ ...editingParams, plating: e.target.value })}
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      >
+                        <option value="">— None —</option>
+                        <option value="Gold Plated">Gold Plated</option>
+                        <option value="Silver Plated">Silver Plated</option>
+                        <option value="Gold & Silver Plated">Gold &amp; Silver Plated</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Purity</label>

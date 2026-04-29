@@ -92,7 +92,7 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
                 </div>
               </div>
               <div>
-                <h4 className="font-medium text-sm text-warm-black mb-3">Colour</h4>
+                <h4 className="font-medium text-sm text-warm-black mb-3">Metal</h4>
                 <div className="space-y-2">
                   {allColours.map((c) => (
                     <label key={c} className="flex items-center gap-2 cursor-pointer">
@@ -115,7 +115,7 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
                 </div>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="font-medium text-sm text-warm-black mb-3">Colour</h4>
+                    <h4 className="font-medium text-sm text-warm-black mb-3">Metal</h4>
                     {allColours.map((c) => (
                       <label key={c} className="flex items-center gap-2 cursor-pointer mb-2">
                         <input type="checkbox" checked={selectedColours.includes(c)} onChange={() => toggleColour(c)} className="rounded" />
