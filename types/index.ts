@@ -32,10 +32,18 @@ export interface Category {
 
 export interface CartItem {
   productId: string;
+  /** Stable unique key per (productId, size, chain) — same product with two sizes
+   *  becomes two separate cart lines. Auto-derived by addItem; callers don't need
+   *  to set it. Falls back to productId on legacy persisted carts. */
+  cartLineId: string;
   name: string;
   price: number;
   image: string;
   quantity: number;
+  /** Selected ring size (only set for ring products with ringSizes configured). */
+  size?: string;
+  /** Pendant chain choice — undefined when product doesn't expose the toggle. */
+  chain?: 'with' | 'without';
 }
 
 export interface OrderItem {

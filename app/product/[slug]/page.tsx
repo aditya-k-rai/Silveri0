@@ -44,6 +44,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const [likedBy, setLikedBy] = useState<{ name: string; photo?: string }[]>([]);
   const [showLikedBy, setShowLikedBy] = useState(false);
   const [selectedColour, setSelectedColour] = useState(product?.colour || '');
+  const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedChain, setSelectedChain] = useState<'with' | 'without'>('with');
 
   useEffect(() => {
     if (!product || !db) return;
@@ -84,6 +86,14 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   const isWishlisted = wishlistItems.includes(product.id);
 
+  // Parse comma-separated ring sizes from the admin field. Empty string → no selector.
+  const sizeOptions: string[] = (product.ringSizes || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const requiresSize = sizeOptions.length > 0;
+  const showsChainToggle = !!product.chainOption;
+
   const activityBase = user
     ? {
         userId: user.uid,
@@ -98,12 +108,22 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     : null;
 
   const handleAddToCart = () => {
+    // Force size selection for ring products that expose ringSizes.
+    if (requiresSize && !selectedSize) {
+      // Scroll the size selector into view & flash a brief "added" state off
+      setAddedToCart(false);
+      const el = document.getElementById('size-selector');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     addItem({
       productId: product.id,
       name: product.name,
       price: product.price,
       quantity: 1,
       image: product.primaryImage || '',
+      ...(requiresSize ? { size: selectedSize } : {}),
+      ...(showsChainToggle ? { chain: selectedChain } : {}),
     });
     if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
     setAddedToCart(true);
@@ -251,6 +271,55 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                       }`}
                     >
                       {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ring Size Selector — only when admin has set ringSizes (rings) */}
+            {requiresSize && (
+              <div id="size-selector">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider">Select Ring Size</p>
+                  {!selectedSize && (
+                    <span className="text-[10px] font-medium text-red-500">Required</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSelectedSize(s)}
+                      className={`min-w-[44px] px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
+                        selectedSize === s
+                          ? 'border-gold bg-gold/10 text-gold-dark'
+                          : 'border-silver-200 text-silver-700 hover:border-silver-400'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pendant Chain Toggle — only when admin enabled chainOption */}
+            {showsChainToggle && (
+              <div>
+                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Chain</p>
+                <div className="flex gap-2">
+                  {(['with', 'without'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setSelectedChain(opt)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
+                        selectedChain === opt
+                          ? 'border-gold bg-gold/10 text-gold-dark'
+                          : 'border-silver-200 text-silver-600 hover:border-silver-400'
+                      }`}
+                    >
+                      {opt === 'with' ? 'With Chain' : 'Without Chain'}
                     </button>
                   ))}
                 </div>

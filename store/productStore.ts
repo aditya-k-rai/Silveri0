@@ -18,6 +18,10 @@ export interface Product {
   colour2: string;
   /** Plating treatment: "" | "Gold Plated" | "Silver Plated" | "Gold & Silver Plated" */
   plating: string;
+  /** Comma-separated list of available ring sizes, e.g. "6, 7, 8, 9, 10". Empty = no size selector. */
+  ringSizes: string;
+  /** When true, customer product page shows a "With Chain / Without Chain" toggle (typically for pendants). */
+  chainOption: boolean;
   size: string;
   height: string;
   weight: string;

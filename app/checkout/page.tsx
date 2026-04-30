@@ -111,8 +111,11 @@ export default function CheckoutPage() {
           <div className="bg-white border border-silver/40 rounded-2xl p-6">
             <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold mb-4">Your Cart ({items.length} items)</h2>
             <div className="divide-y divide-silver/30">
-              {items.map((item) => (
-                <div key={item.productId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
+              {items.map((item) => {
+                // Backwards-compat for legacy persisted carts that lack cartLineId
+                const lineId = item.cartLineId || item.productId;
+                return (
+                <div key={lineId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
                   <div className="w-20 h-20 rounded-lg bg-silver/20 shrink-0 overflow-hidden relative">
                     {item.image ? (
                       <Image src={item.image} alt={item.name} fill className="object-cover" sizes="80px" />
@@ -126,31 +129,42 @@ export default function CheckoutPage() {
                     <Link href={`/product/${item.productId}`} className="text-sm font-medium truncate block hover:text-gold transition-colors">
                       {item.name}
                     </Link>
+                    {/* Selected variant options — size, chain — shown beneath name */}
+                    {(item.size || item.chain) && (
+                      <p className="text-[11px] text-muted mt-0.5">
+                        {item.size && <span>Size: <strong className="text-silver-700">{item.size}</strong></span>}
+                        {item.size && item.chain && <span className="mx-1.5">·</span>}
+                        {item.chain && (
+                          <span>{item.chain === 'with' ? 'With Chain' : 'Without Chain'}</span>
+                        )}
+                      </p>
+                    )}
                     <p className="text-sm text-warm-black font-semibold mt-1">₹{item.price.toLocaleString("en-IN")}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      onClick={() => updateQuantity(lineId, item.quantity - 1)}
                       className="w-8 h-8 rounded-lg border border-silver flex items-center justify-center hover:bg-silver/20 transition-colors"
                     >
                       <Minus size={14} />
                     </button>
                     <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      onClick={() => updateQuantity(lineId, item.quantity + 1)}
                       className="w-8 h-8 rounded-lg border border-silver flex items-center justify-center hover:bg-silver/20 transition-colors"
                     >
                       <Plus size={14} />
                     </button>
                   </div>
                   <button
-                    onClick={() => removeItem(item.productId)}
+                    onClick={() => removeItem(lineId)}
                     className="p-2 text-muted hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

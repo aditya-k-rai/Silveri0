@@ -2,11 +2,23 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CartItem } from '@/types';
 
+/** Build a stable unique cart-line key from product + selected variant options. */
+function makeCartLineId(productId: string, size?: string, chain?: string) {
+  return `${productId}__${size ?? ''}__${chain ?? ''}`;
+}
+
+/** Backfill cartLineId on legacy persisted items that don't have it. */
+function ensureCartLineId(item: CartItem): CartItem {
+  if (item.cartLineId) return item;
+  return { ...item, cartLineId: makeCartLineId(item.productId, item.size, item.chain) };
+}
+
 interface CartState {
   items: CartItem[];
-  addItem: (item: CartItem) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  /** Caller passes a CartItem without `cartLineId`; the store computes it. */
+  addItem: (item: Omit<CartItem, 'cartLineId'> & { cartLineId?: string }) => void;
+  removeItem: (cartLineId: string) => void;
+  updateQuantity: (cartLineId: string, quantity: number) => void;
   clearCart: () => void;
 }
 
@@ -15,33 +27,36 @@ export const useCartStore = create<CartState>()(
     (set) => ({
       items: [],
 
-      addItem: (item) =>
+      addItem: (raw) =>
         set((state) => {
-          const existing = state.items.find((i) => i.productId === item.productId);
+          const cartLineId =
+            raw.cartLineId ?? makeCartLineId(raw.productId, raw.size, raw.chain);
+          const newItem: CartItem = { ...raw, cartLineId };
+          const existing = state.items.find((i) => ensureCartLineId(i).cartLineId === cartLineId);
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId
-                  ? { ...i, quantity: i.quantity + item.quantity }
+                ensureCartLineId(i).cartLineId === cartLineId
+                  ? { ...i, cartLineId, quantity: i.quantity + raw.quantity }
                   : i
               ),
             };
           }
-          return { items: [...state.items, item] };
+          return { items: [...state.items, newItem] };
         }),
 
-      removeItem: (productId) =>
+      removeItem: (cartLineId) =>
         set((state) => ({
-          items: state.items.filter((i) => i.productId !== productId),
+          items: state.items.filter((i) => ensureCartLineId(i).cartLineId !== cartLineId),
         })),
 
-      updateQuantity: (productId, quantity) =>
+      updateQuantity: (cartLineId, quantity) =>
         set((state) => ({
           items:
             quantity <= 0
-              ? state.items.filter((i) => i.productId !== productId)
+              ? state.items.filter((i) => ensureCartLineId(i).cartLineId !== cartLineId)
               : state.items.map((i) =>
-                  i.productId === productId ? { ...i, quantity } : i
+                  ensureCartLineId(i).cartLineId === cartLineId ? { ...i, quantity } : i
                 ),
         })),
 

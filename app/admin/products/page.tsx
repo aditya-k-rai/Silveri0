@@ -79,6 +79,8 @@ export default function AdminProductsPage() {
         colour: "Silver",
         colour2: "",
         plating: "",
+        ringSizes: "",
+        chainOption: false,
         size: "",
         height: "",
         weight: "",
@@ -503,6 +505,31 @@ export default function AdminProductsPage() {
                         <option value="Silver Plated">Silver Plated</option>
                         <option value="Gold & Silver Plated">Gold &amp; Silver Plated</option>
                       </select>
+                    </div>
+                    {/* Ring Sizes — comma-separated; populates the size selector on the customer product page (use for rings). */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Ring Sizes</label>
+                      <input
+                        type="text"
+                        value={editingParams.ringSizes || ''}
+                        onChange={(e) => setEditingParams({ ...editingParams, ringSizes: e.target.value })}
+                        placeholder="e.g. 6, 7, 8, 9, 10, 11"
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                      <p className="text-[10px] text-[#A09DAB] mt-1">Comma-separated. Leave empty for non-ring products.</p>
+                    </div>
+                    {/* Chain Option — show "With Chain / Without Chain" toggle (use for pendants). */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Pendant Chain Option</label>
+                      <label className="flex items-center gap-2 bg-[#F5F3EF] rounded-xl px-4 py-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!editingParams.chainOption}
+                          onChange={(e) => setEditingParams({ ...editingParams, chainOption: e.target.checked })}
+                          className="rounded border-[#A09DAB] text-[#C9A84C] focus:ring-[#C9A84C]/40"
+                        />
+                        <span className="text-sm">Offer &ldquo;With Chain / Without Chain&rdquo;</span>
+                      </label>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Purity</label>
