@@ -81,6 +81,7 @@ export default function AdminProductsPage() {
         plating: "",
         ringSizes: "",
         chainOption: false,
+        chainPrice: 0,
         size: "",
         height: "",
         weight: "",
@@ -531,6 +532,26 @@ export default function AdminProductsPage() {
                         <span className="text-sm">Offer &ldquo;With Chain / Without Chain&rdquo;</span>
                       </label>
                     </div>
+                    {/* Chain Price — only meaningful when chainOption is enabled */}
+                    {editingParams.chainOption && (
+                      <div>
+                        <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Chain Price (₹)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={editingParams.chainPrice ?? 0}
+                          onChange={(e) =>
+                            setEditingParams({
+                              ...editingParams,
+                              chainPrice: Math.max(0, Number(e.target.value) || 0),
+                            })
+                          }
+                          placeholder="e.g. 500"
+                          className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                        />
+                        <p className="text-[10px] text-[#A09DAB] mt-1">Added to the base price when customer picks &ldquo;With Chain&rdquo;.</p>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Purity</label>
                       <input 

@@ -22,6 +22,8 @@ export interface Product {
   ringSizes: string;
   /** When true, customer product page shows a "With Chain / Without Chain" toggle (typically for pendants). */
   chainOption: boolean;
+  /** Additional rupees added to the base price when the customer picks "With Chain". 0 = no extra. */
+  chainPrice: number;
   size: string;
   height: string;
   weight: string;

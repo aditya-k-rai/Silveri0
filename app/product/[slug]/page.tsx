@@ -93,6 +93,10 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     .filter(Boolean);
   const requiresSize = sizeOptions.length > 0;
   const showsChainToggle = !!product.chainOption;
+  const chainPrice = Math.max(0, Number(product.chainPrice ?? 0) || 0);
+  // Live price: base + chain surcharge when "With Chain" is selected
+  const effectivePrice =
+    showsChainToggle && selectedChain === 'with' ? product.price + chainPrice : product.price;
 
   const activityBase = user
     ? {
@@ -119,7 +123,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     addItem({
       productId: product.id,
       name: product.name,
-      price: product.price,
+      price: effectivePrice,
       quantity: 1,
       image: product.primaryImage || '',
       ...(requiresSize ? { size: selectedSize } : {}),
@@ -244,10 +248,15 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             </div>
 
             {/* Price + Stock */}
-            <div className="flex items-baseline gap-4">
+            <div className="flex items-baseline gap-4 flex-wrap">
               <span className="text-3xl sm:text-4xl font-bold text-silver-900">
-                ₹{product.price.toLocaleString('en-IN')}
+                ₹{effectivePrice.toLocaleString('en-IN')}
               </span>
+              {showsChainToggle && chainPrice > 0 && selectedChain === 'with' && (
+                <span className="text-xs text-silver-500">
+                  ₹{product.price.toLocaleString('en-IN')} + ₹{chainPrice.toLocaleString('en-IN')} chain
+                </span>
+              )}
               <span className={`text-sm font-medium px-2.5 py-0.5 rounded-full ${
                 product.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
               }`}>
@@ -308,20 +317,32 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             {showsChainToggle && (
               <div>
                 <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Chain</p>
-                <div className="flex gap-2">
-                  {(['with', 'without'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => setSelectedChain(opt)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
-                        selectedChain === opt
-                          ? 'border-gold bg-gold/10 text-gold-dark'
-                          : 'border-silver-200 text-silver-600 hover:border-silver-400'
-                      }`}
-                    >
-                      {opt === 'with' ? 'With Chain' : 'Without Chain'}
-                    </button>
-                  ))}
+                <div className="flex gap-2 flex-wrap">
+                  {(['with', 'without'] as const).map((opt) => {
+                    const optPrice = opt === 'with' ? product.price + chainPrice : product.price;
+                    const isActive = selectedChain === opt;
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => setSelectedChain(opt)}
+                        className={`px-4 py-2.5 rounded-xl text-left border-2 transition-all duration-200 min-w-[150px] ${
+                          isActive
+                            ? 'border-gold bg-gold/10 text-gold-dark'
+                            : 'border-silver-200 text-silver-700 hover:border-silver-400'
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">
+                          {opt === 'with' ? 'With Chain' : 'Without Chain'}
+                        </span>
+                        <span className={`block text-xs mt-0.5 ${isActive ? 'text-gold-dark/80' : 'text-silver-500'}`}>
+                          ₹{optPrice.toLocaleString('en-IN')}
+                          {opt === 'with' && chainPrice > 0 && (
+                            <span className="ml-1 text-[10px]">(+₹{chainPrice.toLocaleString('en-IN')})</span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
