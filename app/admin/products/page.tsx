@@ -437,9 +437,27 @@ export default function AdminProductsPage() {
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Category</label>
                       <select
                         value={editingParams.category}
-                        onChange={(e) =>
-                          setEditingParams({ ...editingParams, category: e.target.value, subCategory: "" })
-                        }
+                        onChange={(e) => {
+                          const newCategory = e.target.value;
+                          const lower = newCategory.toLowerCase();
+                          // Match Rings / Silver Rings / Wedding Rings — but NOT Earrings.
+                          const isRingCategory = lower.includes('ring') && !lower.includes('earring');
+                          // Only auto-fill if the admin hasn't already typed something custom.
+                          const shouldAutofillSizes =
+                            isRingCategory && !(editingParams.ringSizes || '').trim();
+                          const defaultRingSizes = Array.from(
+                            { length: 15 },
+                            (_, i) => String(i + 11)
+                          ).join(', ');
+                          setEditingParams({
+                            ...editingParams,
+                            category: newCategory,
+                            subCategory: '',
+                            ringSizes: shouldAutofillSizes
+                              ? defaultRingSizes
+                              : editingParams.ringSizes,
+                          });
+                        }}
                         className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
                       >
                         <option value="">Select category</option>
