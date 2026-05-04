@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Package, FolderTree, ClipboardList,
-  Users, Tags, Settings, Menu, X, LogOut, Loader2, Sparkles, LineChart, BarChart3, Activity
+  Users, Tags, Settings, Menu, X, LogOut, Loader2, Sparkles, LineChart, BarChart3, Activity, Star
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { href: "/admin/custom-orders", label: "Custom Orders", icon: Sparkles },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/activity", label: "Activity", icon: Activity },
   { href: "/admin/promos", label: "Promos", icon: Tags },
   { href: "/admin/settings", label: "Settings", icon: Settings },

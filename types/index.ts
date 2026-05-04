@@ -85,6 +85,12 @@ export interface Order {
   updatedAt?: Date;
 }
 
+export interface AdminReply {
+  text: string;
+  adminName: string;
+  repliedAt: Date;
+}
+
 export interface Review {
   id: string;
   productId: string;
@@ -93,7 +99,14 @@ export interface Review {
   userPhoto?: string;
   rating: number;
   comment: string;
+  /** Optional title/headline for the review */
+  title?: string;
+  /** Order this review is anchored to — proves the user actually bought + received the product */
+  orderId?: string;
+  /** Admin response shown beneath the review */
+  adminReply?: AdminReply;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface UserAddress {

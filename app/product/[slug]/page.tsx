@@ -12,11 +12,13 @@ import { updateProductDoc } from '@/lib/firebase/products';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { logActivity } from '@/lib/firebase/activityLog';
+import { subscribeToProductReviews } from '@/lib/firebase/reviews';
+import type { Review } from '@/types';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 import ProductJsonLd from '@/components/seo/ProductJsonLd';
 
-const sampleReviews: { userName: string; rating: number; comment: string; date: string }[] = [];
+type ReviewSort = 'newest' | 'oldest' | 'rating-high' | 'rating-low';
 
 export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -46,6 +48,32 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const [selectedColour, setSelectedColour] = useState(product?.colour || '');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedChain, setSelectedChain] = useState<'with' | 'without'>('with');
+
+  // Reviews — live from Firestore, with client-side sort
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>('newest');
+
+  useEffect(() => {
+    if (!product?.id) return;
+    const unsub = subscribeToProductReviews(product.id, (data) => setReviews(data));
+    return () => { if (unsub) unsub(); };
+  }, [product?.id]);
+
+  const sortedReviews: Review[] = (() => {
+    const copy = [...reviews];
+    switch (reviewSort) {
+      case 'oldest':       return copy.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      case 'rating-high':  return copy.sort((a, b) => b.rating - a.rating || b.createdAt.getTime() - a.createdAt.getTime());
+      case 'rating-low':   return copy.sort((a, b) => a.rating - b.rating || b.createdAt.getTime() - a.createdAt.getTime());
+      case 'newest':
+      default:             return copy.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+  })();
+
+  const reviewCount = reviews.length;
+  const averageRating = reviewCount > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+    : 0;
 
   useEffect(() => {
     if (!product || !db) return;
@@ -238,14 +266,22 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             </h1>
 
             {/* Rating */}
-            <div className="flex items-center gap-2">
+            <a href="#reviews" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="flex gap-0.5">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} size={16} className={s <= 4 ? 'fill-gold text-gold' : 'text-silver-300'} />
+                  <Star
+                    key={s}
+                    size={16}
+                    className={s <= Math.round(averageRating) ? 'fill-gold text-gold' : 'text-silver-300'}
+                  />
                 ))}
               </div>
-              <span className="text-sm text-silver-500">({sampleReviews.length} reviews)</span>
-            </div>
+              <span className="text-sm text-silver-500">
+                {reviewCount > 0
+                  ? `${averageRating.toFixed(1)} · ${reviewCount} review${reviewCount === 1 ? '' : 's'}`
+                  : 'No reviews yet'}
+              </span>
+            </a>
 
             {/* Price + Stock */}
             <div className="flex items-baseline gap-4 flex-wrap">
@@ -547,15 +583,76 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
         </section>
 
         {/* ====== REVIEWS ====== */}
-        <section className="mt-10 md:mt-14 pb-8">
+        <section id="reviews" className="mt-10 md:mt-14 pb-8 scroll-mt-24">
           <div className="bg-white rounded-2xl border border-silver-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-silver-100 bg-silver-50">
-              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">
-                Customer Reviews
-              </h3>
+            {/* Header — title + average summary + sort */}
+            <div className="px-5 py-4 border-b border-silver-100 bg-silver-50 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+              <div>
+                <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">
+                  Customer Reviews
+                </h3>
+                {reviewCount > 0 && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          size={13}
+                          className={s <= Math.round(averageRating) ? 'fill-gold text-gold' : 'text-silver-300'}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-silver-500">
+                      {averageRating.toFixed(1)} out of 5 — {reviewCount} review{reviewCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {reviewCount > 1 && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="review-sort" className="text-xs font-medium text-silver-500">Sort:</label>
+                  <select
+                    id="review-sort"
+                    value={reviewSort}
+                    onChange={(e) => setReviewSort(e.target.value as ReviewSort)}
+                    className="bg-white border border-silver-200 rounded-lg px-3 py-1.5 text-xs font-medium text-silver-800 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="rating-high">Highest rated</option>
+                    <option value="rating-low">Lowest rated</option>
+                  </select>
+                </div>
+              )}
             </div>
-            <div className="px-5 py-4 space-y-4">
-              {sampleReviews.map((review, i) => (<ReviewCard key={i} {...review} />))}
+
+            {/* Body */}
+            <div className="px-5 py-5">
+              {reviewCount === 0 ? (
+                <div className="text-center py-8">
+                  <Star size={32} className="mx-auto text-silver-300 mb-3" />
+                  <p className="text-sm text-silver-700 font-medium mb-1">No reviews yet</p>
+                  <p className="text-xs text-silver-500">
+                    Be the first to share your thoughts after your order is delivered.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  {sortedReviews.map((r) => (
+                    <ReviewCard
+                      key={r.id}
+                      userName={r.userName}
+                      userPhoto={r.userPhoto}
+                      rating={r.rating}
+                      title={r.title}
+                      comment={r.comment}
+                      date={r.createdAt}
+                      verified={!!r.orderId}
+                      adminReply={r.adminReply}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
