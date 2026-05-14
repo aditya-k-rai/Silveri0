@@ -53,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${playfair.variable} ${jost.variable}`}>
-      <body className="min-h-screen flex flex-col bg-silver-50 text-silver-900 font-[family-name:var(--font-body)]">
+      <body className="min-h-screen flex flex-col bg-silver-50 text-silver-900 font-[family-name:var(--font-body)] pb-16 md:pb-0">
         <Providers>
           <Header />
           <main className="flex-1">{children}</main>

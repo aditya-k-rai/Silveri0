@@ -549,8 +549,10 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* Bottom spacer for mobile bottom bar */}
-      <div className="h-16 md:hidden" />
+      {/* Mobile bottom-bar clearance is handled by `pb-16 md:pb-0` on the
+          body in `app/layout.tsx` — don't add an in-flow spacer here, it
+          would render immediately under the sticky top header and create
+          a 64-px gap before the page content. */}
     </>
   );
 }

@@ -9,15 +9,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect /account/* — redirect to user login
-  if (pathname.startsWith('/account')) {
-    if (!sessionCookie || sessionCookie.length < 20) {
-      const response = NextResponse.redirect(new URL('/login', request.url));
-      // Clear invalid session cookie
-      response.cookies.delete('session');
-      return response;
-    }
-  }
+  // NOTE: /account/* used to be guarded here, but the server session cookie
+  // can be transiently missing right after Google Identity Services sign-in
+  // (the createSessionCookie POST is async), causing legitimate logged-in
+  // customers to get bounced to /login when they tapped Orders / Wishlist.
+  // The customer pages already enforce auth client-side via
+  // `app/account/layout.tsx` (redirects to /login when !user). So we now
+  // only proxy-guard the admin surface, where the session cookie's presence
+  // is more stable (admins log in via email + access code, no GIS race).
 
   // Protect /admin/* — redirect to admin login (separate page)
   if (pathname.startsWith('/admin')) {
