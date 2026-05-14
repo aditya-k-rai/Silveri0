@@ -4,12 +4,11 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Heart, ShoppingCart, ThumbsUp, Eye } from 'lucide-react';
-import { Product, useProductStore } from '@/store/productStore';
+import { Heart, ShoppingCart, Eye } from 'lucide-react';
+import { Product } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthContext } from '@/context/AuthContext';
-import { updateProductDoc } from '@/lib/firebase/products';
 import { logActivity } from '@/lib/firebase/activityLog';
 
 interface ProductCardProps {
@@ -20,11 +19,9 @@ interface ProductCardProps {
 export default function ProductCard({ product, variant = 'light' }: ProductCardProps) {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
-  const incrementLikes = useProductStore((s) => s.incrementLikes);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
   const { user, userDoc } = useAuthContext();
   const isWishlisted = wishlistItems.includes(product.id);
-  const [liked, setLiked] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
   const isDark = variant === 'dark';
@@ -91,17 +88,7 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
     }
   };
 
-  const handleLike = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (liked) return;
-    setLiked(true);
-    incrementLikes(product.id);
-    updateProductDoc(product.id, { likes: (product.likes ?? 0) + 1 });
-  };
-
   const views = product.views ?? 0;
-  const likes = product.likes ?? 0;
 
   return (
     <div className={`group relative rounded-2xl overflow-hidden transition-all duration-300 ${
@@ -133,22 +120,6 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
               </span>
             </div>
           )}
-
-          {/* Like Button — Top Left */}
-          <button
-            onClick={handleLike}
-            disabled={liked}
-            title={liked ? 'Liked!' : 'Like this product'}
-            className={`absolute top-3 left-3 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-              liked
-                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                : isDark
-                  ? 'bg-black/40 backdrop-blur-md text-white/80 hover:bg-blue-500 hover:text-white'
-                  : 'bg-white/80 backdrop-blur-md text-silver-400 shadow-sm hover:bg-blue-500 hover:text-white'
-            }`}
-          >
-            <ThumbsUp size={16} className={liked ? 'fill-current' : ''} />
-          </button>
 
           {/* Wishlist Heart — Top Right */}
           <button
@@ -238,42 +209,48 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
           ₹{product.price.toLocaleString('en-IN')}
         </p>
 
-        {/* Stats Row: Views + Likes */}
+        {/* Stats Row: Views only */}
         <div className={`flex items-center gap-4 mt-2 text-[11px] ${isDark ? 'text-silver-500' : 'text-silver-400'}`}>
           <span className="flex items-center gap-1">
-            <Eye size={12} /> {views > 999 ? `${(views / 1000).toFixed(1)}k` : views}
-          </span>
-          <span className="flex items-center gap-1">
-            <ThumbsUp size={12} /> {likes > 999 ? `${(likes / 1000).toFixed(1)}k` : likes}
+            <Eye size={12} /> {views > 999 ? `${(views / 1000).toFixed(1)}k` : views} views
           </span>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons — square cart icon + full-width Buy Now on mobile;
+            both side-by-side with text on desktop. */}
         <div className="flex gap-2 mt-3">
+          {/* Add to Cart — icon-only square on mobile, full text from sm */}
           <button
             onClick={handleAddToCart}
             disabled={product.stock <= 0}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+            aria-label={addedToCart ? 'Added to cart' : 'Add to cart'}
+            style={{ touchAction: 'manipulation' }}
+            className={`shrink-0 w-11 sm:w-auto sm:flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-0 sm:px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
               addedToCart
-                ? 'bg-green-500 text-white'
+                ? 'bg-green-500 text-white border-2 border-green-500'
                 : isDark
                   ? 'border border-silver-500 text-silver-200 hover:bg-silver-700'
                   : 'border-2 border-silver-900 text-silver-900 hover:bg-silver-900 hover:text-white'
             }`}
           >
-            <ShoppingCart size={14} />
-            {product.stock <= 0 ? 'Sold Out' : addedToCart ? 'Added!' : 'Add to Cart'}
+            <ShoppingCart size={16} className="shrink-0" />
+            <span className="hidden sm:inline">
+              {product.stock <= 0 ? 'Sold Out' : addedToCart ? 'Added!' : 'Add to Cart'}
+            </span>
           </button>
+
+          {/* Buy Now — primary gold, full width on mobile */}
           <button
             onClick={handleBuyNow}
             disabled={product.stock <= 0}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
+            style={{ touchAction: 'manipulation' }}
+            className={`flex-1 inline-flex items-center justify-center py-2.5 sm:py-3 px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
               isDark
                 ? 'bg-gold text-silver-900 hover:bg-gold-light'
                 : 'bg-gold text-white hover:bg-gold-dark'
             }`}
           >
-            Buy Now
+            {product.stock <= 0 ? 'Sold Out' : 'Buy Now'}
           </button>
         </div>
       </div>

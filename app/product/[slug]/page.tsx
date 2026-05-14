@@ -3,14 +3,12 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Shield, Truck, RotateCcw, ShoppingCart, Heart, ThumbsUp, Eye, X, Star } from 'lucide-react';
+import { ChevronRight, Shield, Truck, RotateCcw, ShoppingCart, Heart, Eye, Star } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthContext } from '@/context/AuthContext';
 import { updateProductDoc } from '@/lib/firebase/products';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { logActivity } from '@/lib/firebase/activityLog';
 import { subscribeToProductReviews } from '@/lib/firebase/reviews';
 import type { Review } from '@/types';
@@ -27,7 +25,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const products = useProductStore((s) => s.products);
   const loading = useProductStore((s) => s.loading);
   const incrementViews = useProductStore((s) => s.incrementViews);
-  const incrementLikes = useProductStore((s) => s.incrementLikes);
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
   const { user, userDoc } = useAuthContext();
@@ -43,9 +40,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   }, [product?.id]);
 
   const [addedToCart, setAddedToCart] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const [likedBy, setLikedBy] = useState<{ name: string; photo?: string }[]>([]);
-  const [showLikedBy, setShowLikedBy] = useState(false);
   const [selectedColour, setSelectedColour] = useState(product?.colour || '');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedChain, setSelectedChain] = useState<'with' | 'without'>('with');
@@ -75,23 +69,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const averageRating = reviewCount > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
     : 0;
-
-  useEffect(() => {
-    if (!product || !db) return;
-    const productId = product.id;
-    const userUid = user?.uid;
-    getDoc(doc(db, 'products', productId)).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setLikedBy(data.likedBy || []);
-        if (userUid && (data.likedBy || []).some((u: { uid?: string }) => u.uid === userUid)) {
-          setLiked(true);
-        }
-      }
-    });
-    // product/user references captured via IDs above
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?.id, user?.uid]);
 
   if (loading) {
     return (
@@ -170,20 +147,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     } else {
       addToWishlist(product.id);
       if (activityBase) logActivity({ ...activityBase, type: 'wishlist', action: 'added' });
-    }
-  };
-
-  const handleLike = async () => {
-    if (liked || !user) return;
-    setLiked(true);
-    incrementLikes(product.id);
-    const likeEntry = { uid: user.uid, name: userDoc?.name || user.displayName || 'User', photo: user.photoURL || '' };
-    setLikedBy((prev) => [...prev, likeEntry]);
-    if (db) {
-      await updateDoc(doc(db, 'products', product.id), {
-        likes: (product.likes ?? 0) + 1,
-        likedBy: arrayUnion(likeEntry),
-      });
     }
   };
 
@@ -427,62 +390,12 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </button>
             </div>
 
-            {/* Engagement — Like + Stats */}
-            <div className="flex items-center gap-4 pt-1">
-              <button
-                onClick={handleLike}
-                disabled={liked || !user}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  liked
-                    ? 'bg-blue-500 text-white'
-                    : !user
-                      ? 'border border-silver-200 text-silver-400 opacity-50 cursor-not-allowed'
-                      : 'border border-silver-200 text-silver-500 hover:bg-blue-500 hover:text-white hover:border-blue-500'
-                }`}
-                title={!user ? 'Login to like' : liked ? 'Already liked' : 'Like this product'}
-              >
-                <ThumbsUp size={15} className={liked ? 'fill-current' : ''} />
-                {liked ? 'Liked!' : 'Like'}
-              </button>
-              <div className="flex items-center gap-4 text-xs text-silver-500">
-                <span className="flex items-center gap-1"><Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views</span>
-                <button
-                  onClick={() => likedBy.length > 0 && setShowLikedBy(true)}
-                  className={`flex items-center gap-1 ${likedBy.length > 0 ? 'hover:text-blue-500 cursor-pointer transition-colors' : ''}`}
-                >
-                  <ThumbsUp size={13} /> {(product.likes ?? 0).toLocaleString('en-IN')} likes
-                </button>
-              </div>
+            {/* Engagement — Views only */}
+            <div className="flex items-center gap-4 pt-1 text-xs text-silver-500">
+              <span className="flex items-center gap-1">
+                <Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views
+              </span>
             </div>
-
-            {/* Liked By Preview */}
-            {likedBy.length > 0 && (
-              <button
-                onClick={() => setShowLikedBy(true)}
-                className="text-xs text-silver-500 hover:text-silver-800 transition-colors flex items-center gap-1.5"
-              >
-                <div className="flex -space-x-2">
-                  {likedBy.slice(0, 3).map((u, i) => (
-                    u.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={u.photo} alt="" className="w-6 h-6 rounded-full border-2 border-white object-cover" />
-                    ) : (
-                      <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                    )
-                  ))}
-                </div>
-                <span>
-                  {likedBy.length === 1
-                    ? `${likedBy[0].name} liked this`
-                    : likedBy.length <= 3
-                      ? `${likedBy.map(u => u.name).join(', ')} liked this`
-                      : `${likedBy.slice(0, 2).map(u => u.name).join(', ')} and ${likedBy.length - 2} others liked this`
-                  }
-                </span>
-              </button>
-            )}
 
             {/* Description */}
             {product.description && (
@@ -697,38 +610,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
         })()}
       </div>
 
-      {/* ====== LIKED BY MODAL ====== */}
-      {showLikedBy && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowLikedBy(false)} />
-          <div className="bg-white rounded-2xl w-full max-w-sm relative z-10 shadow-2xl border border-silver-200 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-silver-200">
-              <div>
-                <h3 className="font-[family-name:var(--font-heading)] font-semibold text-silver-900">Liked By</h3>
-                <p className="text-xs text-silver-500 mt-0.5">{likedBy.length} {likedBy.length === 1 ? 'person' : 'people'} liked this</p>
-              </div>
-              <button onClick={() => setShowLikedBy(false)} className="p-2 hover:bg-silver-100 rounded-full text-silver-400 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto px-5 py-3">
-              {likedBy.map((u, i) => (
-                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-silver-100 last:border-0">
-                  {u.photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-sm font-medium text-silver-900">{u.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

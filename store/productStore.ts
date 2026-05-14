@@ -33,7 +33,6 @@ export interface Product {
   warranty: string;
   tags: string;
   views: number;
-  likes: number;
   primaryImage: string | null;
   hoverImage: string | null;
   image3: string | null;
@@ -49,7 +48,6 @@ interface ProductStore {
   updateProduct: (id: string, updates: Partial<Product>) => void;
   addProduct: (product: Product) => void;
   incrementViews: (id: string) => void;
-  incrementLikes: (id: string) => void;
 }
 
 export const useProductStore = create<ProductStore>((set) => ({
@@ -64,8 +62,5 @@ export const useProductStore = create<ProductStore>((set) => ({
   })),
   incrementViews: (id) => set((state) => ({
     products: state.products.map(p => p.id === id ? { ...p, views: (p.views ?? 0) + 1 } : p)
-  })),
-  incrementLikes: (id) => set((state) => ({
-    products: state.products.map(p => p.id === id ? { ...p, likes: (p.likes ?? 0) + 1 } : p)
   })),
 }));
