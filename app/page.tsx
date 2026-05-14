@@ -8,12 +8,13 @@ import { useProductStore } from '@/store/productStore';
 import ProductCard from '@/components/product/ProductCard';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { subscribeToCategories, Category } from '@/lib/firebase/categories';
 
-const exploreCategories = [
-  { name: 'Wedding', slug: 'wedding', image: '' },
-  { name: 'Gift', slug: 'gift', image: '' },
-  { name: 'Anniversary', slug: 'anniversary', image: '' },
-];
+// How many products to show before "View All" — 6 on mobile / tablet, 8 on desktop
+const HOMEPAGE_GRID_LIMIT = 8;
+// Items at these indices (the last two when there are 8) hide below the `lg`
+// breakpoint so mobile shows 6 and desktop shows 8.
+const DESKTOP_ONLY_INDICES = new Set([6, 7]);
 
 export default function HomePage() {
   const products = useProductStore((s) => s.products);
@@ -22,8 +23,15 @@ export default function HomePage() {
   const featuredProducts = activeProducts.filter((p) => p.isFeatured);
   const newArrivals = activeProducts.filter((p) => p.isNewArrival);
 
+  // Cap each grid at 8; the View-All / See-More button below leads to the
+  // full /category/all (or /category/new-arrivals) page.
+  const visibleFeatured = featuredProducts.slice(0, HOMEPAGE_GRID_LIMIT);
+  const visibleNewArrivals = newArrivals.slice(0, HOMEPAGE_GRID_LIMIT);
+  const visibleActiveProducts = activeProducts.slice(0, HOMEPAGE_GRID_LIMIT);
+
   const [heroBanner, setHeroBanner] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<{ text: string; enabled: boolean } | null>(null);
+  const [exploreCategories, setExploreCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     if (!db) return;
@@ -34,6 +42,15 @@ export default function HomePage() {
         if (data.announcement) setAnnouncement({ text: data.announcement, enabled: data.announcementEnabled ?? true });
       }
     }).catch(() => {});
+  }, []);
+
+  // Real categories from /admin/categories (with the images the admin uploaded)
+  useEffect(() => {
+    const unsub = subscribeToCategories((cats) => {
+      // Limit to the first 6 for the homepage strip so it stays tidy
+      setExploreCategories(cats.slice(0, 6));
+    });
+    return () => { if (unsub) unsub(); };
   }, []);
 
   if (loading) {
@@ -119,64 +136,80 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} variant="dark" />
+              {visibleFeatured.map((product, idx) => (
+                <div
+                  key={product.id}
+                  className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
+                >
+                  <ProductCard product={product} variant="dark" />
+                </div>
               ))}
             </div>
 
-            <div className="text-center mt-10">
-              <Link
-                href="/category/all"
-                className="inline-flex items-center gap-2 text-silver-300 border border-silver-600 px-7 py-3 rounded-full text-sm font-medium hover:bg-silver-800 hover:border-silver-400 hover:text-white transition-all"
-              >
-                View All Products <ChevronRight size={16} />
-              </Link>
-            </div>
+            {featuredProducts.length > (DESKTOP_ONLY_INDICES.size === 0 ? HOMEPAGE_GRID_LIMIT : 6) && (
+              <div className="text-center mt-10">
+                <Link
+                  href="/category/all"
+                  className="inline-flex items-center gap-2 text-silver-300 border border-silver-600 px-7 py-3 rounded-full text-sm font-medium hover:bg-silver-800 hover:border-silver-400 hover:text-white transition-colors"
+                >
+                  See More Products <ChevronRight size={16} />
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {/* ====== EXPLORE BY OCCASION ====== */}
-      <section className="bg-silver-50 py-14 md:py-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-10 md:mb-14">
-            <p className="text-silver-400 text-xs uppercase tracking-[0.25em] mb-3">Shop by Occasion</p>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl lg:text-5xl font-light text-silver-900">
-              Explore Products
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            {exploreCategories.map((cat) => (
-              <Link key={cat.slug} href={`/category/${cat.slug}`} className="group">
-                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-silver-200 to-silver-300 border border-silver-200 group-hover:shadow-2xl group-hover:shadow-silver-400/30 transition-all duration-500">
-                  {cat.image ? (
-                    <Image
-                      src={cat.image}
-                      alt={cat.name}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-silver-400 text-sm">Category Image</span>
+      {/* ====== EXPLORE BY CATEGORY ====== */}
+      {exploreCategories.length > 0 && (
+        <section className="bg-silver-50 py-14 md:py-20">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center mb-10 md:mb-14">
+              <p className="text-silver-400 text-xs uppercase tracking-[0.25em] mb-3">Shop by Category</p>
+              <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl lg:text-5xl font-light text-silver-900">
+                Explore Collections
+              </h2>
+            </div>
+            <div className={`grid gap-4 md:gap-6 ${
+              exploreCategories.length === 1 ? 'grid-cols-1'
+              : exploreCategories.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
+              : exploreCategories.length === 4 ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4'
+              : 'grid-cols-2 sm:grid-cols-3'
+            }`}>
+              {exploreCategories.map((cat) => (
+                <Link key={cat.id} href={`/category/${cat.slug}`} className="group">
+                  <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-silver-200 to-silver-300 border border-silver-200 group-hover:shadow-2xl group-hover:shadow-silver-400/30 transition-all duration-500">
+                    {cat.image ? (
+                      <Image
+                        src={cat.image}
+                        alt={cat.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-700"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        unoptimized={cat.image.startsWith('data:')}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-silver-400 gap-2">
+                        <span className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl">{cat.name.charAt(0)}</span>
+                        <span className="text-[10px] uppercase tracking-widest">No image</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5">
+                      <h3 className="font-[family-name:var(--font-heading)] text-lg md:text-2xl text-white font-medium">
+                        {cat.name}
+                      </h3>
+                      <span className="text-white/70 text-[11px] md:text-xs flex items-center gap-1 mt-1 group-hover:text-white transition-colors">
+                        Explore <ArrowRight size={12} />
+                      </span>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <h3 className="font-[family-name:var(--font-heading)] text-xl md:text-2xl text-white font-medium">
-                      {cat.name}
-                    </h3>
-                    <span className="text-white/70 text-xs flex items-center gap-1 mt-1 group-hover:text-white transition-colors">
-                      Explore <ArrowRight size={12} />
-                    </span>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ====== NEW ARRIVALS ====== */}
       {newArrivals.length > 0 && (
@@ -197,10 +230,25 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-              {newArrivals.map((product) => (
-                <ProductCard key={`new-${product.id}`} product={product} variant="light" />
+              {visibleNewArrivals.map((product, idx) => (
+                <div
+                  key={`new-${product.id}`}
+                  className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
+                >
+                  <ProductCard product={product} variant="light" />
+                </div>
               ))}
             </div>
+            {newArrivals.length > 6 && (
+              <div className="text-center mt-10">
+                <Link
+                  href="/category/new-arrivals"
+                  className="inline-flex items-center gap-2 text-silver-700 border border-silver-300 px-7 py-3 rounded-full text-sm font-medium hover:bg-white hover:border-silver-400 hover:shadow-lg transition-colors"
+                >
+                  See More New Arrivals <ChevronRight size={16} />
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -217,18 +265,25 @@ export default function HomePage() {
               <p className="text-silver-500 text-sm mt-3">{activeProducts.length} pieces available</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-              {activeProducts.map((product) => (
-                <ProductCard key={`all-${product.id}`} product={product} variant="light" />
+              {visibleActiveProducts.map((product, idx) => (
+                <div
+                  key={`all-${product.id}`}
+                  className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
+                >
+                  <ProductCard product={product} variant="light" />
+                </div>
               ))}
             </div>
-            <div className="text-center mt-10">
-              <Link
-                href="/category/all"
-                className="inline-flex items-center gap-2 text-silver-700 border border-silver-300 px-7 py-3 rounded-full text-sm font-medium hover:bg-white hover:border-silver-400 hover:shadow-lg transition-all"
-              >
-                Browse Full Collection <ChevronRight size={16} />
-              </Link>
-            </div>
+            {activeProducts.length > 6 && (
+              <div className="text-center mt-10">
+                <Link
+                  href="/category/all"
+                  className="inline-flex items-center gap-2 text-silver-700 border border-silver-300 px-7 py-3 rounded-full text-sm font-medium hover:bg-white hover:border-silver-400 hover:shadow-lg transition-colors"
+                >
+                  See More Products <ChevronRight size={16} />
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}
