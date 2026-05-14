@@ -19,7 +19,7 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
   const images = [primaryImage, hoverImage, image3, image4, image5, image6].filter(Boolean) as string[];
 
   return (
-    <div className="sticky top-24 md:max-w-[416px] md:mx-auto">
+    <div className="md:sticky md:top-24 md:max-w-[416px] md:mx-auto">
       {/* Main Display — 20% smaller than before (520 → 416) */}
       <div className="relative w-full max-w-[416px] mx-auto">
         <div className="aspect-square bg-gradient-to-br from-silver-50 to-silver-100 rounded-3xl overflow-hidden relative ring-1 ring-silver-200/60 shadow-sm hover:shadow-md transition-shadow duration-300">

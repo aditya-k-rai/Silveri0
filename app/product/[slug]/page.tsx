@@ -16,6 +16,7 @@ import { subscribeToProductReviews } from '@/lib/firebase/reviews';
 import type { Review } from '@/types';
 import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
+import ProductCard from '@/components/product/ProductCard';
 import ProductJsonLd from '@/components/seo/ProductJsonLd';
 
 type ReviewSort = 'newest' | 'oldest' | 'rating-high' | 'rating-low';
@@ -656,6 +657,44 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             </div>
           </div>
         </section>
+
+        {/* ====== SIMILAR PRODUCTS ====== */}
+        {(() => {
+          const similarProducts = products
+            .filter(
+              (p) =>
+                p.id !== product.id &&
+                p.category === product.category &&
+                p.status === 'Active'
+            )
+            .slice(0, 4);
+          if (similarProducts.length === 0) return null;
+          return (
+            <section className="mt-10 md:mt-14 pb-8">
+              <div className="flex items-end justify-between mb-5 md:mb-6">
+                <div>
+                  <p className="text-gold-dark text-xs uppercase tracking-[0.25em] mb-1.5">
+                    You may also like
+                  </p>
+                  <h2 className="font-[family-name:var(--font-heading)] text-2xl sm:text-3xl font-medium text-silver-900">
+                    Similar {product.category}
+                  </h2>
+                </div>
+                <Link
+                  href={`/category/${product.category.toLowerCase()}`}
+                  className="text-silver-500 text-xs sm:text-sm font-medium hover:text-silver-800 transition-colors flex items-center gap-1 shrink-0"
+                >
+                  View all <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                {similarProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} variant="light" />
+                ))}
+              </div>
+            </section>
+          );
+        })()}
       </div>
 
       {/* ====== LIKED BY MODAL ====== */}
