@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -20,8 +20,6 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Area,
-  AreaChart,
 } from "recharts";
 import { useProductStore } from "@/store/productStore";
 import { subscribeToOrders } from "@/lib/firebase/orders";
@@ -88,7 +86,7 @@ interface TooltipPayloadItem {
   };
 }
 
-function ChartTooltip({
+const ChartTooltip = memo(function ChartTooltip({
   active,
   payload,
   metricLabel,
@@ -130,37 +128,64 @@ function ChartTooltip({
       <p className="text-lg font-semibold text-[#1A1A1A] pl-4">{fmt(prevVal)}</p>
     </div>
   );
-}
+});
 
 // ─── Sparkline Component ─────────────────────────────────────────
-function Sparkline({ data, dataKey, color }: { data: Record<string, unknown>[]; dataKey: string; color: string }) {
+// Lightweight SVG polyline. Replaces the Recharts AreaChart that used
+// to render here — 4 charts mounting on every Firestore update was the
+// dominant source of mobile lag.
+const MiniSpark = memo(function MiniSpark({
+  data,
+  dataKey,
+  color,
+}: {
+  data: Record<string, unknown>[];
+  dataKey: string;
+  color: string;
+}) {
+  const W = 72;
+  const H = 32;
+  const PAD = 2;
+  const values = data.map((d) => Number((d as Record<string, unknown>)[dataKey] ?? 0));
+  if (values.length === 0) {
+    return <div style={{ width: W, height: H }} />;
+  }
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const stepX = values.length > 1 ? (W - PAD * 2) / (values.length - 1) : 0;
+  const points = values
+    .map((v, i) => {
+      const x = PAD + i * stepX;
+      const y = H - PAD - ((v - min) / range) * (H - PAD * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  // Area fill polygon (close back to baseline)
+  const areaPoints = `${PAD},${H - PAD} ${points} ${PAD + (values.length - 1) * stepX},${H - PAD}`;
   return (
-    <div className="w-[72px] h-[32px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={`spark-${color}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-              <stop offset="100%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey={dataKey}
-            stroke={color}
-            strokeWidth={1.5}
-            fill={`url(#spark-${color})`}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      aria-hidden="true"
+      style={{ display: "block" }}
+    >
+      <polygon points={areaPoints} fill={color} opacity={0.12} />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
-}
+});
 
 // ─── Stat Metric Component ───────────────────────────────────────
-function StatMetric({
+const StatMetric = memo(function StatMetric({
   label,
   value,
   trend,
@@ -186,7 +211,8 @@ function StatMetric({
   return (
     <button
       onClick={onClick}
-      className={`flex-1 text-left px-5 py-4 transition-all border-l-2 ${
+      style={{ touchAction: "manipulation" }}
+      className={`flex-1 text-left px-4 sm:px-5 py-4 sm:py-4 transition-colors border-l-2 ${
         isSelected
           ? "border-l-[#1A1A1A] bg-[#FAFAFA]"
           : "border-l-transparent hover:bg-[#FAFAFA]/60"
@@ -201,11 +227,11 @@ function StatMetric({
             <span>{Math.abs(trend)}%</span>
           </div>
         </div>
-        <Sparkline data={sparkData} dataKey={sparkKey} color={sparkColor} />
+        <MiniSpark data={sparkData} dataKey={sparkKey} color={sparkColor} />
       </div>
     </button>
   );
-}
+});
 
 const DASH_DATE_RANGES = [
   { label: "Today", days: 0 },
@@ -230,6 +256,10 @@ export default function AdminDashboard() {
     };
   }, []);
 
+  // Defer the heavy orders array so chart computations don't block UI
+  // interactions (date picker, expand toggle, stat-card clicks).
+  const deferredOrders = useDeferredValue(orders);
+
   // ─── Period calculations ──────────────────────────────────────
   const now = useMemo(() => new Date(), []);
 
@@ -253,8 +283,8 @@ export default function AdminDashboard() {
     const prevStartT = prevStart.getTime();
     const prevEndT = prevEnd.getTime();
 
-    const currentOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
-    const prevOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
+    const currentOrds = deferredOrders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
+    const prevOrds = deferredOrders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
 
     return {
       currentPeriod: { start, end },
@@ -262,18 +292,29 @@ export default function AdminDashboard() {
       currentOrders: currentOrds,
       previousOrders: prevOrds,
     };
-  }, [orders, now, rangeDays]);
+  }, [deferredOrders, now, rangeDays]);
 
-  // ─── Metrics ──────────────────────────────────────────────────
-  const currentRevenue = currentOrders.reduce((s, o) => s + o.total, 0);
-  const previousRevenue = previousOrders.reduce((s, o) => s + o.total, 0);
+  // ─── Metrics (memoised so they only recompute on order changes) ──
+  const currentRevenue = useMemo(
+    () => currentOrders.reduce((s, o) => s + o.total, 0),
+    [currentOrders]
+  );
+  const previousRevenue = useMemo(
+    () => previousOrders.reduce((s, o) => s + o.total, 0),
+    [previousOrders]
+  );
 
   const currentOrderCount = currentOrders.length;
   const previousOrderCount = previousOrders.length;
 
-  const currentAvgOrder = currentOrderCount > 0 ? Math.round(currentRevenue / currentOrderCount) : 0;
-  const previousAvgOrder =
-    previousOrderCount > 0 ? Math.round(previousRevenue / previousOrderCount) : 0;
+  const currentAvgOrder = useMemo(
+    () => (currentOrderCount > 0 ? Math.round(currentRevenue / currentOrderCount) : 0),
+    [currentRevenue, currentOrderCount]
+  );
+  const previousAvgOrder = useMemo(
+    () => (previousOrderCount > 0 ? Math.round(previousRevenue / previousOrderCount) : 0),
+    [previousRevenue, previousOrderCount]
+  );
 
   // ─── Chart data ───────────────────────────────────────────────
   const currentDaily = useMemo(
@@ -305,11 +346,16 @@ export default function AdminDashboard() {
     });
   }, [currentDaily, previousDaily, selectedMetric]);
 
-  // ─── Action items ─────────────────────────────────────────────
-  const ordersToFulfill = orders.filter(
-    (o) => o.status === "pending" || o.status === "processing"
-  ).length;
-  const paymentsToCapture = orders.filter((o) => !o.paymentId && o.status !== "cancelled").length;
+  // ─── Action items (memoised on deferred orders) ───────────────
+  const ordersToFulfill = useMemo(
+    () =>
+      deferredOrders.filter((o) => o.status === "pending" || o.status === "processing").length,
+    [deferredOrders]
+  );
+  const paymentsToCapture = useMemo(
+    () => deferredOrders.filter((o) => !o.paymentId && o.status !== "cancelled").length,
+    [deferredOrders]
+  );
 
   // ─── Period labels ────────────────────────────────────────────
   const fmtPeriod = (start: Date, end: Date) => {
@@ -329,7 +375,8 @@ export default function AdminDashboard() {
         <div className="relative">
           <button
             onClick={() => setShowDatePicker(!showDatePicker)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors"
+            style={{ touchAction: "manipulation" }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 sm:py-2 bg-white border border-[#E8E8E8] rounded-full text-sm font-medium text-[#1A1A1A] hover:bg-[#FAFAFA] transition-colors"
           >
             <Calendar size={14} className="text-[#7A7585]" />
             {DASH_DATE_RANGES.find((r) => r.days === rangeDays)?.label || `Last ${rangeDays} days`}
@@ -524,7 +571,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
           href="/admin/orders"
-          className="flex-1 flex items-center gap-3 px-5 py-4 bg-white border border-[#E8E8E8] rounded-2xl hover:border-[#C9A84C]/40 hover:bg-[#FDFAF5]/50 transition-all group"
+          className="flex-1 flex items-center gap-3 px-5 py-4 bg-white border border-[#E8E8E8] rounded-2xl hover:border-[#C9A84C]/40 hover:bg-[#FDFAF5]/50 transition-colors group"
         >
           <div className="w-9 h-9 rounded-xl bg-[#F5F3EF] flex items-center justify-center text-[#7A7585] group-hover:bg-[#C9A84C]/10 group-hover:text-[#C9A84C] transition-colors">
             <ClipboardList size={18} />
@@ -537,7 +584,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/admin/orders"
-          className="flex-1 flex items-center gap-3 px-5 py-4 bg-white border border-[#E8E8E8] rounded-2xl hover:border-[#C9A84C]/40 hover:bg-[#FDFAF5]/50 transition-all group"
+          className="flex-1 flex items-center gap-3 px-5 py-4 bg-white border border-[#E8E8E8] rounded-2xl hover:border-[#C9A84C]/40 hover:bg-[#FDFAF5]/50 transition-colors group"
         >
           <div className="w-9 h-9 rounded-xl bg-[#F5F3EF] flex items-center justify-center text-[#7A7585] group-hover:bg-[#C9A84C]/10 group-hover:text-[#C9A84C] transition-colors">
             <CreditCard size={18} />

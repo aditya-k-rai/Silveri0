@@ -35,6 +35,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Skip admin layout for login page — it has its own full-screen layout
   const isLoginPage = pathname === '/admin/login';
 
+  // Admin session freshness gate.  Even when Firebase auth state is still
+  // present (e.g. an existing tab on the same browser), we force the admin
+  // to re-enter their password + access code every 4 hours so the admin
+  // surface doesn't auto-open in unattended sessions.
+  const ADMIN_SESSION_MS = 4 * 60 * 60 * 1000;
+
   // Centralized redirect logic (avoids React render-phase router.push warnings)
   useEffect(() => {
     if (isLoginPage || loading) return;
@@ -44,8 +50,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     if (userDoc && userDoc.role !== 'admin') {
       router.replace('/');
+      return;
     }
-  }, [isLoginPage, loading, user, userDoc, router]);
+    // Fresh-login check — runs only client-side
+    if (typeof window !== 'undefined' && userDoc?.role === 'admin') {
+      const authAt = Number(localStorage.getItem('silveri_admin_auth_at') || 0);
+      if (!authAt || Date.now() - authAt > ADMIN_SESSION_MS) {
+        localStorage.removeItem('silveri_admin_auth_at');
+        router.replace('/admin/login');
+      }
+    }
+  }, [isLoginPage, loading, user, userDoc, router, ADMIN_SESSION_MS]);
 
   if (isLoginPage) {
     return <>{children}</>;
@@ -70,6 +85,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (signingOut) return;
     setSigningOut(true);
     try {
+      // Always clear the admin freshness marker first so a follow-up navigation
+      // to /admin can't slip through the freshness gate.
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('silveri_admin_auth_at');
+      }
       await signOutUser();
       router.replace('/admin/login');
     } catch (err) {

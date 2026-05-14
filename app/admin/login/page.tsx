@@ -76,6 +76,11 @@ export default function AdminLoginPage() {
       }
 
       console.log('[Admin Login] Step 5: Redirecting to /admin...');
+      // Mark the moment of a fresh admin login. The /admin layout reads this
+      // and forces re-auth after 4 hours regardless of Firebase auth state.
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('silveri_admin_auth_at', String(Date.now()));
+      }
       setSubmitting(false);
       window.location.replace('/admin');
     } catch (err: unknown) {
@@ -134,6 +139,11 @@ export default function AdminLoginPage() {
         createdAt: new Date(),
       });
 
+      // Same freshness marker as the login path, so the new admin doesn't
+      // get immediately bounced to the gate after registering.
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('silveri_admin_auth_at', String(Date.now()));
+      }
       router.push('/admin');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
