@@ -16,6 +16,9 @@ import ProductGallery from './ProductGallery';
 import ReviewCard from '@/components/product/ReviewCard';
 import ProductCard from '@/components/product/ProductCard';
 import ProductJsonLd from '@/components/seo/ProductJsonLd';
+import OptionPill from '@/components/ui/OptionPill';
+import Spinner from '@/components/ui/Spinner';
+import { formatINR } from '@/lib/utils/format';
 
 type ReviewSort = 'newest' | 'oldest' | 'rating-high' | 'rating-low';
 
@@ -75,7 +78,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-silver-50">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <Spinner />
       </div>
     );
   }
@@ -285,17 +288,13 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Select Metal</p>
                 <div className="flex gap-2">
                   {[product.colour, product.colour2].map((c) => (
-                    <button
+                    <OptionPill
                       key={c}
+                      compact
+                      active={selectedColour === c}
+                      label={c}
                       onClick={() => setSelectedColour(c)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
-                        selectedColour === c
-                          ? 'border-gold bg-gold/10 text-gold-dark'
-                          : 'border-silver-200 text-silver-600 hover:border-silver-400'
-                      }`}
-                    >
-                      {c}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -312,17 +311,14 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sizeOptions.map((s) => (
-                    <button
+                    <OptionPill
                       key={s}
+                      compact
+                      active={selectedSize === s}
+                      label={s}
                       onClick={() => setSelectedSize(s)}
-                      className={`min-w-[44px] px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
-                        selectedSize === s
-                          ? 'border-gold bg-gold/10 text-gold-dark'
-                          : 'border-silver-200 text-silver-700 hover:border-silver-400'
-                      }`}
-                    >
-                      {s}
-                    </button>
+                      className="min-w-[44px] text-center"
+                    />
                   ))}
                 </div>
               </div>
@@ -335,27 +331,22 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 <div className="flex gap-2 flex-wrap">
                   {(['with', 'without'] as const).map((opt) => {
                     const optPrice = opt === 'with' ? product.price + chainPrice : product.price;
-                    const isActive = selectedChain === opt;
                     return (
-                      <button
+                      <OptionPill
                         key={opt}
+                        active={selectedChain === opt}
+                        label={opt === 'with' ? 'With Chain' : 'Without Chain'}
+                        detail={
+                          <>
+                            {formatINR(optPrice)}
+                            {opt === 'with' && chainPrice > 0 && (
+                              <span className="ml-1 text-[10px]">(+{formatINR(chainPrice)})</span>
+                            )}
+                          </>
+                        }
+                        minWidth={150}
                         onClick={() => setSelectedChain(opt)}
-                        className={`px-4 py-2.5 rounded-xl text-left border-2 transition-colors duration-200 min-w-[150px] ${
-                          isActive
-                            ? 'border-gold bg-gold/10 text-gold-dark'
-                            : 'border-silver-200 text-silver-700 hover:border-silver-400'
-                        }`}
-                      >
-                        <span className="block text-sm font-medium">
-                          {opt === 'with' ? 'With Chain' : 'Without Chain'}
-                        </span>
-                        <span className={`block text-xs mt-0.5 ${isActive ? 'text-gold-dark/80' : 'text-silver-500'}`}>
-                          ₹{optPrice.toLocaleString('en-IN')}
-                          {opt === 'with' && chainPrice > 0 && (
-                            <span className="ml-1 text-[10px]">(+₹{chainPrice.toLocaleString('en-IN')})</span>
-                          )}
-                        </span>
-                      </button>
+                      />
                     );
                   })}
                 </div>
@@ -369,26 +360,22 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 {(['silver', 'gold'] as const).map((opt) => {
                   const surcharge = opt === 'gold' ? goldPlatingPrice : 0;
                   const optPrice = product.price + (showsChainToggle && selectedChain === 'with' ? chainPrice : 0) + surcharge;
-                  const isActive = selectedPlating === opt;
-                  const label = opt === 'silver' ? 'Silver Plated' : 'Gold Plated';
                   return (
-                    <button
+                    <OptionPill
                       key={opt}
+                      active={selectedPlating === opt}
+                      label={opt === 'silver' ? 'Silver Plated' : 'Gold Plated'}
+                      detail={
+                        <>
+                          {formatINR(optPrice)}
+                          {opt === 'gold' && goldPlatingPrice > 0 && (
+                            <span className="ml-1 text-[10px]">(+{formatINR(goldPlatingPrice)})</span>
+                          )}
+                        </>
+                      }
+                      minWidth={150}
                       onClick={() => setSelectedPlating(opt)}
-                      className={`px-4 py-2.5 rounded-xl text-left border-2 transition-colors duration-200 min-w-[150px] ${
-                        isActive
-                          ? 'border-gold bg-gold/10 text-gold-dark'
-                          : 'border-silver-200 text-silver-700 hover:border-silver-400'
-                      }`}
-                    >
-                      <span className="block text-sm font-medium">{label}</span>
-                      <span className={`block text-xs mt-0.5 ${isActive ? 'text-gold-dark/80' : 'text-silver-500'}`}>
-                        ₹{optPrice.toLocaleString('en-IN')}
-                        {opt === 'gold' && goldPlatingPrice > 0 && (
-                          <span className="ml-1 text-[10px]">(+₹{goldPlatingPrice.toLocaleString('en-IN')})</span>
-                        )}
-                      </span>
-                    </button>
+                    />
                   );
                 })}
               </div>

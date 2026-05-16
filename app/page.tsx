@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import ProductCard from '@/components/product/ProductCard';
+import SectionHeading from '@/components/ui/SectionHeading';
+import Spinner from '@/components/ui/Spinner';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { subscribeToCategories, Category } from '@/lib/firebase/categories';
@@ -56,7 +58,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <Spinner />
       </div>
     );
   }
@@ -127,13 +129,13 @@ export default function HomePage() {
       {featuredProducts.length > 0 && (
         <section className="bg-gradient-to-b from-silver-900 via-silver-800 to-silver-900 py-14 md:py-20">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-10 md:mb-14">
-              <p className="text-gold/70 text-xs uppercase tracking-[0.25em] mb-3">Curated Selection</p>
-              <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl lg:text-5xl font-light text-white">
-                Featured Products
-              </h2>
-              <p className="text-silver-500 text-sm mt-3">Handpicked pieces from our collection</p>
-            </div>
+            <SectionHeading
+              eyebrow="Curated Selection"
+              title="Featured Products"
+              subtitle="Handpicked pieces from our collection"
+              tone="dark"
+              className="mb-10 md:mb-14"
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {visibleFeatured.map((product, idx) => (
@@ -164,12 +166,11 @@ export default function HomePage() {
       {exploreCategories.length > 0 && (
         <section className="bg-silver-50 py-14 md:py-20">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-10 md:mb-14">
-              <p className="text-silver-400 text-xs uppercase tracking-[0.25em] mb-3">Shop by Category</p>
-              <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl lg:text-5xl font-light text-silver-900">
-                Explore Collections
-              </h2>
-            </div>
+            <SectionHeading
+              eyebrow="Shop by Category"
+              title="Explore Collections"
+              className="mb-10 md:mb-14"
+            />
             <div className={`grid gap-4 md:gap-6 ${
               exploreCategories.length === 1 ? 'grid-cols-1'
               : exploreCategories.length === 2 ? 'grid-cols-1 sm:grid-cols-2'
@@ -257,13 +258,12 @@ export default function HomePage() {
       {activeProducts.length > 0 && (
         <section className="bg-silver-50 py-14 md:py-20">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-10 md:mb-14">
-              <p className="text-silver-400 text-xs uppercase tracking-[0.25em] mb-3">Complete Collection</p>
-              <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl lg:text-5xl font-light text-silver-900">
-                All Products
-              </h2>
-              <p className="text-silver-500 text-sm mt-3">{activeProducts.length} pieces available</p>
-            </div>
+            <SectionHeading
+              eyebrow="Complete Collection"
+              title="All Products"
+              subtitle={`${activeProducts.length} pieces available`}
+              className="mb-10 md:mb-14"
+            />
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {visibleActiveProducts.map((product, idx) => (
                 <div
