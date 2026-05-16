@@ -43,6 +43,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const [selectedColour, setSelectedColour] = useState(product?.colour || '');
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedChain, setSelectedChain] = useState<'with' | 'without'>('with');
+  // Every product offers a plating choice. Silver is the default (no surcharge).
+  const [selectedPlating, setSelectedPlating] = useState<'silver' | 'gold'>('silver');
 
   // Reviews — live from Firestore, with client-side sort
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -100,9 +102,13 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const requiresSize = sizeOptions.length > 0;
   const showsChainToggle = !!product.chainOption;
   const chainPrice = Math.max(0, Number(product.chainPrice ?? 0) || 0);
-  // Live price: base + chain surcharge when "With Chain" is selected
+  // Gold plating surcharge — defaults to ₹200 when admin hasn't customised it.
+  const goldPlatingPrice = Math.max(0, Number(product.goldPlatingPrice ?? 200) || 0);
+  // Live price: base + chain surcharge (if selected) + gold-plating surcharge (if selected)
   const effectivePrice =
-    showsChainToggle && selectedChain === 'with' ? product.price + chainPrice : product.price;
+    product.price +
+    (showsChainToggle && selectedChain === 'with' ? chainPrice : 0) +
+    (selectedPlating === 'gold' ? goldPlatingPrice : 0);
 
   const activityBase = user
     ? {
@@ -134,6 +140,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       image: product.primaryImage || '',
       ...(requiresSize ? { size: selectedSize } : {}),
       ...(showsChainToggle ? { chain: selectedChain } : {}),
+      plating: selectedPlating,
     });
     if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
     setAddedToCart(true);
@@ -252,11 +259,19 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               <span className="text-3xl sm:text-4xl font-bold text-silver-900">
                 ₹{effectivePrice.toLocaleString('en-IN')}
               </span>
-              {showsChainToggle && chainPrice > 0 && selectedChain === 'with' && (
-                <span className="text-xs text-silver-500">
-                  ₹{product.price.toLocaleString('en-IN')} + ₹{chainPrice.toLocaleString('en-IN')} chain
-                </span>
-              )}
+              {(() => {
+                const chainAdd = showsChainToggle && selectedChain === 'with' ? chainPrice : 0;
+                const platingAdd = selectedPlating === 'gold' ? goldPlatingPrice : 0;
+                const hasExtras = chainAdd > 0 || platingAdd > 0;
+                if (!hasExtras) return null;
+                return (
+                  <span className="text-xs text-silver-500">
+                    ₹{product.price.toLocaleString('en-IN')}
+                    {chainAdd > 0 && <> + ₹{chainAdd.toLocaleString('en-IN')} chain</>}
+                    {platingAdd > 0 && <> + ₹{platingAdd.toLocaleString('en-IN')} gold plating</>}
+                  </span>
+                );
+              })()}
               <span className={`text-sm font-medium px-2.5 py-0.5 rounded-full ${
                 product.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
               }`}>
@@ -325,7 +340,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                       <button
                         key={opt}
                         onClick={() => setSelectedChain(opt)}
-                        className={`px-4 py-2.5 rounded-xl text-left border-2 transition-all duration-200 min-w-[150px] ${
+                        className={`px-4 py-2.5 rounded-xl text-left border-2 transition-colors duration-200 min-w-[150px] ${
                           isActive
                             ? 'border-gold bg-gold/10 text-gold-dark'
                             : 'border-silver-200 text-silver-700 hover:border-silver-400'
@@ -346,6 +361,38 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 </div>
               </div>
             )}
+
+            {/* Plating Toggle — every product offers Silver (base) or Gold (+ surcharge) */}
+            <div>
+              <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Plating</p>
+              <div className="flex gap-2 flex-wrap">
+                {(['silver', 'gold'] as const).map((opt) => {
+                  const surcharge = opt === 'gold' ? goldPlatingPrice : 0;
+                  const optPrice = product.price + (showsChainToggle && selectedChain === 'with' ? chainPrice : 0) + surcharge;
+                  const isActive = selectedPlating === opt;
+                  const label = opt === 'silver' ? 'Silver Plated' : 'Gold Plated';
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => setSelectedPlating(opt)}
+                      className={`px-4 py-2.5 rounded-xl text-left border-2 transition-colors duration-200 min-w-[150px] ${
+                        isActive
+                          ? 'border-gold bg-gold/10 text-gold-dark'
+                          : 'border-silver-200 text-silver-700 hover:border-silver-400'
+                      }`}
+                    >
+                      <span className="block text-sm font-medium">{label}</span>
+                      <span className={`block text-xs mt-0.5 ${isActive ? 'text-gold-dark/80' : 'text-silver-500'}`}>
+                        ₹{optPrice.toLocaleString('en-IN')}
+                        {opt === 'gold' && goldPlatingPrice > 0 && (
+                          <span className="ml-1 text-[10px]">(+₹{goldPlatingPrice.toLocaleString('en-IN')})</span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Quick Specs */}
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-silver-600">

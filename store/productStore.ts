@@ -24,6 +24,8 @@ export interface Product {
   chainOption: boolean;
   /** Additional rupees added to the base price when the customer picks "With Chain". 0 = no extra. */
   chainPrice: number;
+  /** Surcharge added when the customer chooses "Gold Plated" over the default "Silver Plated". Defaults to 200 on new products. */
+  goldPlatingPrice: number;
   size: string;
   height: string;
   weight: string;

@@ -82,6 +82,7 @@ export default function AdminProductsPage() {
         ringSizes: "",
         chainOption: false,
         chainPrice: 0,
+        goldPlatingPrice: 200,
         size: "",
         height: "",
         weight: "",
@@ -563,6 +564,26 @@ export default function AdminProductsPage() {
                         <p className="text-[10px] text-[#A09DAB] mt-1">Added to the base price when customer picks &ldquo;With Chain&rdquo;.</p>
                       </div>
                     )}
+                    {/* Gold Plating Surcharge — every product gets a Silver/Gold plating toggle on the customer page */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Gold Plating Surcharge (₹)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editingParams.goldPlatingPrice ?? 200}
+                        onChange={(e) =>
+                          setEditingParams({
+                            ...editingParams,
+                            goldPlatingPrice: Math.max(0, Number(e.target.value) || 0),
+                          })
+                        }
+                        placeholder="200"
+                        className="w-full bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      />
+                      <p className="text-[10px] text-[#A09DAB] mt-1">
+                        Added to base price when customer picks &ldquo;Gold Plated&rdquo;. Silver Plated stays at base. Default ₹200.
+                      </p>
+                    </div>
                     <div>
                       <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Purity</label>
                       <input 

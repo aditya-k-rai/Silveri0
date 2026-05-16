@@ -3,14 +3,14 @@ import { persist } from 'zustand/middleware';
 import { CartItem } from '@/types';
 
 /** Build a stable unique cart-line key from product + selected variant options. */
-function makeCartLineId(productId: string, size?: string, chain?: string) {
-  return `${productId}__${size ?? ''}__${chain ?? ''}`;
+function makeCartLineId(productId: string, size?: string, chain?: string, plating?: string) {
+  return `${productId}__${size ?? ''}__${chain ?? ''}__${plating ?? ''}`;
 }
 
 /** Backfill cartLineId on legacy persisted items that don't have it. */
 function ensureCartLineId(item: CartItem): CartItem {
   if (item.cartLineId) return item;
-  return { ...item, cartLineId: makeCartLineId(item.productId, item.size, item.chain) };
+  return { ...item, cartLineId: makeCartLineId(item.productId, item.size, item.chain, item.plating) };
 }
 
 interface CartState {
@@ -30,7 +30,7 @@ export const useCartStore = create<CartState>()(
       addItem: (raw) =>
         set((state) => {
           const cartLineId =
-            raw.cartLineId ?? makeCartLineId(raw.productId, raw.size, raw.chain);
+            raw.cartLineId ?? makeCartLineId(raw.productId, raw.size, raw.chain, raw.plating);
           const newItem: CartItem = { ...raw, cartLineId };
           const existing = state.items.find((i) => ensureCartLineId(i).cartLineId === cartLineId);
           if (existing) {

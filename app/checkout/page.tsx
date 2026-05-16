@@ -129,16 +129,23 @@ export default function CheckoutPage() {
                     <Link href={`/product/${item.productId}`} className="text-sm font-medium truncate block hover:text-gold transition-colors">
                       {item.name}
                     </Link>
-                    {/* Selected variant options — size, chain — shown beneath name */}
-                    {(item.size || item.chain) && (
-                      <p className="text-[11px] text-muted mt-0.5">
-                        {item.size && <span>Size: <strong className="text-silver-700">{item.size}</strong></span>}
-                        {item.size && item.chain && <span className="mx-1.5">·</span>}
-                        {item.chain && (
-                          <span>{item.chain === 'with' ? 'With Chain' : 'Without Chain'}</span>
-                        )}
-                      </p>
-                    )}
+                    {/* Selected variant options — size, chain, plating — shown beneath name */}
+                    {(item.size || item.chain || item.plating) && (() => {
+                      const parts: React.ReactNode[] = [];
+                      if (item.size) parts.push(<span key="s">Size: <strong className="text-silver-700">{item.size}</strong></span>);
+                      if (item.chain) parts.push(<span key="c">{item.chain === 'with' ? 'With Chain' : 'Without Chain'}</span>);
+                      if (item.plating) parts.push(<span key="p">{item.plating === 'gold' ? 'Gold Plated' : 'Silver Plated'}</span>);
+                      return (
+                        <p className="text-[11px] text-muted mt-0.5">
+                          {parts.map((node, i) => (
+                            <span key={i}>
+                              {i > 0 && <span className="mx-1.5">·</span>}
+                              {node}
+                            </span>
+                          ))}
+                        </p>
+                      );
+                    })()}
                     <p className="text-sm text-warm-black font-semibold mt-1">₹{item.price.toLocaleString("en-IN")}</p>
                   </div>
                   <div className="flex items-center gap-2">

@@ -44,6 +44,8 @@ export interface CartItem {
   size?: string;
   /** Pendant chain choice — undefined when product doesn't expose the toggle. */
   chain?: 'with' | 'without';
+  /** Plating choice — every product offers Silver (base price) or Gold (+ surcharge). */
+  plating?: 'silver' | 'gold';
 }
 
 export interface OrderItem {
