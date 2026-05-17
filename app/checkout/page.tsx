@@ -1,23 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
+import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthContext } from "@/context/AuthContext";
-
-/* ---------- Indian states ---------- */
-const INDIAN_STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
-  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
-  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
-  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
-  "Uttar Pradesh", "Uttarakhand", "West Bengal",
-  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
-  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
-];
+import type { UserAddress } from "@/types";
+import { INDIAN_STATES, DIAL_CODES, DEFAULT_DIAL_CODE } from "@/lib/utils/india";
+import { isValidPincode, lookupPincode } from "@/lib/utils/pincode";
 
 const STEPS = [
   { label: "Cart", icon: <ShoppingCart size={16} /> },
@@ -28,8 +19,8 @@ const STEPS = [
 
 export default function CheckoutPage() {
   const { items, removeItem, updateQuantity, clearCart } = useCartStore();
-  const { userDoc } = useAuthContext();
-  const savedAddresses = (userDoc?.addresses as { id: string; label: string; fullName: string; phone: string; line1: string; line2?: string; city: string; state: string; pincode: string; isDefault: boolean }[]) || [];
+  const { user, userDoc } = useAuthContext();
+  const savedAddresses: UserAddress[] = (userDoc?.addresses as UserAddress[]) || [];
 
   const [step, setStep] = useState(0);
   const [promo, setPromo] = useState("");
@@ -39,14 +30,61 @@ export default function CheckoutPage() {
   const defaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
   const [address, setAddress] = useState({
     fullName: defaultAddr?.fullName || "",
+    email: defaultAddr?.email || userDoc?.email || user?.email || "",
+    phoneCountryCode: defaultAddr?.phoneCountryCode || DEFAULT_DIAL_CODE,
     phone: defaultAddr?.phone || "",
     addressLine1: defaultAddr?.line1 || "",
-    addressLine2: defaultAddr?.line2 || "",
-    city: defaultAddr?.city || "",
-    state: defaultAddr?.state || "",
+    landmark: defaultAddr?.landmark || defaultAddr?.line2 || "",
     pincode: defaultAddr?.pincode || "",
+    city: defaultAddr?.city || "",
+    district: defaultAddr?.district || "",
+    state: defaultAddr?.state || "",
   });
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(defaultAddr?.id || null);
+
+  // ── Pincode auto-lookup ─────────────────────────────────────────────
+  // When the customer types a full 6-digit pincode we hit India Post's public
+  // API once and fill City / District / State. Editable afterwards.
+  const [pincodeLookup, setPincodeLookup] = useState<{
+    state: 'idle' | 'loading' | 'ok' | 'not-found' | 'error';
+    cities: string[];
+  }>({ state: 'idle', cities: [] });
+  const lastLookedUpPincode = useRef<string>('');
+
+  // Trigger pincode auto-fill from the onChange handler, not a useEffect.
+  // React 19's set-state-in-effect rule disallows the latter; an event-
+  // driven lookup is also semantically cleaner — we only hit the API in
+  // direct response to user typing, not on every re-render.
+  const runPincodeLookup = useCallback(async (code: string) => {
+    if (code === lastLookedUpPincode.current) return;
+    lastLookedUpPincode.current = code;
+    setPincodeLookup({ state: 'loading', cities: [] });
+    try {
+      const result = await lookupPincode(code);
+      if (!result) {
+        setPincodeLookup({ state: 'not-found', cities: [] });
+        return;
+      }
+      setPincodeLookup({ state: 'ok', cities: result.cities });
+      setAddress((prev) => ({
+        ...prev,
+        // Only overwrite if the customer hadn't already typed something custom
+        city: prev.city || result.city,
+        district: prev.district || result.district,
+        state: prev.state || result.state,
+      }));
+    } catch {
+      setPincodeLookup({ state: 'error', cities: [] });
+    }
+  }, []);
+
+  const handlePincodeChange = (raw: string) => {
+    const cleaned = raw.replace(/\D/g, '').slice(0, 6);
+    updateAddress('pincode', cleaned);
+    if (isValidPincode(cleaned)) runPincodeLookup(cleaned);
+  };
+
+  const pincodeValid = isValidPincode(address.pincode);
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
@@ -210,12 +248,15 @@ export default function CheckoutPage() {
                       setSelectedAddrId(addr.id);
                       setAddress({
                         fullName: addr.fullName,
+                        email: addr.email || userDoc?.email || user?.email || "",
+                        phoneCountryCode: addr.phoneCountryCode || DEFAULT_DIAL_CODE,
                         phone: addr.phone,
                         addressLine1: addr.line1,
-                        addressLine2: addr.line2 || "",
-                        city: addr.city,
-                        state: addr.state,
+                        landmark: addr.landmark || addr.line2 || "",
                         pincode: addr.pincode,
+                        city: addr.city,
+                        district: addr.district || "",
+                        state: addr.state,
                       });
                     }}
                     className={`text-left p-4 rounded-xl border-2 transition-colors ${
@@ -246,16 +287,122 @@ export default function CheckoutPage() {
               {savedAddresses.length > 0 ? "Or Enter New Address" : "Shipping Address"}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            {/* Row 1 — Name + Email */}
             <Input label="Full Name" value={address.fullName} onChange={(v) => updateAddress("fullName", v)} />
-            <Input label="Phone Number" value={address.phone} onChange={(v) => updateAddress("phone", v)} type="tel" placeholder="+91" />
+            <Input
+              label="Email"
+              value={address.email}
+              onChange={(v) => updateAddress("email", v)}
+              type="email"
+              placeholder="you@example.com"
+            />
+
+            {/* Row 2 — Phone (country code + number) */}
             <div className="md:col-span-2">
-              <Input label="Address Line 1" value={address.addressLine1} onChange={(v) => updateAddress("addressLine1", v)} />
+              <label className="block text-sm font-medium text-warm-black mb-1.5">Phone Number</label>
+              <div className="flex gap-2">
+                <select
+                  value={address.phoneCountryCode}
+                  onChange={(e) => updateAddress("phoneCountryCode", e.target.value)}
+                  className="shrink-0 w-[120px] border border-silver rounded-xl px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  aria-label="Country dial code"
+                >
+                  {DIAL_CODES.map((d) => (
+                    <option key={d.code} value={d.code}>{d.flag} {d.code}</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={address.phone}
+                  onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ""))}
+                  placeholder="10-digit number"
+                  maxLength={15}
+                  className="flex-1 w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                />
+              </div>
             </div>
+
+            {/* Row 3 — Address line */}
             <div className="md:col-span-2">
-              <Input label="Address Line 2 (Optional)" value={address.addressLine2} onChange={(v) => updateAddress("addressLine2", v)} />
+              <Input
+                label="Address"
+                value={address.addressLine1}
+                onChange={(v) => updateAddress("addressLine1", v)}
+                placeholder="House / flat number, building, street"
+              />
             </div>
-            <Input label="City" value={address.city} onChange={(v) => updateAddress("city", v)} />
+
+            {/* Row 4 — Nearest Landmark */}
+            <div className="md:col-span-2">
+              <Input
+                label="Nearest Landmark (Optional)"
+                value={address.landmark}
+                onChange={(v) => updateAddress("landmark", v)}
+                placeholder="e.g. opposite SBI ATM"
+              />
+            </div>
+
+            {/* Row 5 — Pincode (with live lookup status) */}
             <div>
+              <label className="block text-sm font-medium text-warm-black mb-1.5">
+                Pincode
+                {pincodeValid && pincodeLookup.state === 'loading' && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-normal text-muted">
+                    <Loader2 size={12} className="animate-spin" /> looking up…
+                  </span>
+                )}
+                {pincodeValid && pincodeLookup.state === 'ok' && (
+                  <span className="ml-2 text-[11px] font-normal text-emerald-600">✓ auto-filled</span>
+                )}
+                {pincodeValid && pincodeLookup.state === 'not-found' && (
+                  <span className="ml-2 text-[11px] font-normal text-red-500">not found — fill manually</span>
+                )}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={address.pincode}
+                onChange={(e) => handlePincodeChange(e.target.value)}
+                placeholder="6-digit pincode"
+                maxLength={6}
+                className="w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+              />
+            </div>
+
+            {/* Row 5 right — empty spacer on desktop (keeps the 2-col layout balanced) */}
+            <div className="hidden md:block" />
+
+            {/* Row 6 — City + District (auto-filled from pincode, editable) */}
+            <div>
+              <label className="block text-sm font-medium text-warm-black mb-1.5">City</label>
+              <input
+                type="text"
+                value={address.city}
+                onChange={(e) => updateAddress("city", e.target.value)}
+                list="city-options"
+                placeholder="City / locality"
+                className="w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+              />
+              {pincodeLookup.cities.length > 1 && (
+                <datalist id="city-options">
+                  {pincodeLookup.cities.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              )}
+            </div>
+
+            <Input
+              label="District"
+              value={address.district}
+              onChange={(v) => updateAddress("district", v)}
+              placeholder="District"
+            />
+
+            {/* Row 7 — State (dropdown) */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-warm-black mb-1.5">State</label>
               <select
                 value={address.state}
@@ -266,7 +413,6 @@ export default function CheckoutPage() {
                 {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <Input label="Pincode" value={address.pincode} onChange={(v) => updateAddress("pincode", v)} maxLength={6} />
           </div>
           <div className="flex gap-3 mt-8">
             <button onClick={() => setStep(0)} className="px-6 py-3.5 border border-silver rounded-xl text-sm font-medium hover:bg-silver/10 transition-colors">

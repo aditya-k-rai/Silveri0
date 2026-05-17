@@ -115,10 +115,20 @@ export interface UserAddress {
   id: string;
   label: string;
   fullName: string;
+  /** Contact email collected at checkout (optional for legacy addresses). */
+  email?: string;
+  /** Dialling code for the phone number, e.g. "+91". Defaults to "+91" when missing. */
+  phoneCountryCode?: string;
+  /** Phone number digits only (no country code). */
   phone: string;
   line1: string;
+  /** Nearest landmark (replaces the older "Address Line 2 (Optional)" slot). */
   line2?: string;
+  /** Optional nearest-landmark — kept separate from line2 so we can render both. */
+  landmark?: string;
   city: string;
+  /** District within the state — auto-fillable from pincode. */
+  district?: string;
   state: string;
   pincode: string;
   isDefault: boolean;
