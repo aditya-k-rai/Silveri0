@@ -537,14 +537,24 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           {/* Address summary */}
           <div className="bg-white border border-silver/40 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-[family-name:var(--font-heading)] font-semibold">Shipping To</h2>
               <button onClick={() => setStep(1)} className="text-sm text-gold hover:underline">Edit</button>
             </div>
-            <p className="text-sm text-muted">
-              {address.fullName || "Name"}, {address.addressLine1 || "Address"}, {address.city || "City"}, {address.state || "State"} — {address.pincode || "000000"}
-            </p>
-            <p className="text-sm text-muted">Phone: {address.phone || "+91 XXXXX XXXXX"}</p>
+            <dl className="text-sm space-y-1.5">
+              <ReviewRow label="Name" value={address.fullName} />
+              {address.email && <ReviewRow label="Email" value={address.email} />}
+              <ReviewRow
+                label="Phone"
+                value={address.phone ? `${address.phoneCountryCode} ${address.phone}` : ""}
+              />
+              <ReviewRow label="Address" value={address.addressLine1} />
+              {address.landmark && <ReviewRow label="Landmark" value={address.landmark} />}
+              <ReviewRow label="City" value={address.city} />
+              {address.district && <ReviewRow label="District" value={address.district} />}
+              <ReviewRow label="State" value={address.state} />
+              <ReviewRow label="Pincode" value={address.pincode} />
+            </dl>
           </div>
 
           {/* Items */}
@@ -659,6 +669,15 @@ export default function CheckoutPage() {
 }
 
 /* ---------- helpers ---------- */
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="w-24 shrink-0 text-muted">{label}</dt>
+      <dd className="text-warm-black break-words">{value || <span className="text-muted italic">—</span>}</dd>
+    </div>
+  );
+}
+
 function Input({
   label, value, onChange, type = "text", placeholder, maxLength, disabled = false,
 }: {
