@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart, Loader2 } from "lucide-react";
+import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart, Loader2, User, UserPlus } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthContext } from "@/context/AuthContext";
 import type { UserAddress } from "@/types";
@@ -26,13 +26,30 @@ export default function CheckoutPage() {
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
 
+  // Account-derived contact details — used to pre-fill the form when "Myself"
+  // is selected and to lock those three fields read-only.
+  const accountContact = useMemo(() => {
+    const phoneSplit = splitPhone(userDoc?.phone);
+    return {
+      fullName: userDoc?.name || user?.displayName || "",
+      email: userDoc?.email || user?.email || "",
+      phoneCountryCode: phoneSplit.code,
+      phone: phoneSplit.number,
+    };
+  }, [userDoc?.name, userDoc?.email, userDoc?.phone, user?.displayName, user?.email]);
+
+  // "Myself" — locked to account contact details. "Other" — blank, editable.
+  const [orderingFor, setOrderingFor] = useState<"myself" | "other">("myself");
+
   // Pre-fill with default address if available
   const defaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
   const [address, setAddress] = useState({
-    fullName: defaultAddr?.fullName || "",
-    email: defaultAddr?.email || userDoc?.email || user?.email || "",
-    phoneCountryCode: defaultAddr?.phoneCountryCode || DEFAULT_DIAL_CODE,
-    phone: defaultAddr?.phone || "",
+    fullName: accountContact.fullName || defaultAddr?.fullName || "",
+    email: accountContact.email || defaultAddr?.email || "",
+    phoneCountryCode: accountContact.phone
+      ? accountContact.phoneCountryCode
+      : defaultAddr?.phoneCountryCode || DEFAULT_DIAL_CODE,
+    phone: accountContact.phone || defaultAddr?.phone || "",
     addressLine1: defaultAddr?.line1 || "",
     landmark: defaultAddr?.landmark || defaultAddr?.line2 || "",
     pincode: defaultAddr?.pincode || "",
@@ -41,6 +58,32 @@ export default function CheckoutPage() {
     state: defaultAddr?.state || "",
   });
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(defaultAddr?.id || null);
+
+  const switchOrderingFor = (next: "myself" | "other") => {
+    setOrderingFor(next);
+    if (next === "myself") {
+      // Re-fetch from account and lock
+      setAddress((p) => ({
+        ...p,
+        fullName: accountContact.fullName,
+        email: accountContact.email,
+        phoneCountryCode: accountContact.phone
+          ? accountContact.phoneCountryCode
+          : DEFAULT_DIAL_CODE,
+        phone: accountContact.phone,
+      }));
+    } else {
+      // Start fresh — clear the three locked fields
+      setAddress((p) => ({
+        ...p,
+        fullName: "",
+        email: "",
+        phoneCountryCode: DEFAULT_DIAL_CODE,
+        phone: "",
+      }));
+      setSelectedAddrId(null);
+    }
+  };
 
   // ── Pincode auto-lookup ─────────────────────────────────────────────
   // When the customer types a full 6-digit pincode we hit India Post's public
@@ -85,6 +128,14 @@ export default function CheckoutPage() {
   };
 
   const pincodeValid = isValidPincode(address.pincode);
+
+  // Continue-button gate: Name, Email, and a valid 6-digit Pincode required.
+  const canContinue =
+    address.fullName.trim().length > 0 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.email.trim()) &&
+    pincodeValid;
+
+  const lockMyselfFields = orderingFor === "myself";
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
@@ -245,6 +296,7 @@ export default function CheckoutPage() {
                   <button
                     key={addr.id}
                     onClick={() => {
+                      setOrderingFor("other");
                       setSelectedAddrId(addr.id);
                       setAddress({
                         fullName: addr.fullName,
@@ -283,19 +335,62 @@ export default function CheckoutPage() {
 
           {/* Manual address form */}
           <div className="bg-white border border-silver/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-6">
+            <h2 className="text-xl font-[family-name:var(--font-heading)] font-semibold mb-4">
               {savedAddresses.length > 0 ? "Or Enter New Address" : "Shipping Address"}
             </h2>
+
+            {/* Ordering-for toggle: Myself locks contact fields to the account;
+                Other clears them so a fresh recipient can be entered. */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <button
+                type="button"
+                onClick={() => switchOrderingFor("myself")}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                  orderingFor === "myself"
+                    ? "border-gold bg-gold/5 text-warm-black"
+                    : "border-silver/40 text-muted hover:border-silver"
+                }`}
+                aria-pressed={orderingFor === "myself"}
+              >
+                <User size={16} className={orderingFor === "myself" ? "text-gold" : ""} />
+                Ordering for Myself
+              </button>
+              <button
+                type="button"
+                onClick={() => switchOrderingFor("other")}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                  orderingFor === "other"
+                    ? "border-gold bg-gold/5 text-warm-black"
+                    : "border-silver/40 text-muted hover:border-silver"
+                }`}
+                aria-pressed={orderingFor === "other"}
+              >
+                <UserPlus size={16} className={orderingFor === "other" ? "text-gold" : ""} />
+                Ordering for Other
+              </button>
+            </div>
+            {orderingFor === "myself" && (
+              <p className="text-xs text-muted mb-5 -mt-2">
+                Using your account details. Switch to <strong>Ordering for Other</strong> to ship to someone else.
+              </p>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             {/* Row 1 — Name + Email */}
-            <Input label="Full Name" value={address.fullName} onChange={(v) => updateAddress("fullName", v)} />
+            <Input
+              label="Full Name"
+              value={address.fullName}
+              onChange={(v) => updateAddress("fullName", v)}
+              disabled={lockMyselfFields}
+            />
             <Input
               label="Email"
               value={address.email}
               onChange={(v) => updateAddress("email", v)}
               type="email"
               placeholder="you@example.com"
+              disabled={lockMyselfFields}
             />
 
             {/* Row 2 — Phone (country code + number) */}
@@ -305,7 +400,8 @@ export default function CheckoutPage() {
                 <select
                   value={address.phoneCountryCode}
                   onChange={(e) => updateAddress("phoneCountryCode", e.target.value)}
-                  className="shrink-0 w-[120px] border border-silver rounded-xl px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  disabled={lockMyselfFields}
+                  className="shrink-0 w-[120px] border border-silver rounded-xl px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:bg-silver/15 disabled:text-muted disabled:cursor-not-allowed"
                   aria-label="Country dial code"
                 >
                   {DIAL_CODES.map((d) => (
@@ -319,7 +415,8 @@ export default function CheckoutPage() {
                   onChange={(e) => updateAddress("phone", e.target.value.replace(/\D/g, ""))}
                   placeholder="10-digit number"
                   maxLength={15}
-                  className="flex-1 w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  disabled={lockMyselfFields}
+                  className="flex-1 w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:bg-silver/15 disabled:text-muted disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -414,13 +511,19 @@ export default function CheckoutPage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-3 mt-8">
+          {!canContinue && (
+            <p className="text-xs text-muted mt-6">
+              Please fill in <strong>Name</strong>, <strong>Email</strong> and a valid 6-digit <strong>Pincode</strong> to continue.
+            </p>
+          )}
+          <div className="flex gap-3 mt-4">
             <button onClick={() => setStep(0)} className="px-6 py-3.5 border border-silver rounded-xl text-sm font-medium hover:bg-silver/10 transition-colors">
               Back
             </button>
             <button
-              onClick={() => setStep(2)}
-              className="flex-1 py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors"
+              onClick={() => canContinue && setStep(2)}
+              disabled={!canContinue}
+              className="flex-1 py-3.5 bg-gold hover:bg-gold-dark text-white font-medium rounded-xl transition-colors disabled:bg-silver/40 disabled:cursor-not-allowed disabled:hover:bg-silver/40"
             >
               Continue to Review
             </button>
@@ -557,10 +660,10 @@ export default function CheckoutPage() {
 
 /* ---------- helpers ---------- */
 function Input({
-  label, value, onChange, type = "text", placeholder, maxLength,
+  label, value, onChange, type = "text", placeholder, maxLength, disabled = false,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string; maxLength?: number;
+  type?: string; placeholder?: string; maxLength?: number; disabled?: boolean;
 }) {
   return (
     <div>
@@ -571,8 +674,28 @@ function Input({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className="w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 transition"
+        disabled={disabled}
+        className="w-full border border-silver rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 transition disabled:bg-silver/15 disabled:text-muted disabled:cursor-not-allowed"
       />
     </div>
   );
+}
+
+/**
+ * Split a stored phone string into a dial-code + local number. Accepts inputs
+ * like "+919812345678", "+91 9812345678", or "9812345678" (no prefix). When
+ * the prefix isn't a known DIAL_CODES entry we fall back to +91 and keep all
+ * digits as the local number.
+ */
+function splitPhone(raw: string | undefined | null): { code: string; number: string } {
+  if (!raw) return { code: DEFAULT_DIAL_CODE, number: "" };
+  const trimmed = String(raw).trim();
+  const match = trimmed.match(/^\+(\d{1,4})\s*(.*)$/);
+  if (match) {
+    const candidate = `+${match[1]}`;
+    const rest = match[2].replace(/\D/g, "");
+    const known = DIAL_CODES.some((d) => d.code === candidate);
+    return known ? { code: candidate, number: rest } : { code: DEFAULT_DIAL_CODE, number: trimmed.replace(/\D/g, "") };
+  }
+  return { code: DEFAULT_DIAL_CODE, number: trimmed.replace(/\D/g, "") };
 }
