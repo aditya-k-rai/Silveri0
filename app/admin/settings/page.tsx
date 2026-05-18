@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Upload, Save, Globe, Mail, MessageCircle, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { Upload, Save, Globe, Mail, MessageCircle, Loader2, X, Image as ImageIcon, Crop } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
+import LogoCropEditor from "./LogoCropEditor";
 
 const SETTINGS_DOC = "siteSettings";
 const SETTINGS_COLLECTION = "settings";
@@ -30,6 +31,8 @@ const compressBanner = (file: File, maxWidth = 1920, quality = 0.75): Promise<st
 };
 
 export default function AdminSettingsPage() {
+  const [logo, setLogo] = useState<string | null>(null);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
   const [heroBanner, setHeroBanner] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [announcement, setAnnouncement] = useState("Free shipping on orders above ₹2,000!");
@@ -44,6 +47,7 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   // Load settings from Firestore
   useEffect(() => {
@@ -51,6 +55,7 @@ export default function AdminSettingsPage() {
     getDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC)).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        if (data.logo) setLogo(data.logo);
         if (data.heroBanner) setHeroBanner(data.heroBanner);
         if (data.announcement !== undefined) setAnnouncement(data.announcement);
         if (data.announcementEnabled !== undefined) setAnnouncementEnabled(data.announcementEnabled);
@@ -59,6 +64,19 @@ export default function AdminSettingsPage() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Logo too large. Please use an image under 4MB.");
+      return;
+    }
+    setPendingLogoFile(file);
+    if (logoFileRef.current) logoFileRef.current.value = "";
+  };
+
+  const removeLogo = () => setLogo(null);
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,6 +109,7 @@ export default function AdminSettingsPage() {
     setSaving(true);
     try {
       await setDoc(doc(db, SETTINGS_COLLECTION, SETTINGS_DOC), {
+        logo,
         heroBanner,
         announcement,
         announcementEnabled,
@@ -117,6 +136,81 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-8 max-w-3xl">
+      {/* Website Logo */}
+      <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-[family-name:var(--font-heading)] font-semibold text-lg">Website Logo</h3>
+            <p className="text-xs text-[#7A7585] mt-0.5">Shown next to &quot;Silveri&quot; in the customer header. Square crop, ideally a transparent PNG.</p>
+          </div>
+          {logo && (
+            <button
+              onClick={removeLogo}
+              className="text-xs text-red-500 hover:underline"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-5">
+          {/* Live preview */}
+          <div className="shrink-0 flex flex-col items-center gap-2">
+            <div className="w-20 h-20 rounded-2xl bg-silver-900 flex items-center justify-center overflow-hidden">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logo} alt="Logo preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white font-[family-name:var(--font-heading)] text-3xl font-bold">S</span>
+              )}
+            </div>
+            <span className="text-[10px] text-[#7A7585]">Header preview</span>
+          </div>
+
+          <div className="flex-1">
+            <button
+              onClick={() => logoFileRef.current?.click()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#E8E8E8] rounded-xl text-sm font-medium hover:bg-[#FDFAF5] transition-colors"
+            >
+              <Upload size={16} /> {logo ? "Replace logo" : "Upload logo"}
+            </button>
+            <p className="text-xs text-[#7A7585] mt-2">PNG / JPG / WebP — max 4MB. You&apos;ll be able to crop and resize before saving.</p>
+            {logo && (
+              <button
+                onClick={() => {
+                  // Re-open editor on the existing logo (load as File via fetch->blob)
+                  fetch(logo).then((r) => r.blob()).then((b) => {
+                    const f = new File([b], "logo.png", { type: b.type || "image/png" });
+                    setPendingLogoFile(f);
+                  }).catch(() => {});
+                }}
+                className="ml-3 inline-flex items-center gap-2 px-4 py-2.5 border border-[#E8E8E8] rounded-xl text-sm font-medium hover:bg-[#FDFAF5] transition-colors"
+              >
+                <Crop size={16} /> Edit crop
+              </button>
+            )}
+            <input
+              ref={logoFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoFile}
+            />
+          </div>
+        </div>
+      </div>
+
+      {pendingLogoFile && (
+        <LogoCropEditor
+          file={pendingLogoFile}
+          onCancel={() => setPendingLogoFile(null)}
+          onApply={(dataUrl) => {
+            setLogo(dataUrl);
+            setPendingLogoFile(null);
+          }}
+        />
+      )}
+
       {/* Hero Banner */}
       <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6">
         <h3 className="font-[family-name:var(--font-heading)] font-semibold text-lg mb-4">Hero Banner</h3>

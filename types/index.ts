@@ -176,6 +176,10 @@ export interface SiteSettings {
   heroImages: HeroBanner[];
   announcementText: string;
   showAnnouncement: boolean;
+  /** Customer-facing website logo (data URL or hosted image URL). Set from
+   *  admin → Settings → Website Logo. When absent, Header falls back to the
+   *  built-in "S" monogram. */
+  logo?: string;
   socialLinks: {
     instagram?: string;
     facebook?: string;

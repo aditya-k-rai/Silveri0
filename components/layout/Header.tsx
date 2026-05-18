@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { fetchRecentRates } from '@/lib/firebase/marketRates';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import {
   Home,
   Grid3X3,
@@ -168,6 +170,7 @@ export default function Header() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [silverRate, setSilverRate] = useState<number | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [logo, setLogo] = useState<string | null>(null);
   const { user, loading } = useAuthContext();
 
   const handleSignOut = async () => {
@@ -187,6 +190,23 @@ export default function Header() {
         if (cancelled) return;
         const latest = rates[rates.length - 1];
         if (latest?.silverRate) setSilverRate(latest.silverRate);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Pull the admin-uploaded logo (settings/siteSettings.logo). Falls back to
+  // the "S" monogram when none is set or the fetch fails.
+  useEffect(() => {
+    if (!db) return;
+    let cancelled = false;
+    getDoc(doc(db, 'settings', 'siteSettings'))
+      .then((snap) => {
+        if (cancelled || !snap.exists()) return;
+        const data = snap.data();
+        if (typeof data.logo === 'string' && data.logo) setLogo(data.logo);
       })
       .catch(() => {});
     return () => {
@@ -244,8 +264,13 @@ export default function Header() {
             <div className="flex items-center justify-between h-[68px] gap-6">
               {/* Logo */}
               <Link href="/" className="flex items-center gap-2.5 shrink-0">
-                <div className="w-9 h-9 bg-silver-900 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-[family-name:var(--font-heading)] text-base font-bold">S</span>
+                <div className="w-9 h-9 bg-silver-900 rounded-xl flex items-center justify-center overflow-hidden">
+                  {logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white font-[family-name:var(--font-heading)] text-base font-bold">S</span>
+                  )}
                 </div>
                 <span className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-silver-900 tracking-tight">
                   Silveri
@@ -454,8 +479,13 @@ export default function Header() {
         <div className="liquidGlass-content flex items-center justify-between h-14 px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-silver-900 rounded-lg flex items-center justify-center">
-              <span className="text-white font-[family-name:var(--font-heading)] text-xs font-bold">S</span>
+            <div className="w-7 h-7 bg-silver-900 rounded-lg flex items-center justify-center overflow-hidden">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white font-[family-name:var(--font-heading)] text-xs font-bold">S</span>
+              )}
             </div>
             <span className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">
               Silveri
