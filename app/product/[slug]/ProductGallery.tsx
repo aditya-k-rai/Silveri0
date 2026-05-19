@@ -60,6 +60,10 @@ export default function ProductGallery({
   const autoplayPausedRef = useRef(false);
   const pauseAutoplay = useCallback(() => { autoplayPausedRef.current = true; }, []);
 
+  // Active-gesture flag — disables the CSS transition so the finger maps 1:1
+  // onto the zoom level (transitions feel like rubber-banding mid-pinch).
+  const [gesturing, setGesturing] = useState(false);
+
   // ── Helpers ───────────────────────────────────────────────────────
   const clampScale = (s: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
   const clampPct = (n: number) => Math.max(0, Math.min(100, n));
@@ -106,6 +110,24 @@ export default function ProductGallery({
     return () => window.clearInterval(id);
   }, [images.length]);
 
+  // ── Block iOS Safari native pinch-zoom on the gallery ─────────────
+  // Even with the right touch-action, mobile Safari can still fire its
+  // non-standard `gesturestart` and zoom the whole page. Calling
+  // preventDefault on those events keeps the gesture local to the image.
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const stop = (e: Event) => e.preventDefault();
+    el.addEventListener('gesturestart', stop, { passive: false });
+    el.addEventListener('gesturechange', stop, { passive: false });
+    el.addEventListener('gestureend', stop, { passive: false });
+    return () => {
+      el.removeEventListener('gesturestart', stop);
+      el.removeEventListener('gesturechange', stop);
+      el.removeEventListener('gestureend', stop);
+    };
+  }, []);
+
   // ── Wheel = desktop zoom ──────────────────────────────────────────
   // We attach via native addEventListener so we can call preventDefault()
   // (React's synthetic wheel handler is passive by default in modern React).
@@ -151,6 +173,13 @@ export default function ProductGallery({
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+    // ANY pointerdown counts as customer interaction — stop the autoplay.
+    // Even for native-scroll touch swipes (which we don't capture explicitly
+    // below) we still want to freeze the auto-advance — Amazon / Flipkart
+    // behaviour.
+    pauseAutoplay();
+    setGesturing(true);
+
     // 2 fingers → pinch session
     if (pointersRef.current.size >= 2) {
       const ps = getPinchState();
@@ -161,7 +190,6 @@ export default function ProductGallery({
         dragRef.current = null;
         panRef.current = null;
       }
-      pauseAutoplay();
       return;
     }
 
@@ -175,17 +203,16 @@ export default function ProductGallery({
       };
       const el = trackRef.current;
       if (el) el.setPointerCapture(e.pointerId);
-      pauseAutoplay();
       return;
     }
 
-    // Single mouse-pointer & not zoomed → carousel drag
+    // Single mouse-pointer & not zoomed → carousel drag.
+    // Touch single-finger swipe uses the browser's native scroll-snap below.
     if (e.pointerType !== 'mouse') return;
     const el = trackRef.current;
     if (!el) return;
     el.setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, scrollLeft: el.scrollLeft, moved: false };
-    pauseAutoplay();
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -243,7 +270,6 @@ export default function ProductGallery({
     // End pinch when we're back below two fingers
     if (pinchRef.current && pointersRef.current.size < 2) {
       pinchRef.current = null;
-      // If the gesture pinched out to ~1, snap fully back to 1
       if (zoomScale < MIN_SCALE + 0.05) applyScale(MIN_SCALE);
     }
 
@@ -252,17 +278,20 @@ export default function ProductGallery({
       panRef.current = null;
       const el = trackRef.current;
       if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-      return;
+    } else {
+      // End carousel drag
+      const el = trackRef.current;
+      if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      if (dragRef.current?.moved && el) {
+        const idx = Math.round(el.scrollLeft / el.clientWidth);
+        scrollToIndex(idx);
+      }
+      dragRef.current = null;
     }
 
-    // End carousel drag
-    const el = trackRef.current;
-    if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-    if (dragRef.current?.moved && el) {
-      const idx = Math.round(el.scrollLeft / el.clientWidth);
-      scrollToIndex(idx);
-    }
-    dragRef.current = null;
+    // No more active pointers → gesture finished. Re-enable the smooth
+    // transition so the next state change animates rather than jumps.
+    if (pointersRef.current.size === 0) setGesturing(false);
   };
 
   /** Hover-to-pan on desktop: when zoomed, just moving the mouse repositions the view too. */
@@ -301,10 +330,14 @@ export default function ProductGallery({
               onMouseLeave={() => { if (isZoomed) applyScale(MIN_SCALE); }}
               className={`flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth select-none [&::-webkit-scrollbar]:hidden [scrollbar-width:none] ${
                 isZoomed
-                  ? 'cursor-grab active:cursor-grabbing overflow-hidden touch-none'
-                  : 'cursor-grab active:cursor-grabbing touch-pan-y'
+                  ? 'cursor-grab active:cursor-grabbing overflow-hidden'
+                  : 'cursor-grab active:cursor-grabbing'
               }`}
-              style={isZoomed ? { touchAction: 'none' } : { touchAction: 'pan-y pinch-zoom' }}
+              // touch-action *deliberately omits* pinch-zoom so two-finger
+              // gestures land in our handlers instead of zooming the page.
+              // When zoomed, we own all touch handling — set 'none' so the
+              // browser stops trying to scroll the underlying track.
+              style={{ touchAction: isZoomed ? 'none' : 'pan-x pan-y' }}
             >
               {images.map((src, i) => {
                 const showZoom = isZoomed && i === activeIndex;
@@ -314,10 +347,14 @@ export default function ProductGallery({
                       src={src}
                       alt={`${name} — image ${i + 1}`}
                       fill
-                      className="object-cover pointer-events-none transition-transform duration-150 ease-out"
+                      // No CSS transition while a gesture is active — that
+                      // 150ms interpolation is what made the pinch / wheel
+                      // feel laggy. Settle smoothly only when fingers lift.
+                      className={`object-cover pointer-events-none ${gesturing ? '' : 'transition-transform duration-150 ease-out'}`}
                       style={{
                         transform: showZoom ? `scale(${zoomScale})` : undefined,
                         transformOrigin: showZoom ? `${zoomOrigin.x}% ${zoomOrigin.y}%` : undefined,
+                        willChange: showZoom ? 'transform' : undefined,
                       }}
                       sizes="(max-width: 768px) 100vw, 416px"
                       priority={i === 0}
