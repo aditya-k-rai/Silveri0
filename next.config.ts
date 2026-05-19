@@ -5,14 +5,42 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // Tree-shake the named-export entry points of these packages so unused
+  // icons / chart primitives / motion components are dropped from the bundle.
   experimental: {
     optimizePackageImports: [
       'lucide-react',
       'recharts',
       'framer-motion',
+      'firebase',
+      'firebase/app',
+      'firebase/auth',
+      'firebase/firestore',
+      'firebase/storage',
+      '@vercel/analytics',
+      '@vercel/speed-insights',
+      'zustand',
+      'react-hook-form',
+      'zod',
     ],
   },
+  // Production-only compiler tweaks. Strips dev-only console.* and assert()
+  // calls (keeps console.error/warn) so logs don't bloat the prod bundle.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
+  },
+  // Don't ship browser source maps to production — they triple the asset bytes
+  // and aren't needed at runtime (Sentry / similar tools fetch them separately).
+  productionBrowserSourceMaps: false,
+  // Gzip/Brotli on Vercel handles this, but flipping it on explicitly also
+  // covers self-hosted runs.
+  compress: true,
   poweredByHeader: false,
+  // React strict-mode catches doubled effects early — enabling here is free in
+  // production builds and surfaces hidden re-renders in dev.
+  reactStrictMode: true,
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 31536000,

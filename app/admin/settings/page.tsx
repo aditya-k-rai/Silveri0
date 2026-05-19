@@ -4,7 +4,19 @@ import { useState, useEffect, useRef } from "react";
 import { Upload, Save, Globe, Mail, MessageCircle, Loader2, X, Image as ImageIcon, Crop } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import LogoCropEditor from "./LogoCropEditor";
+import dynamic from "next/dynamic";
+
+// LogoCropEditor pulls in a canvas-heavy editor + DOM math that only renders
+// when the admin chooses a file. Lazy-loading it keeps the Settings page's
+// initial JS payload small — the chunk fetches the moment the picker opens.
+const LogoCropEditor = dynamic(() => import("./LogoCropEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40">
+      <Loader2 className="text-white animate-spin" size={28} />
+    </div>
+  ),
+});
 
 const SETTINGS_DOC = "siteSettings";
 const SETTINGS_COLLECTION = "settings";
