@@ -1,8 +1,14 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+
+const AUTOPLAY_MS = 2000;
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+const WHEEL_SENSITIVITY = 0.0025; // scale-units per wheel pixel
+const PINCH_DEAD_ZONE = 1.02;     // ignore tiny pinch jitter near 1.0
 
 interface ProductGalleryProps {
   name: string;
@@ -15,28 +21,66 @@ interface ProductGalleryProps {
 }
 
 /**
- * Swipeable image carousel for the product page. Uses native CSS scroll-snap
- * for the horizontal track — gives free touch / inertia / momentum on mobile
- * and trackpad gestures on desktop, no JS gesture library needed. Arrow
- * buttons + dots + thumbnails all programmatically scroll the same track so
- * the active index stays in sync.
+ * Product image gallery with:
+ *   • 2-second autoplay (pauses on first interaction)
+ *   • Carousel: native scroll-snap swipe (mobile) + mouse drag + arrows / dots / thumbnails
+ *   • Zoom: mouse-wheel on desktop, two-finger pinch on mobile — user controls the level
+ *   • Pan: while zoomed, single-finger drag (mobile) or mouse drag (desktop) repositions the view
  */
-export default function ProductGallery({ name, primaryImage, hoverImage, image3, image4, image5, image6 }: ProductGalleryProps) {
+export default function ProductGallery({
+  name,
+  primaryImage,
+  hoverImage,
+  image3,
+  image4,
+  image5,
+  image6,
+}: ProductGalleryProps) {
   const images = [primaryImage, hoverImage, image3, image4, image5, image6].filter(Boolean) as string[];
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  // Mouse drag-to-pan state — desktop affordance, doesn't intercept touch
-  // because native scroll already handles swipe on mobile.
-  const dragRef = useRef<{ startX: number; scrollLeft: number; moved: boolean } | null>(null);
 
-  // Read scroll position and derive the active slide. `Math.round` ensures we
-  // snap to the nearest slide even mid-swipe.
+  // Continuous zoom — 1.0 = no zoom; max 4×.
+  const [zoomScale, setZoomScale] = useState(1);
+  // Origin in 0–100 % coords inside the visible slide.
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  const isZoomed = zoomScale > 1.001;
+
+  // ── Gesture refs (no re-render needed for these) ──────────────────
+  // Carousel-drag (mouse-only; touch uses native scroll when not zoomed)
+  const dragRef = useRef<{ startX: number; scrollLeft: number; moved: boolean } | null>(null);
+  // All active pointers — used to detect 2-finger pinch
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  // Pinch session
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
+  // Pan-while-zoomed session
+  const panRef = useRef<{ startX: number; startY: number; startOriginX: number; startOriginY: number } | null>(null);
+  // Autoplay
+  const autoplayPausedRef = useRef(false);
+  const pauseAutoplay = useCallback(() => { autoplayPausedRef.current = true; }, []);
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  const clampScale = (s: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+  const clampPct = (n: number) => Math.max(0, Math.min(100, n));
+
+  /** Apply a new scale value; resets origin to center when fully zoomed-out. */
+  const applyScale = useCallback((next: number, origin?: { x: number; y: number }) => {
+    const clamped = clampScale(next);
+    setZoomScale(clamped);
+    if (origin) setZoomOrigin({ x: clampPct(origin.x), y: clampPct(origin.y) });
+    if (clamped <= MIN_SCALE + 0.001) setZoomOrigin({ x: 50, y: 50 });
+  }, []);
+
+  /** Active slide derived from scroll position. */
   const handleScroll = useCallback(() => {
     const el = trackRef.current;
     if (!el || el.clientWidth === 0) return;
     const next = Math.round(el.scrollLeft / el.clientWidth);
     setActiveIndex((prev) => (prev === next ? prev : next));
+    // A genuine slide change exits zoom — safe no-op if scale was already 1.
+    setZoomScale(1);
+    setZoomOrigin({ x: 50, y: 50 });
   }, []);
 
   const scrollToIndex = useCallback((i: number) => {
@@ -46,14 +90,145 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
     el.scrollTo({ left: clamped * el.clientWidth, behavior: 'smooth' });
   }, [images.length]);
 
+  // ── Autoplay ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (images.length < 2) return;
+    const tick = () => {
+      if (autoplayPausedRef.current) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const el = trackRef.current;
+      if (!el || el.clientWidth === 0) return;
+      const current = Math.round(el.scrollLeft / el.clientWidth);
+      const next = (current + 1) % images.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
+    };
+    const id = window.setInterval(tick, AUTOPLAY_MS);
+    return () => window.clearInterval(id);
+  }, [images.length]);
+
+  // ── Wheel = desktop zoom ──────────────────────────────────────────
+  // We attach via native addEventListener so we can call preventDefault()
+  // (React's synthetic wheel handler is passive by default in modern React).
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      pauseAutoplay();
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      // Negative deltaY = wheel-up = zoom in.
+      const delta = -e.deltaY * WHEEL_SENSITIVITY;
+      setZoomScale((prev) => {
+        const next = clampScale(prev + delta);
+        if (next <= MIN_SCALE + 0.001) {
+          setZoomOrigin({ x: 50, y: 50 });
+        } else {
+          setZoomOrigin({ x: clampPct(x), y: clampPct(y) });
+        }
+        return next;
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [pauseAutoplay]);
+
+  // ── Pointer events: pinch, pan, and drag-carousel coexist here ────
+  const getPinchState = () => {
+    const points = Array.from(pointersRef.current.values()).slice(0, 2);
+    if (points.length < 2) return null;
+    const dist = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+    const el = trackRef.current;
+    if (!el) return { dist, midX: 50, midY: 50 };
+    const rect = el.getBoundingClientRect();
+    const midX = ((points[0].x + points[1].x) / 2 - rect.left) / rect.width * 100;
+    const midY = ((points[0].y + points[1].y) / 2 - rect.top) / rect.height * 100;
+    return { dist, midX, midY };
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType !== 'mouse') return; // touch swipe is native
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // 2 fingers → pinch session
+    if (pointersRef.current.size >= 2) {
+      const ps = getPinchState();
+      if (ps) {
+        pinchRef.current = { startDist: ps.dist, startScale: zoomScale };
+        setZoomOrigin({ x: clampPct(ps.midX), y: clampPct(ps.midY) });
+        // Cancel any in-progress single-pointer gesture
+        dragRef.current = null;
+        panRef.current = null;
+      }
+      pauseAutoplay();
+      return;
+    }
+
+    // Single pointer while zoomed → pan the magnified image
+    if (zoomScale > MIN_SCALE + 0.001) {
+      panRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startOriginX: zoomOrigin.x,
+        startOriginY: zoomOrigin.y,
+      };
+      const el = trackRef.current;
+      if (el) el.setPointerCapture(e.pointerId);
+      pauseAutoplay();
+      return;
+    }
+
+    // Single mouse-pointer & not zoomed → carousel drag
+    if (e.pointerType !== 'mouse') return;
     const el = trackRef.current;
     if (!el) return;
     el.setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, scrollLeft: el.scrollLeft, moved: false };
+    pauseAutoplay();
   };
+
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Pinch in progress
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const ps = getPinchState();
+      if (!ps) return;
+      const ratio = ps.dist / pinchRef.current.startDist;
+      // Apply a small dead-zone so resting fingers don't drift the scale
+      const next = Math.abs(ratio - 1) < (PINCH_DEAD_ZONE - 1)
+        ? pinchRef.current.startScale
+        : clampScale(pinchRef.current.startScale * ratio);
+      setZoomScale(next);
+      setZoomOrigin({ x: clampPct(ps.midX), y: clampPct(ps.midY) });
+      return;
+    }
+
+    // Pan while zoomed (single pointer)
+    if (panRef.current && zoomScale > MIN_SCALE + 0.001) {
+      const el = trackRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dx = e.clientX - panRef.current.startX;
+      const dy = e.clientY - panRef.current.startY;
+      // Convert pixel drag into transform-origin percentage drift.
+      // At higher zoom levels a small movement reveals more, so scale the
+      // factor by (zoom - 1) — feels natural at any zoom level.
+      const denom = Math.max(zoomScale - 1, 0.001);
+      const factorX = 100 / (rect.width * denom);
+      const factorY = 100 / (rect.height * denom);
+      setZoomOrigin({
+        x: clampPct(panRef.current.startOriginX - dx * factorX),
+        y: clampPct(panRef.current.startOriginY - dy * factorY),
+      });
+      return;
+    }
+
+    // Normal mouse carousel-drag
     if (!dragRef.current) return;
     const el = trackRef.current;
     if (!el) return;
@@ -61,16 +236,51 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
     if (Math.abs(dx) > 4) dragRef.current.moved = true;
     el.scrollLeft = dragRef.current.scrollLeft - dx;
   };
+
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+
+    // End pinch when we're back below two fingers
+    if (pinchRef.current && pointersRef.current.size < 2) {
+      pinchRef.current = null;
+      // If the gesture pinched out to ~1, snap fully back to 1
+      if (zoomScale < MIN_SCALE + 0.05) applyScale(MIN_SCALE);
+    }
+
+    // End pan
+    if (panRef.current) {
+      panRef.current = null;
+      const el = trackRef.current;
+      if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      return;
+    }
+
+    // End carousel drag
     const el = trackRef.current;
     if (el && el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
-    // Snap to the nearest slide once the drag finishes
     if (dragRef.current?.moved && el) {
       const idx = Math.round(el.scrollLeft / el.clientWidth);
       scrollToIndex(idx);
     }
     dragRef.current = null;
   };
+
+  /** Hover-to-pan on desktop: when zoomed, just moving the mouse repositions the view too. */
+  const onTrackMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isZoomed) return;
+    if (panRef.current) return; // active drag-pan wins
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomOrigin({ x: clampPct(x), y: clampPct(y) });
+  };
+
+  // Slide-change shortcut — pauses autoplay then forwards to scrollToIndex.
+  const jumpTo = useCallback((i: number) => {
+    pauseAutoplay();
+    scrollToIndex(i);
+  }, [pauseAutoplay, scrollToIndex]);
 
   const hasMultiple = images.length > 1;
 
@@ -87,21 +297,35 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
-              className="flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth touch-pan-y cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+              onMouseMove={onTrackMouseMove}
+              onMouseLeave={() => { if (isZoomed) applyScale(MIN_SCALE); }}
+              className={`flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth select-none [&::-webkit-scrollbar]:hidden [scrollbar-width:none] ${
+                isZoomed
+                  ? 'cursor-grab active:cursor-grabbing overflow-hidden touch-none'
+                  : 'cursor-grab active:cursor-grabbing touch-pan-y'
+              }`}
+              style={isZoomed ? { touchAction: 'none' } : { touchAction: 'pan-y pinch-zoom' }}
             >
-              {images.map((src, i) => (
-                <div key={i} className="relative w-full h-full shrink-0 snap-center">
-                  <Image
-                    src={src}
-                    alt={`${name} — image ${i + 1}`}
-                    fill
-                    className="object-cover pointer-events-none"
-                    sizes="(max-width: 768px) 100vw, 416px"
-                    priority={i === 0}
-                    draggable={false}
-                  />
-                </div>
-              ))}
+              {images.map((src, i) => {
+                const showZoom = isZoomed && i === activeIndex;
+                return (
+                  <div key={i} className="relative w-full h-full shrink-0 snap-center overflow-hidden">
+                    <Image
+                      src={src}
+                      alt={`${name} — image ${i + 1}`}
+                      fill
+                      className="object-cover pointer-events-none transition-transform duration-150 ease-out"
+                      style={{
+                        transform: showZoom ? `scale(${zoomScale})` : undefined,
+                        transformOrigin: showZoom ? `${zoomOrigin.x}% ${zoomOrigin.y}%` : undefined,
+                      }}
+                      sizes="(max-width: 768px) 100vw, 416px"
+                      priority={i === 0}
+                      draggable={false}
+                    />
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -109,13 +333,13 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
             </div>
           )}
 
-          {/* Prev / Next arrows (hidden on the boundary slides) */}
-          {hasMultiple && (
+          {/* Prev / Next arrows */}
+          {hasMultiple && !isZoomed && (
             <>
               {activeIndex > 0 && (
                 <button
                   type="button"
-                  onClick={() => scrollToIndex(activeIndex - 1)}
+                  onClick={() => jumpTo(activeIndex - 1)}
                   aria-label="Previous image"
                   className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/85 backdrop-blur-md text-warm-black shadow-[0_4px_14px_-2px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 md:opacity-100"
                 >
@@ -125,44 +349,58 @@ export default function ProductGallery({ name, primaryImage, hoverImage, image3,
               {activeIndex < images.length - 1 && (
                 <button
                   type="button"
-                  onClick={() => scrollToIndex(activeIndex + 1)}
+                  onClick={() => jumpTo(activeIndex + 1)}
                   aria-label="Next image"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/85 backdrop-blur-md text-warm-black shadow-[0_4px_14px_-2px_rgba(0,0,0,0.18)] flex items-center justify-center hover:bg-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 md:opacity-100"
                 >
                   <ChevronRight size={18} />
                 </button>
               )}
-
-              {/* Slide counter */}
-              <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-warm-black/55 backdrop-blur text-white text-[10px] font-medium tabular-nums tracking-wider">
-                {activeIndex + 1} / {images.length}
-              </div>
-
-              {/* Dot indicators */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-black/35 backdrop-blur">
-                {images.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => scrollToIndex(i)}
-                    aria-label={`Go to image ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-all ${
-                      activeIndex === i ? 'w-5 bg-white' : 'w-1.5 bg-white/55 hover:bg-white/80'
-                    }`}
-                  />
-                ))}
-              </div>
             </>
+          )}
+
+          {/* Slide counter */}
+          {hasMultiple && (
+            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-warm-black/55 backdrop-blur text-white text-[10px] font-medium tabular-nums tracking-wider pointer-events-none">
+              {activeIndex + 1} / {images.length}
+            </div>
+          )}
+
+          {/* Zoom-level badge — shows the live zoom level while zoomed,
+              or the affordance hint when not. */}
+          <div
+            className="absolute top-3 left-3 px-2 h-7 rounded-full bg-warm-black/60 backdrop-blur text-white text-[10px] font-medium flex items-center gap-1.5 pointer-events-none tabular-nums"
+            aria-hidden="true"
+          >
+            <ZoomIn size={12} />
+            {isZoomed ? `${zoomScale.toFixed(1)}×` : <span className="hidden sm:inline">Scroll · Pinch</span>}
+          </div>
+
+          {/* Dot indicators */}
+          {hasMultiple && !isZoomed && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-black/35 backdrop-blur">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => jumpTo(i)}
+                  aria-label={`Go to image ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    activeIndex === i ? 'w-5 bg-white' : 'w-1.5 bg-white/55 hover:bg-white/80'
+                  }`}
+                />
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Thumbnails — sync with the slider, give a quick-jump on desktop */}
+        {/* Thumbnails */}
         {hasMultiple && (
           <div className="flex gap-2 sm:gap-2.5 mt-4 max-w-[416px] mx-auto overflow-x-auto justify-start sm:justify-center pb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             {images.map((img, i) => (
               <button
                 key={i}
-                onClick={() => scrollToIndex(i)}
+                onClick={() => jumpTo(i)}
                 aria-label={`View image ${i + 1}`}
                 aria-current={activeIndex === i}
                 className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 overflow-hidden relative cursor-pointer transition-all duration-200 shrink-0 ${
