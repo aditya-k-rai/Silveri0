@@ -450,7 +450,7 @@ export default function CheckoutPage() {
                       value={address.phoneCountryCode}
                       onChange={(e) => updateAddress("phoneCountryCode", e.target.value)}
                       disabled={lockMyselfFields}
-                      className={inputBase + " shrink-0 w-[120px] pr-2"}
+                      className="shrink-0 w-[112px] bg-white border border-silver-200 rounded-2xl pl-3 pr-2 py-3.5 text-sm text-warm-black focus:outline-none focus:border-warm-black focus:ring-4 focus:ring-warm-black/8 transition disabled:bg-silver-50 disabled:text-silver-400 disabled:cursor-not-allowed"
                       aria-label="Country dial code"
                     >
                       {DIAL_CODES.map((d) => (
