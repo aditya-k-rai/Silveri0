@@ -431,15 +431,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </span>
             </div>
 
-            {/* Description */}
-            {product.description && (
-              <div className="pt-4 border-t border-silver-200">
-                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Description</p>
-                <p className="text-sm text-silver-700 leading-relaxed whitespace-pre-line">{product.description}</p>
-              </div>
-            )}
-
-            {/* Trust Badges */}
+            {/* Trust Badges — shown above the description so they read first */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-silver-200">
               <div className="flex flex-col items-center gap-1.5 py-3 bg-white rounded-xl border border-silver-100">
                 <Shield size={18} className="text-gold" />
@@ -454,6 +446,14 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 <p className="text-[11px] text-silver-600 font-medium text-center">7-Day Returns</p>
               </div>
             </div>
+
+            {/* Description */}
+            {product.description && (
+              <div className="pt-4 border-t border-silver-200">
+                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Description</p>
+                <p className="text-sm text-silver-700 leading-relaxed whitespace-pre-line">{product.description}</p>
+              </div>
+            )}
           </div>
         </div>
 
