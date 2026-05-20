@@ -69,7 +69,9 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
     if (activityBase) {
       logActivity({ ...activityBase, type: 'cart', action: 'added' });
     }
-    router.push('/checkout');
+    // Skip the cart-review step — land the customer directly on the
+    // Shipping Address form (Amazon / Flipkart-style fast checkout).
+    router.push('/checkout?step=address');
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
