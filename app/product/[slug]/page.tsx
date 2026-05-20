@@ -406,7 +406,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 {addedToCart ? 'Added!' : 'Add to Cart'}
               </button>
               <button
-                onClick={() => { handleAddToCart(); router.push('/checkout'); }}
+                onClick={() => { handleAddToCart(); router.push('/checkout?step=address'); }}
                 disabled={product.stock <= 0}
                 className="flex-1 flex items-center justify-center gap-2 bg-gold text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-gold-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >

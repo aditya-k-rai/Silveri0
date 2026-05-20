@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus, ShoppingCart, Loader2, User, UserPlus } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthContext } from "@/context/AuthContext";
@@ -17,12 +18,31 @@ const STEPS = [
   { label: "Payment", icon: <CreditCard size={16} /> },
 ];
 
+// Map ?step= query values to the matching step index. Used by "Buy Now" on
+// the product page so the customer lands straight on the Address step,
+// skipping the cart-review screen — Amazon / Flipkart style.
+const STEP_PARAM_TO_INDEX: Record<string, number> = {
+  cart: 0,
+  address: 1,
+  review: 2,
+  payment: 3,
+};
+
 export default function CheckoutPage() {
   const { items, removeItem, updateQuantity, clearCart } = useCartStore();
   const { user, userDoc } = useAuthContext();
   const savedAddresses: UserAddress[] = (userDoc?.addresses as UserAddress[]) || [];
 
-  const [step, setStep] = useState(0);
+  // Honor an initial ?step= param so direct "Buy Now" links can deep-link to
+  // a specific step. Read once via useState initializer — no useEffect, no
+  // post-mount jump.
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState(() => {
+    const param = searchParams?.get("step");
+    return param && STEP_PARAM_TO_INDEX[param] !== undefined
+      ? STEP_PARAM_TO_INDEX[param]
+      : 0;
+  });
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
 
