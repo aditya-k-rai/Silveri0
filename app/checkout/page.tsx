@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -28,7 +28,28 @@ const STEP_PARAM_TO_INDEX: Record<string, number> = {
   payment: 3,
 };
 
+/**
+ * Wrap CheckoutInner in <Suspense> because it calls useSearchParams() —
+ * Next.js 16 requires that hook to live under a Suspense boundary so the
+ * static prerender can bail out without breaking the build.
+ */
 export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutFallback />}>
+      <CheckoutInner />
+    </Suspense>
+  );
+}
+
+function CheckoutFallback() {
+  return (
+    <section className="max-w-6xl mx-auto px-4 md:px-6 py-12 flex items-center justify-center min-h-[60vh]">
+      <Loader2 size={28} className="text-silver-400 animate-spin" />
+    </section>
+  );
+}
+
+function CheckoutInner() {
   const { items, removeItem, updateQuantity, clearCart } = useCartStore();
   const { user, userDoc } = useAuthContext();
   const savedAddresses: UserAddress[] = (userDoc?.addresses as UserAddress[]) || [];
