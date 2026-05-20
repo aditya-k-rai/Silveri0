@@ -431,31 +431,81 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </span>
             </div>
 
-            {/* Trust Badges — shown above the description so they read first */}
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-silver-200">
-              <div className="flex flex-col items-center gap-1.5 py-3 bg-white rounded-xl border border-silver-100">
-                <Shield size={18} className="text-gold" />
-                <p className="text-[11px] text-silver-600 font-medium text-center">Certified Silver</p>
-              </div>
-              <div className="flex flex-col items-center gap-1.5 py-3 bg-white rounded-xl border border-silver-100">
-                <Truck size={18} className="text-gold" />
-                <p className="text-[11px] text-silver-600 font-medium text-center">Free Shipping ₹999+</p>
-              </div>
-              <div className="flex flex-col items-center gap-1.5 py-3 bg-white rounded-xl border border-silver-100">
-                <RotateCcw size={18} className="text-gold" />
-                <p className="text-[11px] text-silver-600 font-medium text-center">7-Day Returns</p>
-              </div>
-            </div>
-
-            {/* Description */}
-            {product.description && (
-              <div className="pt-4 border-t border-silver-200">
-                <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-2">Description</p>
-                <p className="text-sm text-silver-700 leading-relaxed whitespace-pre-line">{product.description}</p>
-              </div>
-            )}
+            {/* Trust Badges + Description were moved below the hero so the
+                Similar Products row can claim the higher visual real-estate.
+                See the full-width sections after </MAIN LAYOUT>. */}
           </div>
         </div>
+
+        {/* ====== SIMILAR PRODUCTS — moved above the description, 2 rows ====== */}
+        {(() => {
+          const similarProducts = products
+            .filter(
+              (p) =>
+                p.id !== product.id &&
+                p.category === product.category &&
+                p.status === 'Active'
+            )
+            .slice(0, 8);
+          if (similarProducts.length === 0) return null;
+          // Two full rows: 2 cols × 2 rows on mobile (4 items visible),
+          // 4 cols × 2 rows on desktop (8 items visible). Items 4–7 hide
+          // below `lg` so the mobile grid stays as exactly 2 rows.
+          const DESKTOP_ONLY = new Set([4, 5, 6, 7]);
+          return (
+            <section className="mt-10 md:mt-14">
+              <div className="flex items-end justify-between mb-5 md:mb-6">
+                <div>
+                  <p className="text-gold-dark text-xs uppercase tracking-[0.25em] mb-1.5">
+                    You may also like
+                  </p>
+                  <h2 className="font-[family-name:var(--font-heading)] text-2xl sm:text-3xl font-medium text-silver-900">
+                    Similar {product.category}
+                  </h2>
+                </div>
+                <Link
+                  href={`/category/${product.category.toLowerCase()}`}
+                  className="text-silver-500 text-xs sm:text-sm font-medium hover:text-silver-800 transition-colors flex items-center gap-1 shrink-0"
+                >
+                  View all <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                {similarProducts.map((p, idx) => (
+                  <div key={p.id} className={DESKTOP_ONLY.has(idx) ? 'hidden lg:block' : ''}>
+                    <ProductCard product={p} variant="light" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ====== TRUST BADGES (full-width) ====== */}
+        <section className="mt-10 md:mt-14 grid grid-cols-3 gap-3 md:gap-5">
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <Shield size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Certified Silver</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <Truck size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Free Shipping ₹999+</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <RotateCcw size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">7-Day Returns</p>
+          </div>
+        </section>
+
+        {/* ====== DESCRIPTION (full-width) ====== */}
+        {product.description && (
+          <section className="mt-8 md:mt-10 bg-white rounded-2xl border border-silver-200 p-6 md:p-8">
+            <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-3">Description</p>
+            <p className="text-sm md:text-base text-silver-700 leading-relaxed whitespace-pre-line">
+              {product.description}
+            </p>
+          </section>
+        )}
 
         {/* ====== SPECIFICATIONS TABLE ====== */}
         <section className="mt-10 md:mt-14">
@@ -605,43 +655,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
           </div>
         </section>
 
-        {/* ====== SIMILAR PRODUCTS ====== */}
-        {(() => {
-          const similarProducts = products
-            .filter(
-              (p) =>
-                p.id !== product.id &&
-                p.category === product.category &&
-                p.status === 'Active'
-            )
-            .slice(0, 4);
-          if (similarProducts.length === 0) return null;
-          return (
-            <section className="mt-10 md:mt-14 pb-8">
-              <div className="flex items-end justify-between mb-5 md:mb-6">
-                <div>
-                  <p className="text-gold-dark text-xs uppercase tracking-[0.25em] mb-1.5">
-                    You may also like
-                  </p>
-                  <h2 className="font-[family-name:var(--font-heading)] text-2xl sm:text-3xl font-medium text-silver-900">
-                    Similar {product.category}
-                  </h2>
-                </div>
-                <Link
-                  href={`/category/${product.category.toLowerCase()}`}
-                  className="text-silver-500 text-xs sm:text-sm font-medium hover:text-silver-800 transition-colors flex items-center gap-1 shrink-0"
-                >
-                  View all <ChevronRight size={14} />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                {similarProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} variant="light" />
-                ))}
-              </div>
-            </section>
-          );
-        })()}
+        {/* Bottom padding so the last block doesn't kiss the footer */}
+        <div className="h-8" />
       </div>
 
     </div>
