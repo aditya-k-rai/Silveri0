@@ -239,24 +239,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               {product.name}
             </h1>
 
-            {/* Rating */}
-            <a href="#reviews" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    size={16}
-                    className={s <= Math.round(averageRating) ? 'fill-gold text-gold' : 'text-silver-300'}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-silver-500">
-                {reviewCount > 0
-                  ? `${averageRating.toFixed(1)} · ${reviewCount} review${reviewCount === 1 ? '' : 's'}`
-                  : 'No reviews yet'}
-              </span>
-            </a>
-
             {/* Price + Stock */}
             <div className="flex items-baseline gap-4 flex-wrap">
               <span className="text-3xl sm:text-4xl font-bold text-silver-900">
@@ -424,8 +406,26 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               </button>
             </div>
 
+            {/* Rating — below Buy Now, above Views */}
+            <a href="#reviews" className="flex items-center gap-2 hover:opacity-80 transition-opacity pt-1">
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star
+                    key={s}
+                    size={16}
+                    className={s <= Math.round(averageRating) ? 'fill-gold text-gold' : 'text-silver-300'}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-silver-500">
+                {reviewCount > 0
+                  ? `${averageRating.toFixed(1)} · ${reviewCount} review${reviewCount === 1 ? '' : 's'}`
+                  : 'No reviews yet'}
+              </span>
+            </a>
+
             {/* Engagement — Views only */}
-            <div className="flex items-center gap-4 pt-1 text-xs text-silver-500">
+            <div className="flex items-center gap-4 text-xs text-silver-500">
               <span className="flex items-center gap-1">
                 <Eye size={13} /> {(product.views ?? 0).toLocaleString('en-IN')} views
               </span>
