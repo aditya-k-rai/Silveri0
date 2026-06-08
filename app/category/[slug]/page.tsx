@@ -1,9 +1,10 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
+import { subscribeToCategories, Category } from '@/lib/firebase/categories';
 import ProductCard from '@/components/product/ProductCard';
 
 export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -14,6 +15,21 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
   const [showFilters, setShowFilters] = useState(false);
   const [selectedColours, setSelectedColours] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Subscribe to Firestore categories so we can match by slug
+  useEffect(() => {
+    const unsub = subscribeToCategories((cats) => setCategories(cats));
+    return () => { if (unsub) unsub(); };
+  }, []);
+
+  // Build a set of category NAMES whose Firestore slug matches the URL slug.
+  // Products store category as a name (e.g. "Bracelets & Bangles"), not a slug.
+  const matchingCategoryNames = new Set(
+    categories
+      .filter((c) => c.slug === slug)
+      .map((c) => c.name)
+  );
 
   // Filter active products, then by category slug
   const activeProducts = products.filter((p) => p.status === 'Active');
@@ -21,7 +37,14 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
     ? activeProducts
     : slug === 'new-arrivals'
       ? activeProducts.filter((p) => p.isNewArrival)
-      : activeProducts.filter((p) => p.category.toLowerCase() === slug);
+      : activeProducts.filter((p) => {
+          // Primary match: use Firestore slug→name lookup (handles "Bracelets & Bangles" → "bracelets")
+          if (matchingCategoryNames.size > 0) {
+            return matchingCategoryNames.has(p.category);
+          }
+          // Fallback: direct lowercase comparison (for single-word categories before Firestore loads)
+          return p.category.toLowerCase() === slug;
+        });
 
   // Get unique colours for filter sidebar
   const allColours = [...new Set(categoryFiltered.map((p) => p.colour))];
@@ -46,7 +69,8 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
     ? 'Our Collection'
     : slug === 'new-arrivals'
       ? 'New Arrivals'
-      : slug.charAt(0).toUpperCase() + slug.slice(1);
+      : categories.find((c) => c.slug === slug)?.name
+        ?? slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
 
   if (loading) {
     return (

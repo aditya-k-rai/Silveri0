@@ -437,7 +437,33 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
           </div>
         </div>
 
-        {/* ====== SIMILAR PRODUCTS — moved above the description, 2 rows ====== */}
+        {/* ====== TRUST BADGES (full-width) ====== */}
+        <section className="mt-10 md:mt-14 grid grid-cols-3 gap-3 md:gap-5">
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <Shield size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Certified Silver</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <Truck size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Free Shipping ₹999+</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
+            <RotateCcw size={20} className="text-gold" />
+            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">7-Day Returns</p>
+          </div>
+        </section>
+
+        {/* ====== DESCRIPTION (full-width) ====== */}
+        {product.description && (
+          <section className="mt-8 md:mt-10 bg-white rounded-2xl border border-silver-200 p-6 md:p-8">
+            <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-3">Description</p>
+            <p className="text-sm md:text-base text-silver-700 leading-relaxed whitespace-pre-line">
+              {product.description}
+            </p>
+          </section>
+        )}
+
+        {/* ====== SIMILAR PRODUCTS ====== */}
         {(() => {
           const similarProducts = products
             .filter(
@@ -480,32 +506,6 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
             </section>
           );
         })()}
-
-        {/* ====== TRUST BADGES (full-width) ====== */}
-        <section className="mt-10 md:mt-14 grid grid-cols-3 gap-3 md:gap-5">
-          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
-            <Shield size={20} className="text-gold" />
-            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Certified Silver</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
-            <Truck size={20} className="text-gold" />
-            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">Free Shipping ₹999+</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 py-5 bg-white rounded-2xl border border-silver-100">
-            <RotateCcw size={20} className="text-gold" />
-            <p className="text-xs sm:text-sm text-silver-700 font-medium text-center">7-Day Returns</p>
-          </div>
-        </section>
-
-        {/* ====== DESCRIPTION (full-width) ====== */}
-        {product.description && (
-          <section className="mt-8 md:mt-10 bg-white rounded-2xl border border-silver-200 p-6 md:p-8">
-            <p className="text-xs font-semibold text-silver-500 uppercase tracking-wider mb-3">Description</p>
-            <p className="text-sm md:text-base text-silver-700 leading-relaxed whitespace-pre-line">
-              {product.description}
-            </p>
-          </section>
-        )}
 
         {/* ====== SPECIFICATIONS TABLE ====== */}
         <section className="mt-10 md:mt-14">

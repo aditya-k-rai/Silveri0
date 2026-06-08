@@ -26,6 +26,10 @@ export interface Category {
   image: string | null;
   productCount: number;
   subCategories: SubCategory[];
+  /** Whether this category appears in the top nav bar */
+  showInNav?: boolean;
+  /** Display order in the nav bar (lower = left) */
+  navOrder?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,13 +53,15 @@ export function subscribeToCategories(
     (snap) => {
       const cats = snap.docs.map((d) => {
         const data = d.data();
-        return {
+      return {
           id: d.id,
           name: data.name || '',
           slug: data.slug || '',
           image: data.image || null,
           productCount: data.productCount || 0,
           subCategories: data.subCategories || [],
+          showInNav: data.showInNav ?? false,
+          navOrder: data.navOrder ?? 99,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         } as Category;
@@ -75,6 +81,8 @@ export async function saveCategory(cat: Category): Promise<void> {
     image: cat.image,
     productCount: cat.productCount,
     subCategories: cat.subCategories,
+    showInNav: cat.showInNav ?? false,
+    navOrder: cat.navOrder ?? 99,
     createdAt: cat.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });

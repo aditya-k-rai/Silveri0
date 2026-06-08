@@ -24,135 +24,7 @@ import {
 import { useAuthContext } from '@/context/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import { useCartStore } from '@/store/cartStore';
-
-interface SubCategory {
-  title: string;
-  links: { label: string; href: string }[];
-}
-
-interface CategoryNav {
-  label: string;
-  href: string;
-  mega?: SubCategory[];
-}
-
-const CATEGORIES: CategoryNav[] = [
-  {
-    label: 'Earrings',
-    href: '/category/earrings',
-    mega: [
-      { title: 'Featured', links: [
-        { label: 'New Arrivals', href: '/category/new-arrivals?type=earrings' },
-        { label: 'Best Sellers', href: '/category/earrings?sort=popular' },
-        { label: 'All Earrings', href: '/category/earrings' },
-      ]},
-      { title: 'Style', links: [
-        { label: 'Studs', href: '/category/earrings?style=studs' },
-        { label: 'Drops', href: '/category/earrings?style=drops' },
-        { label: 'Hoops', href: '/category/earrings?style=hoops' },
-        { label: 'Jhumkas', href: '/category/earrings?style=jhumkas' },
-      ]},
-      { title: 'Purity', links: [
-        { label: '92.5 Sterling', href: '/category/earrings?purity=925' },
-        { label: '99.9 Fine', href: '/category/earrings?purity=999' },
-      ]},
-      { title: 'Price', links: [
-        { label: 'Under ₹1,000', href: '/category/earrings?maxPrice=1000' },
-        { label: 'Under ₹2,000', href: '/category/earrings?maxPrice=2000' },
-        { label: 'Under ₹5,000', href: '/category/earrings?maxPrice=5000' },
-        { label: 'Above ₹5,000', href: '/category/earrings?minPrice=5000' },
-      ]},
-    ],
-  },
-  {
-    label: 'Rings',
-    href: '/category/rings',
-    mega: [
-      { title: 'Featured', links: [
-        { label: 'New Arrivals', href: '/category/new-arrivals?type=rings' },
-        { label: 'Best Sellers', href: '/category/rings?sort=popular' },
-        { label: 'All Rings', href: '/category/rings' },
-      ]},
-      { title: 'Style', links: [
-        { label: 'Band Rings', href: '/category/rings?style=band' },
-        { label: 'Statement', href: '/category/rings?style=statement' },
-        { label: 'Stackable', href: '/category/rings?style=stackable' },
-        { label: 'Adjustable', href: '/category/rings?style=adjustable' },
-      ]},
-      { title: 'Occasion', links: [
-        { label: 'Everyday', href: '/category/rings?occasion=everyday' },
-        { label: 'Wedding', href: '/category/rings?occasion=wedding' },
-        { label: 'Party', href: '/category/rings?occasion=party' },
-      ]},
-      { title: 'Price', links: [
-        { label: 'Under ₹1,000', href: '/category/rings?maxPrice=1000' },
-        { label: 'Under ₹2,000', href: '/category/rings?maxPrice=2000' },
-        { label: 'Under ₹5,000', href: '/category/rings?maxPrice=5000' },
-      ]},
-    ],
-  },
-  {
-    label: 'Bracelets & Bangles',
-    href: '/category/bracelets',
-    mega: [
-      { title: 'Featured', links: [
-        { label: 'New Arrivals', href: '/category/new-arrivals?type=bracelets' },
-        { label: 'Best Sellers', href: '/category/bracelets?sort=popular' },
-        { label: 'All Bracelets', href: '/category/bracelets' },
-      ]},
-      { title: 'Style', links: [
-        { label: 'Chain Bracelets', href: '/category/bracelets?style=chain' },
-        { label: 'Cuff Bangles', href: '/category/bracelets?style=cuff' },
-        { label: 'Charm Bracelets', href: '/category/bracelets?style=charm' },
-      ]},
-      { title: 'Price', links: [
-        { label: 'Under ₹2,000', href: '/category/bracelets?maxPrice=2000' },
-        { label: 'Under ₹5,000', href: '/category/bracelets?maxPrice=5000' },
-        { label: 'Above ₹5,000', href: '/category/bracelets?minPrice=5000' },
-      ]},
-    ],
-  },
-  {
-    label: 'Necklaces & Pendants',
-    href: '/category/necklaces',
-    mega: [
-      { title: 'Featured', links: [
-        { label: 'New Arrivals', href: '/category/new-arrivals?type=necklaces' },
-        { label: 'Best Sellers', href: '/category/necklaces?sort=popular' },
-        { label: 'All Necklaces', href: '/category/necklaces' },
-      ]},
-      { title: 'Style', links: [
-        { label: 'Chains', href: '/category/necklaces?style=chain' },
-        { label: 'Pendants', href: '/category/pendants' },
-        { label: 'Chokers', href: '/category/necklaces?style=choker' },
-        { label: 'Layered', href: '/category/necklaces?style=layered' },
-      ]},
-      { title: 'Price', links: [
-        { label: 'Under ₹2,000', href: '/category/necklaces?maxPrice=2000' },
-        { label: 'Under ₹5,000', href: '/category/necklaces?maxPrice=5000' },
-        { label: 'Above ₹5,000', href: '/category/necklaces?minPrice=5000' },
-      ]},
-    ],
-  },
-  {
-    label: 'Anklets',
-    href: '/category/anklets',
-    mega: [
-      { title: 'Featured', links: [
-        { label: 'New Arrivals', href: '/category/new-arrivals?type=anklets' },
-        { label: 'All Anklets', href: '/category/anklets' },
-      ]},
-      { title: 'Style', links: [
-        { label: 'Chain Anklets', href: '/category/anklets?style=chain' },
-        { label: 'Charm Anklets', href: '/category/anklets?style=charm' },
-        { label: 'Traditional', href: '/category/anklets?style=traditional' },
-      ]},
-    ],
-  },
-  { label: 'Silver', href: '/category/all' },
-  { label: 'New Arrivals', href: '/category/new-arrivals' },
-  { label: 'Bespoke', href: '/custom-jewelry' },
-];
+import { subscribeToCategories, Category } from '@/lib/firebase/categories';
 
 const mobileNavLinks = [
   { href: '/', icon: Home, label: 'Home' },
@@ -171,6 +43,7 @@ export default function Header() {
   const [silverRate, setSilverRate] = useState<number | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [logo, setLogo] = useState<string | null>(null);
+  const [navCategories, setNavCategories] = useState<Category[]>([]);
   const { user, loading } = useAuthContext();
 
   const handleSignOut = async () => {
@@ -182,6 +55,17 @@ export default function Header() {
       setSigningOut(false);
     }
   };
+
+  // Subscribe to Firestore nav categories (showInNav=true, sorted by navOrder)
+  useEffect(() => {
+    const unsub = subscribeToCategories((cats) => {
+      const visible = cats
+        .filter((c) => c.showInNav)
+        .sort((a, b) => (a.navOrder ?? 99) - (b.navOrder ?? 99));
+      setNavCategories(visible);
+    });
+    return () => { if (unsub) unsub(); };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,7 +114,8 @@ export default function Header() {
   const isCategory = pathname.startsWith('/category/');
   const categorySlug = isCategory ? pathname.split('/category/')[1] : null;
   const categoryLabel = categorySlug
-    ? CATEGORIES.find((c) => c.href === `/category/${categorySlug}`)?.label || categorySlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    ? navCategories.find((c) => c.slug === categorySlug)?.name
+      || categorySlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : null;
 
   return (
@@ -368,40 +253,73 @@ export default function Header() {
         </header>
 
         {/* ── Category Navigation Bar with Mega Menu ── */}
-        <nav className="bg-silver-900 relative" onMouseLeave={() => setHoveredCategory(null)}>
+        <nav className="bg-silver-900 relative z-[1]" onMouseLeave={() => setHoveredCategory(null)}>
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-center gap-0 overflow-x-auto scrollbar-hide">
-              {CATEGORIES.map((cat) => {
-                const isActive = pathname === cat.href || hoveredCategory === cat.label;
-                return (
-                  <div
-                    key={cat.href}
-                    className="relative"
-                    onMouseEnter={() => setHoveredCategory(cat.mega ? cat.label : null)}
-                  >
-                    <Link
-                      href={cat.href}
-                      className={`block px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
-                        isActive
-                          ? 'text-gold'
-                          : 'text-white/80 hover:text-white'
-                      }`}
-                    >
-                      {cat.label}
-                      {isActive && (
-                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gold rounded-full" />
-                      )}
-                    </Link>
+              {navCategories.length === 0 ? (
+                // Placeholder shimmer while Firestore loads
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="px-5 py-3">
+                    <div className="h-4 w-16 bg-white/10 rounded animate-pulse" />
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                navCategories.map((cat) => {
+                  const catHref = `/category/${cat.slug}`;
+                  const isActive = pathname === catHref || hoveredCategory === cat.name;
+                  const hasSubs = cat.subCategories && cat.subCategories.length > 0;
+                  return (
+                    <div
+                      key={cat.id}
+                      className="relative"
+                      onMouseEnter={() => setHoveredCategory(hasSubs ? cat.name : null)}
+                    >
+                      <Link
+                        href={catHref}
+                        className={`relative block px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                          isActive
+                            ? 'text-gold'
+                            : 'text-white/80 hover:text-white'
+                        }`}
+                      >
+                        {cat.name}
+                        {isActive && (
+                          <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gold rounded-full" />
+                        )}
+                      </Link>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Static — always last in nav */}
+              <div
+                className="relative flex items-center"
+                onMouseEnter={() => setHoveredCategory(null)}
+              >
+                <span className="w-px h-4 bg-white/20 mx-1 shrink-0" />
+                <Link
+                  href="/custom-jewelry"
+                  className={`relative block px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                    pathname === '/custom-jewelry'
+                      ? 'text-gold'
+                      : 'text-gold/70 hover:text-gold'
+                  }`}
+                >
+                  Bespoke
+                  {pathname === '/custom-jewelry' && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gold rounded-full" />
+                  )}
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* ── Mega Dropdown ── */}
           {hoveredCategory && (() => {
-            const cat = CATEGORIES.find((c) => c.label === hoveredCategory);
-            if (!cat?.mega) return null;
+            const cat = navCategories.find((c) => c.name === hoveredCategory);
+            if (!cat?.subCategories?.length) return null;
+            const catHref = `/category/${cat.slug}`;
             return (
               <div
                 className="absolute left-0 right-0 top-full z-50 bg-white border-b border-silver-200 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
@@ -409,40 +327,36 @@ export default function Header() {
                 onMouseLeave={() => setHoveredCategory(null)}
               >
                 <div className="max-w-7xl mx-auto px-6 py-8 flex gap-8">
-                  {/* Subcategory Columns */}
-                  <div className="flex-1 grid grid-cols-4 gap-8">
-                    {cat.mega.map((section) => (
-                      <div key={section.title}>
-                        <h4 className="text-sm font-bold text-gold mb-3 tracking-wide">
-                          {section.title}
-                        </h4>
-                        <div className="space-y-2">
-                          {section.links.map((link) => (
-                            <Link
-                              key={link.href}
-                              href={link.href}
-                              onClick={() => setHoveredCategory(null)}
-                              className="block text-sm text-silver-600 hover:text-silver-900 hover:translate-x-0.5 transition-all"
-                            >
-                              {link.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
+                  {/* Sub-category links */}
+                  <div className="flex-1 grid grid-cols-3 gap-8">
+                    {cat.subCategories.map((sub) => (
+                      <Link
+                        key={sub.id}
+                        href={`/category/${sub.slug}`}
+                        onClick={() => setHoveredCategory(null)}
+                        className="block text-sm text-silver-600 hover:text-silver-900 hover:translate-x-0.5 transition-all"
+                      >
+                        {sub.name}
+                      </Link>
                     ))}
                   </div>
 
-                  {/* Promo Image */}
-                  <div className="w-[260px] shrink-0 rounded-2xl overflow-hidden bg-gradient-to-br from-gold/10 to-gold/5 border border-gold/20 flex flex-col items-center justify-center p-6 text-center">
-                    <p className="text-2xl font-[family-name:var(--font-heading)] font-bold text-silver-900 leading-tight mb-2">
-                      NEW IN<br />
-                      <span className="text-gold">SILVER</span>
-                    </p>
+                  {/* Promo Panel */}
+                  <div className="w-[260px] shrink-0 rounded-2xl overflow-hidden border border-gold/20 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-gold/10 to-gold/5">
+                    {cat.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cat.image} alt={cat.name} className="w-full h-28 object-cover rounded-xl mb-4" />
+                    ) : (
+                      <p className="text-2xl font-[family-name:var(--font-heading)] font-bold text-silver-900 leading-tight mb-2">
+                        NEW IN<br />
+                        <span className="text-gold">SILVER</span>
+                      </p>
+                    )}
                     <p className="text-xs text-silver-500 mb-4">
-                      Explore the latest {cat.label.toLowerCase()} collection
+                      Explore the latest {cat.name.toLowerCase()} collection
                     </p>
                     <Link
-                      href={cat.href}
+                      href={catHref}
                       onClick={() => setHoveredCategory(null)}
                       className="px-5 py-2 bg-silver-900 text-white text-xs font-semibold rounded-full hover:bg-black transition-colors tracking-wider uppercase"
                     >

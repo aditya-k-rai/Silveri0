@@ -11,10 +11,12 @@ import {
   ChevronUp,
   Loader2,
   FolderTree,
+  Navigation,
 } from "lucide-react";
 import {
   subscribeToCategories,
   saveCategory,
+  updateCategory,
   deleteCategory as deleteCategoryFromDB,
   Category,
   SubCategory,
@@ -53,6 +55,8 @@ export default function AdminCategoriesPage() {
   const [formSlug, setFormSlug] = useState("");
   const [formImage, setFormImage] = useState<string | null>(null);
   const [formSubs, setFormSubs] = useState<SubCategory[]>([]);
+  const [formShowInNav, setFormShowInNav] = useState(false);
+  const [formNavOrder, setFormNavOrder] = useState<number>(99);
 
   // Expanded category (for viewing subs in the grid)
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -78,6 +82,8 @@ export default function AdminCategoriesPage() {
       setFormSlug(cat.slug);
       setFormImage(cat.image);
       setFormSubs(cat.subCategories.map((s) => ({ ...s })));
+      setFormShowInNav(cat.showInNav ?? false);
+      setFormNavOrder(cat.navOrder ?? 99);
     } else {
       const newCat: Category = {
         id: `cat_${Date.now()}`,
@@ -86,12 +92,16 @@ export default function AdminCategoriesPage() {
         image: null,
         productCount: 0,
         subCategories: [],
+        showInNav: false,
+        navOrder: 99,
       };
       setEditingCategory(newCat);
       setFormName("");
       setFormSlug("");
       setFormImage(null);
       setFormSubs([]);
+      setFormShowInNav(false);
+      setFormNavOrder(99);
     }
   };
 
@@ -137,6 +147,16 @@ export default function AdminCategoriesPage() {
     setFormSubs(formSubs.filter((_, i) => i !== idx));
   };
 
+  // ─── Quick Nav Toggle (saves without opening editor) ─────────
+  const toggleShowInNav = async (cat: Category) => {
+    const updates = { showInNav: !cat.showInNav };
+    await updateCategory(cat.id, updates);
+  };
+
+  const updateNavOrder = async (cat: Category, order: number) => {
+    await updateCategory(cat.id, { navOrder: order });
+  };
+
   // ─── Save ─────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!editingCategory || !formName || !formSlug) return;
@@ -148,6 +168,8 @@ export default function AdminCategoriesPage() {
         slug: formSlug,
         image: formImage,
         subCategories: formSubs.filter((s) => s.name.trim()),
+        showInNav: formShowInNav,
+        navOrder: formNavOrder,
       };
       await saveCategory(catToSave);
       closeEditor();
@@ -230,6 +252,36 @@ export default function AdminCategoriesPage() {
                     <span className="w-1 h-1 rounded-full bg-[#D4D4D8]"></span>
                     <span>{cat.subCategories.length} sub-categories</span>
                   </div>
+                </div>
+
+                {/* Nav Controls */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Show in Nav Toggle */}
+                  <button
+                    onClick={() => toggleShowInNav(cat)}
+                    title={cat.showInNav ? 'Showing in Nav — click to hide' : 'Hidden from Nav — click to show'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      cat.showInNav
+                        ? 'bg-[#C9A84C]/10 border-[#C9A84C]/40 text-[#8A6E2F]'
+                        : 'bg-[#F5F3EF] border-[#E8E8E8] text-[#A09DAB] hover:border-[#C9A84C]/30'
+                    }`}
+                  >
+                    <Navigation size={12} />
+                    {cat.showInNav ? 'In Nav' : 'Hidden'}
+                  </button>
+                  {/* Nav Order */}
+                  {cat.showInNav && (
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      defaultValue={cat.navOrder ?? 99}
+                      onBlur={(e) => updateNavOrder(cat, Number(e.target.value) || 99)}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Nav position (1 = leftmost)"
+                      className="w-14 text-center text-xs font-mono bg-[#F5F3EF] border border-[#E8E8E8] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                    />
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -421,6 +473,46 @@ export default function AdminCategoriesPage() {
                     placeholder="e.g. earrings"
                   />
                 </div>
+              </div>
+
+              {/* ─── Nav Display Settings ──────────────────────── */}
+              <div className="bg-white p-5 rounded-2xl border border-[#E8E8E8] space-y-4">
+                <h3 className="text-xs font-semibold text-[#1A1A1A] uppercase tracking-wider flex items-center gap-2">
+                  <Navigation size={14} className="text-[#C9A84C]" />
+                  Navigation Bar Settings
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-[#1A1A1A]">Show in Nav Bar</p>
+                    <p className="text-xs text-[#7A7585] mt-0.5">Display this category in the site navigation</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormShowInNav(!formShowInNav)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 ${
+                      formShowInNav ? 'bg-[#C9A84C]' : 'bg-[#E8E8E8]'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      formShowInNav ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                {formShowInNav && (
+                  <div>
+                    <label className="block text-xs font-semibold text-[#7A7585] mb-1.5">Nav Position (order)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={formNavOrder}
+                      onChange={(e) => setFormNavOrder(Number(e.target.value) || 1)}
+                      className="w-28 bg-[#F5F3EF] border border-transparent rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40"
+                      placeholder="1"
+                    />
+                    <p className="text-xs text-[#A09DAB] mt-1">Lower number = appears further left. e.g. 1 = first, 2 = second…</p>
+                  </div>
+                )}
               </div>
 
               {/* ─── Sub-categories Section ────────────────────── */}
