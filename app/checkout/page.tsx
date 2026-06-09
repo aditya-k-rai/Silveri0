@@ -176,7 +176,10 @@ function CheckoutInner() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.email.trim()) &&
     pincodeValid;
 
-  const lockMyselfFields = orderingFor === "myself";
+  // Fields are only locked when:
+  // 1. The user IS logged in (we have account data to sync from), AND
+  // 2. They are ordering for themselves (not for someone else)
+  const lockMyselfFields = !!user && orderingFor === "myself";
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
@@ -435,33 +438,37 @@ function CheckoutInner() {
                 title={savedAddresses.length > 0 ? "Or enter a new address" : "Where should we ship it?"}
               />
 
-              {/* Ordering-for toggle */}
-              <div className="mt-5 grid grid-cols-2 gap-2.5 p-1.5 bg-silver-100/70 rounded-2xl">
-                {(["myself", "other"] as const).map((mode) => {
-                  const active = orderingFor === mode;
-                  const Icon = mode === "myself" ? User : UserPlus;
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => switchOrderingFor(mode)}
-                      aria-pressed={active}
-                      className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        active
-                          ? "bg-white text-warm-black shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)]"
-                          : "text-silver-500 hover:text-warm-black"
-                      }`}
-                    >
-                      <Icon size={15} className={active ? "text-gold" : ""} />
-                      {mode === "myself" ? "Ordering for Myself" : "Ordering for Other"}
-                    </button>
-                  );
-                })}
-              </div>
-              {orderingFor === "myself" && (
-                <p className="text-[11px] text-silver-500 mt-3">
-                  Using your account details. Switch to <strong className="text-warm-black">Ordering for Other</strong> to ship to someone else.
-                </p>
+              {/* Ordering-for toggle — only shown to logged-in users */}
+              {user && (
+                <>
+                  <div className="mt-5 grid grid-cols-2 gap-2.5 p-1.5 bg-silver-100/70 rounded-2xl">
+                    {(["myself", "other"] as const).map((mode) => {
+                      const active = orderingFor === mode;
+                      const Icon = mode === "myself" ? User : UserPlus;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => switchOrderingFor(mode)}
+                          aria-pressed={active}
+                          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            active
+                              ? "bg-white text-warm-black shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)]"
+                              : "text-silver-500 hover:text-warm-black"
+                          }`}
+                        >
+                          <Icon size={15} className={active ? "text-gold" : ""} />
+                          {mode === "myself" ? "Ordering for Myself" : "Ordering for Other"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {orderingFor === "myself" && (
+                    <p className="text-[11px] text-silver-500 mt-3">
+                      Details synced from your account. Switch to <strong className="text-warm-black">Ordering for Other</strong> to ship to someone else.
+                    </p>
+                  )}
+                </>
               )}
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
