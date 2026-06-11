@@ -42,14 +42,84 @@ function getRazorpay() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
+/**
+ * Save order to Firestore via the REST API (no Admin SDK required).
+ * Falls back gracefully when adminDb is not configured.
+ */
+async function saveOrderViaRestApi(
+  orderId: string,
+  orderData: Record<string, unknown>,
+  idToken: string,
+): Promise<boolean> {
+  const projectId =
+    process.env.FIREBASE_ADMIN_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) return false;
+
+  // Convert plain JS object to Firestore REST API field format
+  function toFirestoreValue(val: unknown): unknown {
+    if (val === null || val === undefined) return { nullValue: null };
+    if (typeof val === "boolean") return { booleanValue: val };
+    if (typeof val === "number") return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+    if (typeof val === "string") return { stringValue: val };
+    if (val instanceof Date) return { timestampValue: val.toISOString() };
+    if (Array.isArray(val)) return { arrayValue: { values: val.map(toFirestoreValue) } };
+    if (typeof val === "object") {
+      const fields: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+        fields[k] = toFirestoreValue(v);
+      }
+      return { mapValue: { fields } };
+    }
+    return { stringValue: String(val) };
+  }
+
+  // Build fields map
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(orderData)) {
+    fields[k] = toFirestoreValue(v);
+  }
+  // Server timestamp for createdAt/updatedAt
+  fields.createdAt = { timestampValue: new Date().toISOString() };
+  fields.updatedAt = { timestampValue: new Date().toISOString() };
+
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ fields }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[create-order] REST Firestore save failed:", res.status, err);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[create-order] REST Firestore save error:", err);
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get("Authorization");
+
     // ── 1. Auth guard ────────────────────────────────────────────────────
-    const decoded = await verifyIdToken(req.headers.get("Authorization"));
+    const decoded = await verifyIdToken(authHeader);
     if (!decoded) {
-      return NextResponse.json({ error: "Unauthorized — please sign in to continue" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized — please sign in to continue" },
+        { status: 401 },
+      );
     }
     const userId = decoded.uid;
+    const rawToken = authHeader!.slice(7); // needed for REST fallback
 
     // ── 2. Validate payload ──────────────────────────────────────────────
     const body = await req.json();
@@ -65,30 +135,37 @@ export async function POST(req: NextRequest) {
 
     // ── 3. Server-side amount recalculation (never trust client) ─────────
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-    const discount = Math.max(0, Math.min(promoDiscount, subtotal)); // cap discount at subtotal
+    const discount = Math.max(0, Math.min(promoDiscount, subtotal));
     const total = subtotal - discount + shipping;
 
     if (total <= 0) {
       return NextResponse.json({ error: "Invalid order total" }, { status: 400 });
     }
 
-    // ── 4. Validate promo against Firestore (double-check) ───────────────
+    // ── 4. Validate promo against Firestore (double-check if adminDb available) ─
     if (promoId && adminDb) {
       const promoSnap = await adminDb.collection("promos").doc(promoId).get();
       if (!promoSnap.exists || !promoSnap.data()?.isActive) {
         return NextResponse.json({ error: "Promo code is no longer valid" }, { status: 400 });
       }
       const promoData = promoSnap.data()!;
-      const expiryDate: Date = promoData.expiryDate?.toDate?.() ?? new Date(promoData.expiryDate);
+      const expiryDate: Date =
+        promoData.expiryDate?.toDate?.() ?? new Date(promoData.expiryDate);
       if (expiryDate < new Date() || promoData.usedCount >= promoData.maxUses) {
-        return NextResponse.json({ error: "Promo code is expired or limit reached" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Promo code is expired or limit reached" },
+          { status: 400 },
+        );
       }
     }
 
     // ── 5. Create Razorpay order ─────────────────────────────────────────
     const razorpay = getRazorpay();
     if (!razorpay) {
-      return NextResponse.json({ error: "Payment gateway not configured" }, { status: 503 });
+      return NextResponse.json(
+        { error: "Payment gateway not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to .env.local" },
+        { status: 503 },
+      );
     }
 
     const receipt = `rcpt_${userId.slice(0, 8)}_${Date.now().toString(36)}`;
@@ -102,53 +179,78 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ── 6. Save pending order to Firestore (idempotency key = rzp order id) ─
-    if (adminDb) {
-      const orderRef = adminDb.collection("orders").doc(rzpOrder.id);
-      await orderRef.set({
-        id: rzpOrder.id,
-        userId,
-        items,
-        address: {
-          id: "checkout",
-          label: "Delivery",
-          fullName: address.fullName,
-          email: address.email || "",
-          phoneCountryCode: address.phoneCountryCode,
-          phone: address.phone,
-          line1: address.line1,
-          line2: address.landmark,
-          landmark: address.landmark,
-          city: address.city,
-          district: address.district,
-          state: address.state,
-          pincode: address.pincode,
-          isDefault: false,
+    // ── 6. Save pending order to Firestore ───────────────────────────────
+    const now = new Date();
+    const orderPayload = {
+      id: rzpOrder.id,
+      userId,
+      items,
+      address: {
+        id: "checkout",
+        label: "Delivery",
+        fullName: address.fullName,
+        email: address.email || "",
+        phoneCountryCode: address.phoneCountryCode,
+        phone: address.phone,
+        line1: address.line1,
+        line2: address.landmark,
+        landmark: address.landmark,
+        city: address.city,
+        district: address.district,
+        state: address.state,
+        pincode: address.pincode,
+        isDefault: false,
+      },
+      subtotal,
+      discount,
+      shipping,
+      total,
+      promoCode: promoCode ?? null,
+      promoId: promoId ?? null,
+      razorpayOrderId: rzpOrder.id,
+      paymentId: null,
+      status: "pending",
+      customerName: address.fullName,
+      customerEmail: address.email || "",
+      customerPhone: `${address.phoneCountryCode} ${address.phone}`.trim(),
+      events: [
+        {
+          status: "Order Placed",
+          date: now.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          time: now.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          note: "Your order has been received and is awaiting payment.",
+          customerNotified: false,
         },
-        subtotal,
-        discount,
-        shipping,
-        total,
-        promoCode: promoCode ?? null,
-        promoId: promoId ?? null,
-        razorpayOrderId: rzpOrder.id,
-        paymentId: null,
-        status: "pending",
-        customerName: address.fullName,
-        customerEmail: address.email || "",
-        customerPhone: `${address.phoneCountryCode} ${address.phone}`.trim(),
-        events: [
-          {
-            status: "Order Placed",
-            date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-            time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            note: "Your order has been received and is awaiting payment.",
-            customerNotified: false,
-          },
-        ],
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      ],
+    };
+
+    if (adminDb) {
+      // ── Path A: Admin SDK (has Firestore write access) ────────────────
+      await adminDb
+        .collection("orders")
+        .doc(rzpOrder.id)
+        .set({
+          ...orderPayload,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      console.log("[create-order] Order saved via Admin SDK:", rzpOrder.id);
+    } else {
+      // ── Path B: Firestore REST API fallback (no Admin SDK) ────────────
+      const saved = await saveOrderViaRestApi(rzpOrder.id, orderPayload, rawToken);
+      if (saved) {
+        console.log("[create-order] Order saved via REST API:", rzpOrder.id);
+      } else {
+        console.warn("[create-order] Could not save order to Firestore — Razorpay order created:", rzpOrder.id);
+        // Don't block payment — order still exists in Razorpay; webhook will update Firestore later
+      }
     }
 
     return NextResponse.json({
@@ -159,6 +261,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Razorpay create-order error:", error);
-    return NextResponse.json({ error: "Failed to create payment order" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create payment order" },
+      { status: 500 },
+    );
   }
 }
