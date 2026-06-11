@@ -39,3 +39,18 @@ const app = getAdminApp();
 
 export const adminDb: Firestore | null = app ? getFirestore(app) : null;
 export const adminAuth: Auth | null = app ? getAuth(app) : null;
+
+/**
+ * Verify a Firebase ID token from the Authorization header.
+ * Returns the decoded token (uid, email, etc.) or null if invalid / missing.
+ */
+export async function verifyIdToken(authHeader: string | null): Promise<import('firebase-admin/auth').DecodedIdToken | null> {
+  if (!adminAuth) return null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  try {
+    return await adminAuth.verifyIdToken(token);
+  } catch {
+    return null;
+  }
+}

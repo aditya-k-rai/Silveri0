@@ -45,6 +45,8 @@ interface GoogleAccountsId {
       width?: string | number;
     }
   ) => void;
+  /** Show the One Tap / FedCM prompt */
+  prompt: () => void;
 }
 
 declare global {

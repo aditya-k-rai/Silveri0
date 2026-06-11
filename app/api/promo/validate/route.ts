@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { adminDb } from "@/lib/firebase/admin";
 
 const schema = z.object({
-  code: z.string().min(1, "Promo code is required").toUpperCase(),
+  code: z.string().min(1, "Promo code is required").transform((v) => v.toUpperCase().trim()),
   cartTotal: z.number().positive("Cart total must be positive"),
 });
-
-/* ---------- sample promo codes ---------- */
-const PROMO_CODES: Record<string, {
-  type: "percentage" | "flat";
-  discount: number;
-  minOrder: number;
-  maxDiscount?: number;
-  expiresAt: string;
-  usesLeft: number;
-}> = {
-  WELCOME10: { type: "percentage", discount: 10, minOrder: 999, maxDiscount: 500, expiresAt: "2026-12-31", usesLeft: 100 },
-  FLAT200: { type: "flat", discount: 200, minOrder: 1999, expiresAt: "2026-06-30", usesLeft: 50 },
-  SILVER15: { type: "percentage", discount: 15, minOrder: 2999, maxDiscount: 1000, expiresAt: "2026-09-30", usesLeft: 30 },
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,44 +20,76 @@ export async function POST(req: NextRequest) {
     }
 
     const { code, cartTotal } = parsed.data;
-    const promo = PROMO_CODES[code];
 
-    if (!promo) {
+    // ── Firestore lookup ─────────────────────────────────────────────────
+    if (!adminDb) {
+      return NextResponse.json(
+        { valid: false, error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Query by code field (case-insensitive match via stored uppercase)
+    const promoQuery = await adminDb
+      .collection("promos")
+      .where("code", "==", code)
+      .limit(1)
+      .get();
+
+    if (promoQuery.empty) {
       return NextResponse.json({ valid: false, error: "Invalid promo code" }, { status: 404 });
     }
 
-    if (new Date(promo.expiresAt) < new Date()) {
-      return NextResponse.json({ valid: false, error: "Promo code has expired" }, { status: 400 });
+    const promoDoc = promoQuery.docs[0];
+    const promo = promoDoc.data();
+
+    // Active check
+    if (!promo.isActive) {
+      return NextResponse.json({ valid: false, error: "This promo code is no longer active" }, { status: 400 });
     }
 
-    if (promo.usesLeft <= 0) {
-      return NextResponse.json({ valid: false, error: "Promo code usage limit reached" }, { status: 400 });
+    // Expiry check
+    const expiryDate: Date = promo.expiryDate?.toDate?.() ?? new Date(promo.expiryDate);
+    if (expiryDate < new Date()) {
+      return NextResponse.json({ valid: false, error: "This promo code has expired" }, { status: 400 });
     }
 
+    // Usage limit check
+    if (promo.usedCount >= promo.maxUses) {
+      return NextResponse.json({ valid: false, error: "Promo code usage limit has been reached" }, { status: 400 });
+    }
+
+    // Minimum order check
     if (cartTotal < promo.minOrder) {
       return NextResponse.json(
-        { valid: false, error: `Minimum order of ₹${promo.minOrder} required` },
+        { valid: false, error: `Minimum order of ₹${promo.minOrder} required for this code` },
         { status: 400 },
       );
     }
 
+    // ── Calculate discount ───────────────────────────────────────────────
     let discountAmount: number;
     if (promo.type === "percentage") {
-      discountAmount = Math.round((cartTotal * promo.discount) / 100);
+      discountAmount = Math.round((cartTotal * promo.discountValue) / 100);
       if (promo.maxDiscount) discountAmount = Math.min(discountAmount, promo.maxDiscount);
     } else {
-      discountAmount = promo.discount;
+      // fixed flat discount
+      discountAmount = Math.min(promo.discountValue, cartTotal);
     }
+
+    const message =
+      promo.type === "percentage"
+        ? `${promo.discountValue}% off applied! You save ₹${discountAmount.toLocaleString("en-IN")}`
+        : `₹${discountAmount.toLocaleString("en-IN")} off applied!`;
 
     return NextResponse.json({
       valid: true,
+      promoId: promoDoc.id,
       code,
       type: promo.type,
-      discount: promo.discount,
+      discountValue: promo.discountValue,
       discountAmount,
-      message: promo.type === "percentage"
-        ? `${promo.discount}% off applied! You save ₹${discountAmount}`
-        : `₹${discountAmount} off applied!`,
+      message,
     });
   } catch (error) {
     console.error("Promo validation error:", error);
