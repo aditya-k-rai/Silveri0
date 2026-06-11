@@ -8,6 +8,9 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth';
 import { auth } from './client';
 
@@ -139,3 +142,11 @@ export async function signOutUser() {
     console.error('[signOutUser] Session cookie cleanup failed:', err);
   }
 }
+
+export async function changePassword(user: any, currentPassword: string, newPassword: string) {
+  if (!user || !user.email) throw new Error('User not authenticated');
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
+}
+

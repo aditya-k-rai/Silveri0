@@ -107,8 +107,10 @@ export default function LoginPage() {
         console.log('[login] customer needs profile completion');
         setView('complete-profile');
       } else {
-        console.log('[login] redirecting customer -> /');
-        window.location.href = '/';
+        console.log('[login] redirecting customer');
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirectUrl = searchParams.get('redirect') || '/';
+        window.location.href = redirectUrl;
       }
     }
   }, [user, userDoc, loading, submitting]);
@@ -299,9 +301,10 @@ export default function LoginPage() {
           }
         }
 
-        // Hard redirect — only customers reach this view (admins are redirected
-        // earlier by the role-aware useEffect), so going to / is correct.
-        window.location.href = '/';
+        // Hard redirect to the target page (retaining query params if any)
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirectUrl = searchParams.get('redirect') || '/';
+        window.location.href = redirectUrl;
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update profile';

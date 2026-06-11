@@ -7,14 +7,16 @@ import { FieldValue } from "firebase-admin/firestore";
 const orderItemSchema = z.object({
   productId: z.string().min(1),
   name: z.string().min(1),
-  price: z.number().positive(),
+  // Allow 0-price items (free gifts, etc.)
+  price: z.number().nonnegative(),
   quantity: z.number().int().positive(),
   image: z.string().default(""),
 });
 
 const addressSchema = z.object({
   fullName: z.string().min(1),
-  email: z.string().email().optional().or(z.literal("")),
+  // Email already validated on the client — just ensure it's a string here
+  email: z.string().optional().default(""),
   phoneCountryCode: z.string().default("+91"),
   phone: z.string().default(""),
   line1: z.string().default(""),
@@ -28,10 +30,10 @@ const addressSchema = z.object({
 const schema = z.object({
   items: z.array(orderItemSchema).min(1, "Cart is empty"),
   address: addressSchema,
-  shipping: z.number().min(0).default(0),
+  shipping: z.number().nonnegative().default(0),
   promoId: z.string().optional(),
   promoCode: z.string().optional(),
-  promoDiscount: z.number().min(0).default(0),
+  promoDiscount: z.number().nonnegative().default(0),
   currency: z.string().default("INR"),
 });
 
@@ -125,8 +127,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
+      // Log exact field errors to server console for easy debugging
+      console.error("[create-order] Validation failed. Body received:", JSON.stringify(body, null, 2));
+      console.error("[create-order] Field errors:", JSON.stringify(parsed.error.flatten().fieldErrors, null, 2));
       return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        {
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+          hint: "Check server console for details",
+        },
         { status: 400 },
       );
     }
