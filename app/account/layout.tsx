@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, Package, MapPin, Heart, Loader2, Star } from "lucide-react";
+import { User, Package, MapPin, Heart, Loader2, Star, LogOut } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import { signOutUser } from "@/lib/firebase/auth";
 
 const NAV_LINKS = [
   { href: "/account/profile", label: "Profile", icon: <User size={18} /> },
@@ -21,6 +22,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   const { user, userDoc, loading } = useAuthContext();
 
   const isAdmin = userDoc?.role === 'admin';
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOutUser();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -104,6 +116,17 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                   </Link>
                 );
               })}
+              
+              <hr className="my-4 border-silver/30" />
+              
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50 text-left"
+              >
+                {signingOut ? <Loader2 size={18} className="animate-spin text-red-500" /> : <LogOut size={18} />}
+                {signingOut ? "Signing Out..." : "Log Out"}
+              </button>
             </nav>
           </div>
         </aside>
@@ -128,6 +151,14 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 </Link>
               );
             })}
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
+              Log Out
+            </button>
           </nav>
         </div>
 

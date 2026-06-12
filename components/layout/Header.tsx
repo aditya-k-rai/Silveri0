@@ -216,28 +216,18 @@ export default function Header() {
 
                 {/* Profile / Login */}
                 {!loading && user ? (
-                  <div className="flex items-center gap-1">
-                    <Link
-                      href="/account/profile"
-                      className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border-2 border-silver-200 hover:border-gold transition-colors"
-                    >
-                      {user.photoURL ? (
-                        <Image src={user.photoURL} alt="Profile" width={40} height={40} className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-silver-100 flex items-center justify-center">
-                          <User size={18} className="text-silver-600" />
-                        </div>
-                      )}
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      disabled={signingOut}
-                      className="flex items-center justify-center w-9 h-9 rounded-full text-silver-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={signingOut ? 'Signing out…' : 'Sign out'}
-                    >
-                      {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
-                    </button>
-                  </div>
+                  <Link
+                    href="/account/profile"
+                    className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border-2 border-silver-200 hover:border-gold transition-colors"
+                  >
+                    {user.photoURL ? (
+                      <Image src={user.photoURL} alt="Profile" width={40} height={40} className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-silver-100 flex items-center justify-center">
+                        <User size={18} className="text-silver-600" />
+                      </div>
+                    )}
+                  </Link>
                 ) : (
                   <Link
                     href="/login"
