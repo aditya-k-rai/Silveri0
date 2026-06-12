@@ -106,11 +106,16 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Developer */}
-        <div className="mt-4 pt-4 border-t border-silver-800 text-center">
-          <p className="text-silver-500 text-xs">
-            Developed By <span className="text-silver-300 font-medium">Shivam Sharma</span>
-          </p>
+      </div>
+
+      {/* Developer Credit Bar */}
+      <div className="bg-[#080e18] border-t border-white/5 py-2.5 px-4">
+        <div className="flex items-center justify-center gap-2 font-[family-name:var(--font-body)]">
+          <span className="text-white/40 text-[11px] sm:text-xs">Developed by</span>
+          <a href="https://www.linkedin.com/in/aditya-k-rai/" target="_blank" rel="noopener noreferrer" className="flex-shrink-0 rounded-full hover:scale-110 transition-transform duration-300" title="Aditya Kumar Rai on LinkedIn">
+            <img src="/images/Developer Aditya Kumar Rai Image .gif" alt="Aditya Kumar Rai" className="h-[34px] w-[34px] rounded-full object-cover border-2 border-gold shadow-[0_0_8px_rgba(201,168,76,0.3)]" />
+          </a>
+          <a href="https://aditya-k-rai.github.io/P-Website/" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-gold transition-colors duration-300 text-[11px] sm:text-xs font-semibold tracking-wide" title="Visit Aditya Kumar Rai's Portfolio">Aditya Kumar Rai</a>
         </div>
       </div>
     </footer>
