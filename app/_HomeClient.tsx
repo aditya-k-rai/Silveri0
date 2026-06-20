@@ -7,7 +7,7 @@
  * once this chunk hydrates.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, ArrowRight } from 'lucide-react';
@@ -16,6 +16,7 @@ import ProductCard from '@/components/product/ProductCard';
 import SectionHeading from '@/components/ui/SectionHeading';
 import Spinner from '@/components/ui/Spinner';
 import { subscribeToCategories, Category } from '@/lib/firebase/categories';
+import { trackViewItemList } from '@/lib/analytics/gtm';
 
 // How many products to show before "View All" — 6 on mobile / tablet, 8 on desktop
 const HOMEPAGE_GRID_LIMIT = 8;
@@ -36,12 +37,39 @@ export default function HomeClient() {
 
   const [exploreCategories, setExploreCategories] = useState<Category[]>([]);
 
+  // Refs for IntersectionObserver — fire view_item_list once per section
+  const featuredRef = useRef<HTMLElement | null>(null);
+  const newArrivalsRef = useRef<HTMLElement | null>(null);
+  const allProductsRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const unsub = subscribeToCategories((cats) => {
       setExploreCategories(cats.slice(0, 6));
     });
     return () => { if (unsub) unsub(); };
   }, []);
+
+  // Fire view_item_list when each section scrolls into view (once only)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const listName = (entry.target as HTMLElement).dataset.listName;
+          if (listName === 'Featured Products') trackViewItemList(visibleFeatured, listName);
+          if (listName === 'New Arrivals') trackViewItemList(visibleNewArrivals, listName);
+          if (listName === 'All Products') trackViewItemList(visibleActiveProducts, listName);
+          observer.unobserve(entry.target); // fire only once
+        });
+      },
+      { threshold: 0.1 },
+    );
+    if (featuredRef.current) observer.observe(featuredRef.current);
+    if (newArrivalsRef.current) observer.observe(newArrivalsRef.current);
+    if (allProductsRef.current) observer.observe(allProductsRef.current);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   if (loading) {
     return (
@@ -55,7 +83,11 @@ export default function HomeClient() {
     <>
       {/* ====== FEATURED PRODUCTS ====== */}
       {featuredProducts.length > 0 && (
-        <section className="bg-gradient-to-b from-silver-900 via-silver-800 to-silver-900 py-14 md:py-20">
+      <section
+        ref={featuredRef}
+        data-list-name="Featured Products"
+        className="bg-gradient-to-b from-silver-900 via-silver-800 to-silver-900 py-14 md:py-20"
+      >
           <div className="max-w-7xl mx-auto px-4">
             <SectionHeading
               eyebrow="Curated Selection"
@@ -71,7 +103,7 @@ export default function HomeClient() {
                   key={product.id}
                   className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
                 >
-                  <ProductCard product={product} variant="dark" />
+                  <ProductCard product={product} variant="dark" listName="Featured Products" />
                 </div>
               ))}
             </div>
@@ -142,7 +174,11 @@ export default function HomeClient() {
 
       {/* ====== NEW ARRIVALS ====== */}
       {newArrivals.length > 0 && (
-        <section className="bg-white py-14 md:py-20">
+        <section
+          ref={newArrivalsRef}
+          data-list-name="New Arrivals"
+          className="bg-white py-14 md:py-20"
+        >
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex justify-between items-end mb-8 md:mb-12">
               <div>
@@ -164,7 +200,7 @@ export default function HomeClient() {
                   key={`new-${product.id}`}
                   className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
                 >
-                  <ProductCard product={product} variant="light" />
+                  <ProductCard product={product} variant="light" listName="New Arrivals" />
                 </div>
               ))}
             </div>
@@ -184,7 +220,11 @@ export default function HomeClient() {
 
       {/* ====== ALL PRODUCTS ====== */}
       {activeProducts.length > 0 && (
-        <section className="bg-silver-50 py-14 md:py-20">
+        <section
+          ref={allProductsRef}
+          data-list-name="All Products"
+          className="bg-silver-50 py-14 md:py-20"
+        >
           <div className="max-w-7xl mx-auto px-4">
             <SectionHeading
               eyebrow="Complete Collection"
@@ -198,7 +238,7 @@ export default function HomeClient() {
                   key={`all-${product.id}`}
                   className={DESKTOP_ONLY_INDICES.has(idx) ? 'hidden lg:block' : ''}
                 >
-                  <ProductCard product={product} variant="light" />
+                  <ProductCard product={product} variant="light" listName="All Products" />
                 </div>
               ))}
             </div>

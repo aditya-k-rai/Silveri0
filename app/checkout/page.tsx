@@ -19,6 +19,7 @@ import { signInWithGoogleIdToken } from "@/lib/firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
+import { trackBeginCheckout, trackRemoveFromCart, trackPurchase } from "@/lib/analytics/gtm";
 
 /* ──────────────── Razorpay window type ──────────────── */
 declare global {
@@ -401,6 +402,7 @@ function CheckoutInner() {
 
               // 5. Clear cart + redirect to order page
               clearCart();
+              trackPurchase(response.razorpay_order_id, items, total, shipping);
               setPaymentStatus("success");
               resolve();
               window.location.href = `/order/${response.razorpay_order_id}`;
@@ -674,7 +676,7 @@ function CheckoutInner() {
                             <Plus size={12} />
                           </button>
                         </div>
-                        <button onClick={() => removeItem(lineId)} className="p-2 text-silver-400 hover:text-red-500 transition-colors" aria-label="Remove item">
+                        <button onClick={() => { trackRemoveFromCart(item); removeItem(lineId); }} className="p-2 text-silver-400 hover:text-red-500 transition-colors" aria-label="Remove item">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -712,7 +714,10 @@ function CheckoutInner() {
                 <button
                   onClick={() => {
                     if (!user) { setStep(1); } // will show guest wall
-                    else setStep(1);
+                    else {
+                      trackBeginCheckout(items, total);
+                      setStep(1);
+                    }
                   }}
                   className="w-full group relative overflow-hidden py-4 bg-warm-black text-white font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.45)] transition-all"
                 >

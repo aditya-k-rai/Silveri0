@@ -19,6 +19,7 @@ import ProductJsonLd from '@/components/seo/ProductJsonLd';
 import OptionPill from '@/components/ui/OptionPill';
 import Spinner from '@/components/ui/Spinner';
 import { formatINR } from '@/lib/utils/format';
+import { trackViewItem, trackAddToCart } from '@/lib/analytics/gtm';
 
 type ReviewSort = 'newest' | 'oldest' | 'rating-high' | 'rating-low';
 
@@ -38,6 +39,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     if (product) {
       incrementViews(product.id);
       updateProductDoc(product.id, { views: (product.views ?? 0) + 1 });
+      trackViewItem(product);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
@@ -146,6 +148,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       plating: selectedPlating,
     });
     if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
+    trackAddToCart({ ...product, price: effectivePrice }, 1);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };

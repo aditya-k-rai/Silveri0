@@ -1,11 +1,12 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { useProductStore } from '@/store/productStore';
 import { subscribeToCategories, Category } from '@/lib/firebase/categories';
 import ProductCard from '@/components/product/ProductCard';
+import { trackViewItemList, trackSearch } from '@/lib/analytics/gtm';
 
 export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -16,6 +17,9 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
   const [selectedColours, setSelectedColours] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // Track whether view_item_list has fired for the current filter state
+  const listFiredRef = useRef<string>('');
 
   // Subscribe to Firestore categories so we can match by slug
   useEffect(() => {
@@ -63,7 +67,21 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
     setSelectedColours((prev) =>
       prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
     );
+    trackSearch(`Metal: ${c}`);
   };
+
+  // Fire view_item_list once per unique filtered result set
+  useEffect(() => {
+    if (loading || filteredProducts.length === 0) return;
+    const listName = `Category: ${categoryTitle}`;
+    const key = `${listName}::${filteredProducts.map((p) => p.id).join(',')}}`;
+    if (listFiredRef.current === key) return;
+    listFiredRef.current = key;
+    // Small delay to avoid firing during rapid filter changes
+    const t = setTimeout(() => trackViewItemList(filteredProducts, listName), 300);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredProducts.length, slug, selectedColours.join(','), sortBy, loading]);
 
   const categoryTitle = slug === 'all'
     ? 'Our Collection'
@@ -97,7 +115,14 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
             <button onClick={() => setShowFilters(!showFilters)} className="md:hidden flex items-center gap-2 px-3 py-2 border border-silver rounded-lg text-sm">
               <SlidersHorizontal size={16} /> Filters
             </button>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="border border-silver rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-gold">
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                if (e.target.value !== 'newest') trackSearch(`Sort: ${e.target.value} in ${categoryTitle}`);
+              }}
+              className="border border-silver rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-gold"
+            >
               <option value="newest">Newest</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
@@ -156,7 +181,11 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
             <p className="text-muted text-sm mb-4">{filteredProducts.length} products</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  listName={`Category: ${categoryTitle}`}
+                />
               ))}
             </div>
             {filteredProducts.length === 0 && (

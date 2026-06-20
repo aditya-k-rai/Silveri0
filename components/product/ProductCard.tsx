@@ -10,13 +10,16 @@ import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuthContext } from '@/context/AuthContext';
 import { logActivity } from '@/lib/firebase/activityLog';
+import { trackAddToCart, trackSelectItem } from '@/lib/analytics/gtm';
 
 interface ProductCardProps {
   product: Product;
   variant?: 'light' | 'dark';
+  /** Name of the list this card appears in, e.g. "Featured Products" */
+  listName?: string;
 }
 
-export default function ProductCard({ product, variant = 'light' }: ProductCardProps) {
+export default function ProductCard({ product, variant = 'light', listName = 'Product List' }: ProductCardProps) {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const { items: wishlistItems, addToWishlist, removeFromWishlist } = useWishlistStore();
@@ -52,6 +55,7 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
     if (activityBase) {
       logActivity({ ...activityBase, type: 'cart', action: 'added' });
     }
+    trackAddToCart(product, 1);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 1500);
   };
@@ -69,6 +73,7 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
     if (activityBase) {
       logActivity({ ...activityBase, type: 'cart', action: 'added' });
     }
+    trackAddToCart(product, 1);
     // Skip the cart-review step — land the customer directly on the
     // Shipping Address form (Amazon / Flipkart-style fast checkout).
     router.push('/checkout?step=address');
@@ -100,7 +105,7 @@ export default function ProductCard({ product, variant = 'light' }: ProductCardP
     }`}>
 
       {/* ====== IMAGE SECTION ====== */}
-      <Link href={`/product/${product.id}`} className="block">
+      <Link href={`/product/${product.id}`} className="block" onClick={() => trackSelectItem(product, listName)}>
         <div className={`relative aspect-square overflow-hidden ${
           isDark
             ? 'bg-gradient-to-br from-silver-700 to-silver-800'
