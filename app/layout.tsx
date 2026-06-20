@@ -54,10 +54,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${jost.variable}`}>
       <head>
-        {/* Google Tag Manager */}
+        {/*
+          GTM JS snippet — strategy="beforeInteractive" guarantees Next.js
+          injects this into the <head> of the SSR HTML, which is what
+          Google Merchant Center and Google Search Console verify against.
+          (strategy="afterInteractive" is client-side only and invisible
+          to crawlers, which caused the "wrong location" error in Merchant Center.)
+        */}
         <Script
           id="gtm-script"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -66,10 +72,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-WLWNQK54');`,
           }}
         />
-        {/* End Google Tag Manager */}
       </head>
       <body className="min-h-screen flex flex-col bg-silver-50 text-silver-900 font-[family-name:var(--font-body)] pb-16 md:pb-0">
-        {/* Google Tag Manager (noscript) */}
+        {/*
+          GTM noscript — must be the VERY FIRST child of <body>.
+          Google Merchant Center checks this placement when verifying via GTM.
+        */}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-WLWNQK54"
@@ -78,7 +86,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: 'none', visibility: 'hidden' }}
           />
         </noscript>
-        {/* End Google Tag Manager (noscript) */}
         <Providers>
           <Header />
           <main className="flex-1">{children}</main>
