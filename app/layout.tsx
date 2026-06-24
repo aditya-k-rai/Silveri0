@@ -61,9 +61,8 @@ export default function RootLayout({
           (strategy="afterInteractive" is client-side only and invisible
           to crawlers, which caused the "wrong location" error in Merchant Center.)
         */}
-        <Script
-          id="gtm-script"
-          strategy="beforeInteractive"
+        {/* Google Tag Manager */}
+        <script
           dangerouslySetInnerHTML={{
             __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
