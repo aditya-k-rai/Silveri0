@@ -111,11 +111,53 @@ export default function Footer() {
       {/* Developer Credit Bar */}
       <div className="bg-[#080e18] border-t border-white/5 py-2.5 px-4">
         <div className="flex items-center justify-center gap-2 font-[family-name:var(--font-body)]">
-          <span className="text-white/40 text-[11px] sm:text-xs">Developed by</span>
-          <a href="https://www.linkedin.com/in/aditya-k-rai/" target="_blank" rel="noopener noreferrer" className="flex-shrink-0 rounded-full hover:scale-110 transition-transform duration-300" title="Aditya Kumar Rai on LinkedIn">
-            <img src="/images/Developer Aditya Kumar Rai Image .gif" alt="Aditya Kumar Rai" className="h-[34px] w-[34px] rounded-full object-cover border-2 border-gold shadow-[0_0_8px_rgba(201,168,76,0.3)]" />
+          <span className="text-white/40 text-[11px] sm:text-xs">Developed &amp; Marketed by</span>
+          <Link
+            href="/developer"
+            className="flex-shrink-0 rounded-full hover:scale-110 transition-transform duration-300"
+            title="View Aditya Kumar Rai's Developer Profile"
+          >
+            <img
+              src="/images/Developer Aditya Kumar Rai Image .gif"
+              alt="Aditya Kumar Rai — Software Developer, Web Developer & Digital Marketer"
+              className="h-[34px] w-[34px] rounded-full object-cover border-2 border-gold shadow-[0_0_8px_rgba(201,168,76,0.3)]"
+            />
+          </Link>
+          <Link
+            href="/developer"
+            className="text-white/80 hover:text-gold transition-colors duration-300 text-[11px] sm:text-xs font-semibold tracking-wide"
+            title="View Aditya Kumar Rai's Developer Profile on Silveri"
+          >
+            Aditya Kumar Rai
+          </Link>
+          {/* External quick-links */}
+          <a
+            href="https://www.linkedin.com/in/aditya-k-rai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Aditya Kumar Rai on LinkedIn"
+            title="Aditya Kumar Rai on LinkedIn"
+            className="text-white/30 hover:text-[#0A66C2] transition-colors duration-300 ml-1"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/>
+              <circle cx="4" cy="4" r="2"/>
+            </svg>
           </a>
-          <a href="https://aditya-k-rai.github.io/P-Website/" target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-gold transition-colors duration-300 text-[11px] sm:text-xs font-semibold tracking-wide" title="Visit Aditya Kumar Rai's Portfolio">Aditya Kumar Rai</a>
+          <a
+            href="https://aditya-k-rai.github.io/P-Website/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Aditya Kumar Rai Portfolio"
+            title="Aditya Kumar Rai's Portfolio"
+            className="text-white/30 hover:text-gold transition-colors duration-300"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+            </svg>
+          </a>
         </div>
       </div>
     </footer>
