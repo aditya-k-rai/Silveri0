@@ -181,11 +181,15 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
     trackAddToCart({ ...product, price: effectivePrice }, 1);
 
+    const redirectPath = user
+      ? '/checkout?step=address'
+      : `/login?redirect=${encodeURIComponent('/checkout?step=address')}`;
+
     // Wait for the store to reflect the new item before navigating.
     // On fast devices this resolves immediately; on slow mobile it waits
     // up to ~400 ms before falling back to a direct push.
     const timeout = setTimeout(() => {
-      router.push('/checkout?step=address');
+      router.push(redirectPath);
     }, 400);
 
     const unsub = useCartStore.subscribe((state) => {
@@ -193,7 +197,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       if (found) {
         clearTimeout(timeout);
         unsub();
-        router.push('/checkout?step=address');
+        router.push(redirectPath);
       }
     });
   };

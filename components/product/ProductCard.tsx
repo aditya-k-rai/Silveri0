@@ -76,12 +76,16 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
     }
     trackAddToCart(product, 1);
 
+    const redirectPath = user
+      ? '/checkout?step=address'
+      : `/login?redirect=${encodeURIComponent('/checkout?step=address')}`;
+
     // Wait for the store to reflect the new item before navigating.
     // Prevents the mobile race condition where router.push fires before
     // Zustand/persist has flushed the update, causing checkout to show
     // an empty cart (only delivery charges).
     const timeout = setTimeout(() => {
-      router.push('/checkout?step=address');
+      router.push(redirectPath);
     }, 400);
 
     const unsub = useCartStore.subscribe((state) => {
@@ -89,7 +93,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
       if (found) {
         clearTimeout(timeout);
         unsub();
-        router.push('/checkout?step=address');
+        router.push(redirectPath);
       }
     });
   };

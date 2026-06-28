@@ -57,10 +57,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Load new user's data from their personal key (or start empty)
       if (newUid && newUid !== prevUid) {
-        const savedCart = localStorage.getItem(`silveri-cart-${newUid}`);
-        const savedWishlist = localStorage.getItem(`silveri-wishlist-${newUid}`);
-        useCartStore.setState({ items: savedCart ? JSON.parse(savedCart) : [] });
-        useWishlistStore.getState().setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
+        const guestCart = prevUid ? [] : useCartStore.getState().items;
+        const guestWishlist = prevUid ? [] : useWishlistStore.getState().items;
+
+        const savedCartStr = localStorage.getItem(`silveri-cart-${newUid}`);
+        const savedWishlistStr = localStorage.getItem(`silveri-wishlist-${newUid}`);
+
+        let finalCart = savedCartStr ? JSON.parse(savedCartStr) : [];
+        let finalWishlist = savedWishlistStr ? JSON.parse(savedWishlistStr) : [];
+
+        // Merge guest cart items into final cart
+        if (guestCart.length > 0) {
+          const mergedCart = [...finalCart];
+          for (const gItem of guestCart) {
+            const existingIdx = mergedCart.findIndex(
+              (item) => item.cartLineId === gItem.cartLineId
+            );
+            if (existingIdx > -1) {
+              mergedCart[existingIdx].quantity += gItem.quantity;
+            } else {
+              mergedCart.push(gItem);
+            }
+          }
+          finalCart = mergedCart;
+        }
+
+        // Merge guest wishlist items into final wishlist
+        if (guestWishlist.length > 0) {
+          finalWishlist = Array.from(new Set([...finalWishlist, ...guestWishlist]));
+        }
+
+        useCartStore.setState({ items: finalCart });
+        useWishlistStore.getState().setWishlist(finalWishlist);
+
+        // Immediately persist the merged state to the user's specific localStorage keys
+        localStorage.setItem(`silveri-cart-${newUid}`, JSON.stringify(finalCart));
+        localStorage.setItem(`silveri-wishlist-${newUid}`, JSON.stringify(finalWishlist));
       }
 
       // User logged out — clear stores

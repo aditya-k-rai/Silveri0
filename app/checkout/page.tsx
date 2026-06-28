@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus,
   ShoppingCart, Loader2, User, UserPlus, LogIn, Phone, ShieldCheck,
@@ -92,11 +92,20 @@ function CheckoutInner() {
   const { user, userDoc, loading: authLoading } = useAuthContext();
   const savedAddresses: UserAddress[] = (userDoc?.addresses as UserAddress[]) || [];
 
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(() => {
     const param = searchParams?.get("step");
     return param && STEP_PARAM_TO_INDEX[param] !== undefined ? STEP_PARAM_TO_INDEX[param] : 0;
   });
+
+  // Redirect to login if user is not authenticated and is trying to access step > 0
+  useEffect(() => {
+    if (!authLoading && !user && step > 0) {
+      router.replace(`/login?redirect=${encodeURIComponent('/checkout?step=address')}`);
+    }
+  }, [user, authLoading, step, router]);
+
 
   // ── Promo state ────────────────────────────────────────────────────────
   const [promoInput, setPromoInput] = useState("");
@@ -455,55 +464,11 @@ function CheckoutInner() {
   }
 
 
-  // ── Guest wall — shown instead of checkout when not logged in ──────────
+  // ── Guest wall — show loading state while redirecting to /login page ──────────
   if (!authLoading && !user && step > 0) {
-    return (
-      <section className="relative max-w-2xl mx-auto px-4 py-20 text-center">
-        <Script src="https://accounts.google.com/gsi/client" async />
-        <div className="relative inline-flex items-center justify-center mb-7">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gold/20 to-transparent blur-2xl" />
-          <div className="relative w-24 h-24 rounded-full bg-white border border-silver-200/70 flex items-center justify-center shadow-lg">
-            <LogIn size={32} className="text-gold" />
-          </div>
-        </div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-silver-500 mb-3">Sign in required</p>
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-semibold text-warm-black mb-3 tracking-tight">
-          Please sign in to continue
-        </h1>
-        <p className="text-muted mb-8 max-w-sm mx-auto text-sm leading-relaxed">
-          We need your account to keep your order safe, send updates, and track your delivery.
-        </p>
-        <button
-          id="checkout-google-signin"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading}
-          className="inline-flex items-center gap-3 px-8 py-4 bg-white border border-silver-200 rounded-2xl text-sm font-medium text-warm-black hover:bg-silver-50 hover:border-silver-300 transition-all shadow-[0_4px_16px_-4px_rgba(0,0,0,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {googleLoading ? (
-            <Loader2 size={18} className="animate-spin text-gold" />
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-              <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-              <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-            </svg>
-          )}
-          Continue with Google
-        </button>
-        <div className="mt-6 flex items-center justify-center gap-4 text-[11px] uppercase tracking-[0.2em] text-silver-400">
-          <ShieldCheck size={13} className="text-emerald-500" />
-          <span>Secure · Encrypted · No spam</span>
-        </div>
-        <button
-          onClick={() => setStep(0)}
-          className="block mx-auto mt-8 text-xs text-silver-500 hover:text-warm-black transition-colors"
-        >
-          ← Back to Cart
-        </button>
-      </section>
-    );
+    return <CheckoutFallback />;
   }
+
 
   return (
     <>
@@ -701,29 +666,20 @@ function CheckoutInner() {
                   <div className="bg-gradient-to-br from-warm-black to-warm-black/90 rounded-2xl p-5 text-white">
                     <p className="text-[10px] uppercase tracking-[0.22em] text-gold mb-2">Member benefit</p>
                     <p className="text-sm font-medium mb-3 leading-snug">Sign in to track your order, save addresses &amp; access exclusive deals.</p>
-                    <button
-                      id="cart-google-signin"
-                      onClick={handleGoogleSignIn}
-                      disabled={googleLoading}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-warm-black text-sm font-medium rounded-xl hover:bg-silver-50 transition-colors disabled:opacity-60"
+                    <Link
+                      href={`/login?redirect=${encodeURIComponent('/checkout?step=address')}`}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-warm-black text-sm font-semibold rounded-xl hover:bg-silver-50 transition-colors"
                     >
-                      {googleLoading ? <Loader2 size={14} className="animate-spin" /> : (
-                        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-                          <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                          <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-                          <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                        </svg>
-                      )}
-                      Sign in with Google
-                    </button>
+                      Sign In / Register
+                    </Link>
                   </div>
                 )}
 
                 <button
                   onClick={() => {
-                    if (!user) { setStep(1); } // will show guest wall
-                    else {
+                    if (!user) {
+                      router.push(`/login?redirect=${encodeURIComponent('/checkout?step=address')}`);
+                    } else {
                       trackBeginCheckout(items, total);
                       setStep(1);
                     }
