@@ -34,7 +34,7 @@ const DEV = {
   social: {
     LinkedIn:  'https://www.linkedin.com/in/aditya-k-rai/',
     GitHub:    'https://github.com/aditya-k-rai',
-    Portfolio: 'https://aditya-k-rai.github.io/P-Website/',
+    Portfolio: 'https://aditya-k-rai.vercel.app/',
     Instagram: 'https://www.instagram.com/aditya_k_raii',
     YouTube:   'https://www.youtube.com/@Aditya-K-Rai',
     Facebook:  'https://www.facebook.com/MightyAditya',
@@ -171,7 +171,7 @@ const socialPlatforms: SocialPlatform[] = [
   },
   {
     name: 'Portfolio',
-    handle: 'aditya-k-rai.github.io',
+    handle: 'aditya-k-rai.vercel.app',
     url: DEV.social.Portfolio,
     iconColor: '#C9A84C',
     bgTint: 'rgba(201,168,76,0.07)',

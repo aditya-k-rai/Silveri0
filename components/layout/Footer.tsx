@@ -145,7 +145,7 @@ export default function Footer() {
             </svg>
           </a>
           <a
-            href="https://aditya-k-rai.github.io/P-Website/"
+            href="https://aditya-k-rai.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Aditya Kumar Rai Portfolio"

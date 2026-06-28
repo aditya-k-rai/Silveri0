@@ -15,17 +15,23 @@ function ensureCartLineId(item: CartItem): CartItem {
 
 interface CartState {
   items: CartItem[];
+  /** True once the persisted store has been rehydrated from localStorage. */
+  _hasHydrated: boolean;
   /** Caller passes a CartItem without `cartLineId`; the store computes it. */
   addItem: (item: Omit<CartItem, 'cartLineId'> & { cartLineId?: string }) => void;
   removeItem: (cartLineId: string) => void;
   updateQuantity: (cartLineId: string, quantity: number) => void;
   clearCart: () => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       items: [],
+      _hasHydrated: false,
+
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
 
       addItem: (raw) =>
         set((state) => {
@@ -64,6 +70,10 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'silveri-cart',
+      onRehydrateStorage: () => (state) => {
+        // Mark hydration complete as soon as localStorage is merged back in.
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

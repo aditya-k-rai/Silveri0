@@ -88,7 +88,7 @@ interface PromoState {
 
 /* ──────────────── Main component ──────────────── */
 function CheckoutInner() {
-  const { items, removeItem, updateQuantity, clearCart } = useCartStore();
+  const { items, removeItem, updateQuantity, clearCart, _hasHydrated } = useCartStore();
   const { user, userDoc, loading: authLoading } = useAuthContext();
   const savedAddresses: UserAddress[] = (userDoc?.addresses as UserAddress[]) || [];
 
@@ -421,6 +421,14 @@ function CheckoutInner() {
     }
   };
 
+  // ── Hydration guard: wait for Zustand persist to restore cart from localStorage ──
+  // All hooks above have already run, so this early return is safe (Rules of Hooks OK).
+  // Without this, on mobile the checkout mounts before persist rehydrates, meaning
+  // items === [] and subtotal === 0 — only delivery charges appear.
+  if (!_hasHydrated) {
+    return <CheckoutFallback />;
+  }
+
   // ── Empty cart ──────────────────────────────────────────────────────────
   if (items.length === 0 && step === 0) {
     return (
@@ -445,6 +453,7 @@ function CheckoutInner() {
       </section>
     );
   }
+
 
   // ── Guest wall — shown instead of checkout when not logged in ──────────
   if (!authLoading && !user && step > 0) {

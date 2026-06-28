@@ -87,7 +87,7 @@ const personJsonLd = {
   sameAs: [
     'https://www.linkedin.com/in/aditya-k-rai/',
     'https://github.com/aditya-k-rai',
-    'https://aditya-k-rai.github.io/P-Website/',
+    'https://aditya-k-rai.vercel.app/',
     'https://www.instagram.com/aditya_k_raii',
     'https://www.youtube.com/@Aditya-K-Rai',
     'https://www.facebook.com/MightyAditya',

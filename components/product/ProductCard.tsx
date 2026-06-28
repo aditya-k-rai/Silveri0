@@ -63,6 +63,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
     addItem({
       productId: product.id,
       name: product.name,
@@ -74,10 +75,25 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
       logActivity({ ...activityBase, type: 'cart', action: 'added' });
     }
     trackAddToCart(product, 1);
-    // Skip the cart-review step — land the customer directly on the
-    // Shipping Address form (Amazon / Flipkart-style fast checkout).
-    router.push('/checkout?step=address');
+
+    // Wait for the store to reflect the new item before navigating.
+    // Prevents the mobile race condition where router.push fires before
+    // Zustand/persist has flushed the update, causing checkout to show
+    // an empty cart (only delivery charges).
+    const timeout = setTimeout(() => {
+      router.push('/checkout?step=address');
+    }, 400);
+
+    const unsub = useCartStore.subscribe((state) => {
+      const found = state.items.some((i) => i.productId === product.id);
+      if (found) {
+        clearTimeout(timeout);
+        unsub();
+        router.push('/checkout?step=address');
+      }
+    });
   };
+
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();

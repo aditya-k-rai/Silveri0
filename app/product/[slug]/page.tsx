@@ -153,6 +153,53 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
+  /**
+   * Buy Now — adds the item then navigates to checkout.
+   * We subscribe to the store and only push the route once the new item
+   * is confirmed in state, preventing the mobile race condition where
+   * router.push fires before Zustand/persist has flushed the update.
+   */
+  const handleBuyNow = () => {
+    if (requiresSize && !selectedSize) {
+      const el = document.getElementById('size-selector');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const cartItem = {
+      productId: product.id,
+      name: product.name,
+      price: effectivePrice,
+      quantity: 1,
+      image: product.primaryImage || '',
+      ...(requiresSize ? { size: selectedSize } : {}),
+      ...(showsChainToggle ? { chain: selectedChain } : {}),
+      plating: selectedPlating,
+    };
+
+    addItem(cartItem);
+    if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
+    trackAddToCart({ ...product, price: effectivePrice }, 1);
+
+    // Wait for the store to reflect the new item before navigating.
+    // On fast devices this resolves immediately; on slow mobile it waits
+    // up to ~400 ms before falling back to a direct push.
+    const timeout = setTimeout(() => {
+      router.push('/checkout?step=address');
+    }, 400);
+
+    const unsub = useCartStore.subscribe((state) => {
+      const found = state.items.some((i) => i.productId === product.id);
+      if (found) {
+        clearTimeout(timeout);
+        unsub();
+        router.push('/checkout?step=address');
+      }
+    });
+  };
+
+
+
   const handleWishlist = () => {
     if (isWishlisted) {
       removeFromWishlist(product.id);
@@ -391,7 +438,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
                 {addedToCart ? 'Added!' : 'Add to Cart'}
               </button>
               <button
-                onClick={() => { handleAddToCart(); router.push('/checkout?step=address'); }}
+                onClick={handleBuyNow}
                 disabled={product.stock <= 0}
                 className="flex-1 flex items-center justify-center gap-2 bg-gold text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-gold-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
