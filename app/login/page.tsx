@@ -330,6 +330,14 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-lg p-8 md:p-10 max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-6">
+          <div className="flex flex-col items-center gap-2 mb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/Silveri Brand Logo.png"
+              alt="Silveri — Crafted for Every Moment"
+              className="w-20 h-20 rounded-full object-cover ring-2 ring-gold/30 shadow-[0_4px_24px_rgba(201,168,76,0.25)]"
+            />
+          </div>
           <h1 className="font-[family-name:var(--font-heading)] text-4xl text-gold">Silveri</h1>
           <p className="text-muted text-sm mt-1">
             {view === 'login' && 'Welcome back! Sign in to your account'}
@@ -338,6 +346,7 @@ export default function LoginPage() {
             {view === 'complete-profile' && 'Complete your profile'}
           </p>
         </div>
+
 
         {/* Error / Success */}
         {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4">{error}</div>}

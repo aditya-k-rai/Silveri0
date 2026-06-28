@@ -17,14 +17,28 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="font-[family-name:var(--font-heading)] text-2xl text-silver-200 mb-4">
-              Silveri
-            </h3>
+            <div className="flex items-center gap-3 mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/Silveri Brand Logo.png"
+                alt="Silveri — Crafted for Every Moment"
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-gold/30 shadow-[0_0_16px_rgba(201,168,76,0.3)]"
+              />
+              <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/Silveri Brand Name Image with Slogan.png"
+                  alt="Silveri — Crafted for Every Moment"
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
+            </div>
             <p className="text-silver-400 text-sm leading-relaxed">
               Exquisite handcrafted silver jewelry for every occasion. Discover
               timeless elegance.
             </p>
           </div>
+
 
           {/* Quick Links */}
           <div>

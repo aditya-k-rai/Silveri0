@@ -149,12 +149,17 @@ export default function Header() {
             <div className="flex items-center justify-between h-[68px] gap-6">
               {/* Logo */}
               <Link href="/" className="flex items-center gap-2.5 shrink-0">
-                <div className="w-9 h-9 bg-silver-900 rounded-xl flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-[0_0_10px_rgba(201,168,76,0.25)] ring-1 ring-gold/20">
                   {logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-white font-[family-name:var(--font-heading)] text-base font-bold">S</span>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src="/images/Silveri Brand Logo.png"
+                      alt="Silveri — Crafted for Every Moment"
+                      className="w-full h-full object-cover"
+                    />
                   )}
                 </div>
                 <span className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-silver-900 tracking-tight">
@@ -383,12 +388,17 @@ export default function Header() {
         <div className="liquidGlass-content flex items-center justify-between h-14 px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-silver-900 rounded-lg flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 shadow-[0_0_8px_rgba(201,168,76,0.2)] ring-1 ring-gold/20">
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-white font-[family-name:var(--font-heading)] text-xs font-bold">S</span>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/images/Silveri Brand Logo.png"
+                  alt="Silveri"
+                  className="w-full h-full object-cover"
+                />
               )}
             </div>
             <span className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">

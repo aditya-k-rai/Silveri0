@@ -39,12 +39,26 @@ export const metadata: Metadata = {
   description:
     "Discover exquisite handcrafted silver jewelry. Shop rings, necklaces, earrings, bracelets and more at Silveri.",
   keywords: ["silver jewelry", "handcrafted jewelry", "luxury jewelry", "rings", "necklaces", "earrings"],
+  icons: {
+    icon: "/images/Silveri Brand Logo.png",
+    apple: "/images/Silveri Brand Logo.png",
+    shortcut: "/images/Silveri Brand Logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_IN",
     siteName: "Silveri",
+    images: [
+      {
+        url: "/images/Silveri Brand Logo.png",
+        width: 1080,
+        height: 1080,
+        alt: "Silveri — Crafted for Every Moment",
+      },
+    ],
   },
 };
+
 
 export default function RootLayout({
   children,
