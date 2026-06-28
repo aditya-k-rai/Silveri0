@@ -148,8 +148,8 @@ export default function Header() {
           <div className="liquidGlass-content max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-between h-[68px] gap-6">
               {/* Logo */}
-              <Link href="/" className="flex items-center gap-2.5 shrink-0">
-                <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-[0_0_10px_rgba(201,168,76,0.25)] ring-1 ring-gold/20">
+              <Link href="/" className="flex items-center gap-3 shrink-0">
+                <div className="w-13 h-13 rounded-full overflow-hidden shrink-0 shadow-[0_0_14px_rgba(201,168,76,0.35)] ring-2 ring-gold/25" style={{width:'52px',height:'52px'}}>
                   {logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
@@ -388,7 +388,7 @@ export default function Header() {
         <div className="liquidGlass-content flex items-center justify-between h-14 px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 shadow-[0_0_8px_rgba(201,168,76,0.2)] ring-1 ring-gold/20">
+            <div className="rounded-full overflow-hidden shrink-0 shadow-[0_0_10px_rgba(201,168,76,0.3)] ring-2 ring-gold/20" style={{width:'44px',height:'44px'}}>
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logo} alt="Silveri" className="w-full h-full object-cover" />
@@ -401,7 +401,7 @@ export default function Header() {
                 />
               )}
             </div>
-            <span className="font-[family-name:var(--font-heading)] text-lg font-semibold text-silver-900">
+            <span className="font-[family-name:var(--font-heading)] text-xl font-semibold text-silver-900">
               Silveri
             </span>
           </Link>

@@ -32,6 +32,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://silveri.in'),
   title: {
     default: "Silveri — Luxury Silver Jewelry",
     template: "%s | Silveri",
@@ -39,11 +40,6 @@ export const metadata: Metadata = {
   description:
     "Discover exquisite handcrafted silver jewelry. Shop rings, necklaces, earrings, bracelets and more at Silveri.",
   keywords: ["silver jewelry", "handcrafted jewelry", "luxury jewelry", "rings", "necklaces", "earrings"],
-  icons: {
-    icon: "/images/Silveri Brand Logo.png",
-    apple: "/images/Silveri Brand Logo.png",
-    shortcut: "/images/Silveri Brand Logo.png",
-  },
   openGraph: {
     type: "website",
     locale: "en_IN",
@@ -58,6 +54,7 @@ export const metadata: Metadata = {
     ],
   },
 };
+
 
 
 export default function RootLayout({

@@ -17,19 +17,20 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-4 mb-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/Silveri Brand Logo.png"
                 alt="Silveri — Crafted for Every Moment"
-                className="w-14 h-14 rounded-full object-cover ring-2 ring-gold/30 shadow-[0_0_16px_rgba(201,168,76,0.3)]"
+                style={{width:'80px',height:'80px'}}
+                className="rounded-full object-cover ring-2 ring-gold/40 shadow-[0_0_24px_rgba(201,168,76,0.4)] shrink-0"
               />
               <div>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/Silveri Brand Name Image with Slogan.png"
                   alt="Silveri — Crafted for Every Moment"
-                  className="h-10 w-auto object-contain"
+                  className="h-12 w-auto object-contain"
                 />
               </div>
             </div>
