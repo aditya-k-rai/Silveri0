@@ -1241,8 +1241,8 @@ function CheckoutInner() {
                             </p>
                             <p className="leading-relaxed">
                               To manually complete your order or double-check your payment status, please email us at{" "}
-                              <a href="mailto:support@silverishop.in" className="text-gold font-bold hover:underline">
-                                support@silverishop.in
+                              <a href="mailto:silveri.in63073@gmail.com" className="text-gold font-bold hover:underline">
+                                silveri.in63073@gmail.com
                               </a>
                             </p>
                           </motion.div>

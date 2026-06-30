@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const LAST_UPDATED = '26 April 2026';
-const CONTACT_EMAIL = 'support@silverishop.in';
+const CONTACT_EMAIL = 'silveri.in63073@gmail.com';
 const GOVERNING_CITY = 'Mumbai';
 
 export default function TermsPage() {
