@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parsed.data;
 
     // ── 3. HMAC-SHA256 signature verification ────────────────────────────
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const secret = process.env.Live_key_Secret || process.env.RAZORPAY_KEY_SECRET;
     if (!secret || secret.includes("xxxx")) {
       return NextResponse.json(
         { error: "Payment gateway not configured" },

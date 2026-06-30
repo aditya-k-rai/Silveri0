@@ -38,8 +38,8 @@ const schema = z.object({
 });
 
 function getRazorpay() {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = process.env.Live_api_Key || process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.Live_key_Secret || process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret || keyId.includes("xxxx")) return null;
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
@@ -267,6 +267,7 @@ export async function POST(req: NextRequest) {
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
       receipt,
+      keyId: process.env.Live_api_Key || process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     });
   } catch (error) {
     console.error("Razorpay create-order error:", error);

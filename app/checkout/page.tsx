@@ -363,7 +363,7 @@ function CheckoutInner() {
       setPaymentStatus("paying");
 
       // 3. Open Razorpay modal
-      const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      const rzpKey = orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
       if (!rzpKey || rzpKey.includes("xxxx")) throw new Error("Payment gateway not configured");
 
       await new Promise<void>((resolve, reject) => {
