@@ -170,9 +170,9 @@ function CheckoutInner() {
       setPincodeLookup({ state: "ok", cities: result.cities });
       setAddress((prev) => ({
         ...prev,
-        city: prev.city || result.city,
-        district: prev.district || result.district,
-        state: prev.state || result.state,
+        city: result.city,
+        district: result.district,
+        state: result.state,
       }));
     } catch {
       setPincodeLookup({ state: "error", cities: [] });
@@ -215,8 +215,10 @@ function CheckoutInner() {
   const shipping = subtotal > 2000 ? 0 : 99;
   const total = subtotal - discount + shipping;
 
-  const updateAddress = (field: string, value: string) =>
+  const updateAddress = (field: string, value: string) => {
+    setSelectedAddrId(null);
     setAddress((p) => ({ ...p, [field]: value }));
+  };
 
   // ── Promo validation ───────────────────────────────────────────────────
   const handleApplyPromo = async () => {
