@@ -85,6 +85,8 @@ export interface Order {
   customerPhone?: string;
   createdAt: Date;
   updatedAt?: Date;
+  paymentMethod?: string;
+  isCOD?: boolean;
 }
 
 export interface AdminReply {

@@ -283,8 +283,20 @@ export default function AdminDashboard() {
     const prevStartT = prevStart.getTime();
     const prevEndT = prevEnd.getTime();
 
-    const currentOrds = deferredOrders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
-    const prevOrds = deferredOrders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+
+    const currentOrds = deferredOrders.filter((o) => {
+      if (isFailedPayment(o)) return false;
+      const t = toTime(o.createdAt);
+      return t >= startT && t <= endT;
+    });
+    const prevOrds = deferredOrders.filter((o) => {
+      if (isFailedPayment(o)) return false;
+      const t = toTime(o.createdAt);
+      return t >= prevStartT && t <= prevEndT;
+    });
 
     return {
       currentPeriod: { start, end },
@@ -347,15 +359,19 @@ export default function AdminDashboard() {
   }, [currentDaily, previousDaily, selectedMetric]);
 
   // ─── Action items (memoised on deferred orders) ───────────────
-  const ordersToFulfill = useMemo(
-    () =>
-      deferredOrders.filter((o) => o.status === "pending" || o.status === "processing").length,
-    [deferredOrders]
-  );
-  const paymentsToCapture = useMemo(
-    () => deferredOrders.filter((o) => !o.paymentId && o.status !== "cancelled").length,
-    [deferredOrders]
-  );
+  const ordersToFulfill = useMemo(() => {
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+    return deferredOrders.filter((o) => !isFailedPayment(o) && (o.status === "pending" || o.status === "processing")).length;
+  }, [deferredOrders]);
+
+  const paymentsToCapture = useMemo(() => {
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+    return deferredOrders.filter((o) => !o.paymentId && !isFailedPayment(o)).length;
+  }, [deferredOrders]);
 
   // ─── Period labels ────────────────────────────────────────────
   const fmtPeriod = (start: Date, end: Date) => {
@@ -624,7 +640,15 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.slice(0, 5).map((o) => (
+                  {orders
+                    .filter((o) => {
+                      const isFailedPayment = (o: Order) =>
+                        o.status === "cancelled" ||
+                        (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+                      return !isFailedPayment(o);
+                    })
+                    .slice(0, 5)
+                    .map((o) => (
                     <tr
                       key={o.id}
                       className="border-b border-[#E8E8E8]/50 last:border-0"

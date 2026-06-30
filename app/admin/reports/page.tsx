@@ -209,8 +209,20 @@ export default function AdminReportsPage() {
     const prevStartT = prevStart.getTime();
     const prevEndT = prevEnd.getTime();
 
-    const currentOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= startT && t <= endT; });
-    const prevOrds = orders.filter((o) => { const t = toTime(o.createdAt); return t >= prevStartT && t <= prevEndT; });
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+
+    const currentOrds = orders.filter((o) => {
+      if (isFailedPayment(o)) return false;
+      const t = toTime(o.createdAt);
+      return t >= startT && t <= endT;
+    });
+    const prevOrds = orders.filter((o) => {
+      if (isFailedPayment(o)) return false;
+      const t = toTime(o.createdAt);
+      return t >= prevStartT && t <= prevEndT;
+    });
 
     return {
       currentPeriod: { start, end },

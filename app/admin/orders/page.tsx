@@ -31,7 +31,7 @@ import {
 } from "recharts";
 
 // ─── Constants ──────────────────────────────────────────────────
-const FILTER_TABS = ["All", "Unfulfilled", "Unpaid", "Open", "Archived"] as const;
+const FILTER_TABS = ["All", "Unfulfilled", "Unpaid", "Open", "Archived", "Failed Payments"] as const;
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -192,15 +192,26 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     let result = orders;
 
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+
     // Tab filter
-    if (activeTab === "Unfulfilled") {
-      result = result.filter((o) => o.status === "pending" || o.status === "processing");
-    } else if (activeTab === "Unpaid") {
-      result = result.filter((o) => !o.paymentId && o.status !== "cancelled");
-    } else if (activeTab === "Open") {
-      result = result.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
-    } else if (activeTab === "Archived") {
-      result = result.filter((o) => o.status === "cancelled");
+    if (activeTab === "Failed Payments") {
+      result = result.filter(isFailedPayment);
+    } else {
+      // Filter OUT failed payments for other tabs
+      result = result.filter((o) => !isFailedPayment(o));
+
+      if (activeTab === "Unfulfilled") {
+        result = result.filter((o) => o.status === "pending" || o.status === "processing");
+      } else if (activeTab === "Unpaid") {
+        result = result.filter((o) => !o.paymentId);
+      } else if (activeTab === "Open") {
+        result = result.filter((o) => o.status !== "delivered");
+      } else if (activeTab === "Archived") {
+        result = result.filter((o) => o.status === "delivered");
+      }
     }
 
     // Search
@@ -259,7 +270,10 @@ export default function AdminOrdersPage() {
   const todayMetrics = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayOrders = orders.filter((o) => o.createdAt >= today);
+    const isFailedPayment = (o: Order) =>
+      o.status === "cancelled" ||
+      (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+    const todayOrders = orders.filter((o) => o.createdAt >= today && !isFailedPayment(o));
     const totalItems = todayOrders.reduce((s, o) => s + o.items.reduce((q, i) => q + i.quantity, 0), 0);
     const fulfilled = todayOrders.filter((o) => o.status === "shipped" || o.status === "delivered").length;
     const delivered = todayOrders.filter((o) => o.status === "delivered").length;
@@ -283,7 +297,10 @@ export default function AdminOrdersPage() {
       d.setHours(0, 0, 0, 0);
       const next = new Date(d);
       next.setDate(next.getDate() + 1);
-      data.push(orders.filter((o) => o.createdAt >= d && o.createdAt < next).length);
+      const isFailedPayment = (o: Order) =>
+        o.status === "cancelled" ||
+        (o.status === "pending" && !o.paymentId && o.paymentMethod !== "COD" && !o.isCOD);
+      data.push(orders.filter((o) => o.createdAt >= d && o.createdAt < next && !isFailedPayment(o)).length);
     }
     return data;
   }, [orders]);
