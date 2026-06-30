@@ -8,8 +8,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   ChevronRight, MapPin, Package, CreditCard, Check, Tag, Trash2, Plus, Minus,
   ShoppingCart, Loader2, User, UserPlus, LogIn, Phone, ShieldCheck,
-  Sparkles, X, AlertCircle,
+  Sparkles, X, AlertCircle, RefreshCw, Mail,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthContext } from "@/context/AuthContext";
 import type { UserAddress } from "@/types";
@@ -152,6 +153,65 @@ function CheckoutInner() {
     state: defaultAddr?.state || "",
   });
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(defaultAddr?.id || null);
+
+  const [syncing, setSyncing] = useState(false);
+
+  const handleForceSync = useCallback(() => {
+    setSyncing(true);
+    const freshDefaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+    setAddress({
+      fullName: accountContact.fullName || freshDefaultAddr?.fullName || "",
+      email: accountContact.email || freshDefaultAddr?.email || "",
+      phoneCountryCode: accountContact.phone ? accountContact.phoneCountryCode : freshDefaultAddr?.phoneCountryCode || DEFAULT_DIAL_CODE,
+      phone: accountContact.phone || freshDefaultAddr?.phone || "",
+      addressLine1: freshDefaultAddr?.line1 || "",
+      landmark: freshDefaultAddr?.landmark || freshDefaultAddr?.line2 || "",
+      pincode: freshDefaultAddr?.pincode || "",
+      city: freshDefaultAddr?.city || "",
+      district: freshDefaultAddr?.district || "",
+      state: freshDefaultAddr?.state || "",
+    });
+    if (freshDefaultAddr) {
+      setSelectedAddrId(freshDefaultAddr.id);
+    } else {
+      setSelectedAddrId(null);
+    }
+    setTimeout(() => setSyncing(false), 600);
+  }, [accountContact, savedAddresses]);
+
+  // Auto-sync when accountContact or defaultAddr loads and fields are currently empty
+  useEffect(() => {
+    if (!authLoading && userDoc) {
+      setAddress((prev) => {
+        // Only auto-fill if fields are currently empty to avoid overwriting user edits
+        const hasName = !!prev.fullName.trim();
+        const hasEmail = !!prev.email.trim();
+        const hasPhone = !!prev.phone.trim();
+        const hasAddress = !!prev.addressLine1.trim();
+
+        const freshDefaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+
+        return {
+          ...prev,
+          fullName: hasName ? prev.fullName : (accountContact.fullName || freshDefaultAddr?.fullName || ""),
+          email: hasEmail ? prev.email : (accountContact.email || freshDefaultAddr?.email || ""),
+          phoneCountryCode: hasPhone ? prev.phoneCountryCode : (accountContact.phone ? accountContact.phoneCountryCode : freshDefaultAddr?.phoneCountryCode || DEFAULT_DIAL_CODE),
+          phone: hasPhone ? prev.phone : (accountContact.phone || freshDefaultAddr?.phone || ""),
+          addressLine1: hasAddress ? prev.addressLine1 : (freshDefaultAddr?.line1 || ""),
+          landmark: hasAddress ? prev.landmark : (freshDefaultAddr?.landmark || freshDefaultAddr?.line2 || ""),
+          pincode: hasAddress ? prev.pincode : (freshDefaultAddr?.pincode || ""),
+          city: hasAddress ? prev.city : (freshDefaultAddr?.city || ""),
+          district: hasAddress ? prev.district : (freshDefaultAddr?.district || ""),
+          state: hasAddress ? prev.state : (freshDefaultAddr?.state || ""),
+        };
+      });
+
+      const freshDefaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+      if (freshDefaultAddr && !selectedAddrId) {
+        setSelectedAddrId(freshDefaultAddr.id);
+      }
+    }
+  }, [authLoading, userDoc, accountContact, savedAddresses, selectedAddrId]);
 
   // ── Pincode lookup ─────────────────────────────────────────────────────
   const [pincodeLookup, setPincodeLookup] = useState<{
@@ -416,7 +476,9 @@ function CheckoutInner() {
               trackPurchase(response.razorpay_order_id, items, total, shipping);
               setPaymentStatus("success");
               resolve();
-              window.location.href = `/order/${response.razorpay_order_id}`;
+              setTimeout(() => {
+                window.location.href = `/order/${response.razorpay_order_id}`;
+              }, 3000);
             } catch (e) {
               reject(e);
             }
@@ -779,9 +841,20 @@ function CheckoutInner() {
                         })}
                       </div>
                       {orderingFor === "myself" && (
-                        <p className="text-[11px] text-silver-500 mt-3">
-                          Details synced from your account. Switch to <strong className="text-warm-black">Ordering for Other</strong> to ship to someone else.
-                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 text-[11px]">
+                          <p className="text-silver-500">
+                            Details synced from your account. Switch to <strong className="text-warm-black">Ordering for Other</strong> to ship to someone else.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleForceSync}
+                            disabled={syncing}
+                            className="inline-flex items-center gap-1.5 text-gold hover:text-gold/80 transition-colors font-semibold cursor-pointer disabled:opacity-50"
+                          >
+                            <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                            {syncing ? "Syncing..." : "Sync Details"}
+                          </button>
+                        </div>
                       )}
                     </>
                   )}
@@ -991,80 +1064,192 @@ function CheckoutInner() {
               <SurfaceCard className="text-center !p-8 md:!p-12 relative overflow-hidden">
                 <div aria-hidden className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-gradient-to-b from-gold/20 to-transparent blur-3xl pointer-events-none" />
                 <div className="relative">
-                  <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-warm-black to-warm-black/85 flex items-center justify-center shadow-[0_18px_40px_-14px_rgba(0,0,0,0.45)] mb-6">
-                    {paymentStatus === "verifying" ? (
-                      <Loader2 size={28} className="text-gold animate-spin" />
+                  <AnimatePresence mode="wait">
+                    {paymentStatus === "success" ? (
+                      <motion.div
+                        key="success-state"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.4 }}
+                        className="py-8 space-y-6"
+                      >
+                        <div className="relative w-24 h-24 mx-auto">
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0.5 }}
+                            animate={{ scale: 1.4, opacity: 0 }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+                            className="absolute inset-0 rounded-full bg-emerald-100"
+                          />
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0.8 }}
+                            animate={{ scale: 1.2, opacity: 0 }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut", delay: 0.4 }}
+                            className="absolute inset-0 rounded-full bg-emerald-100"
+                          />
+                          <div className="relative w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <motion.svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={3.5}
+                              stroke="currentColor"
+                              className="w-12 h-12 text-white"
+                            >
+                              <motion.path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4.5 12.75l6 6 9-13.5"
+                                initial={{ pathLength: 0 }}
+                                animate={{ pathLength: 1 }}
+                                transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                              />
+                            </motion.svg>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-heading)] font-semibold tracking-tight text-emerald-600">
+                            Payment Successful!
+                          </h2>
+                          <p className="text-silver-500 text-sm max-w-sm mx-auto">
+                            Thank you for your purchase. We are redirecting you to your order page...
+                          </p>
+                        </div>
+                      </motion.div>
                     ) : (
-                      <CreditCard size={28} className="text-gold" />
+                      <motion.div
+                        key="checkout-state"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {/* Shaking Failed Icon or CreditCard */}
+                        <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-warm-black to-warm-black/85 flex items-center justify-center shadow-[0_18px_40px_-14px_rgba(0,0,0,0.45)] mb-6 overflow-hidden">
+                          {paymentStatus === "verifying" ? (
+                            <Loader2 size={28} className="text-gold animate-spin" />
+                          ) : paymentStatus === "failed" ? (
+                            <motion.div
+                              animate={{ x: [0, -6, 6, -6, 6, 0] }}
+                              transition={{ duration: 0.4 }}
+                              className="w-full h-full bg-red-500 flex items-center justify-center"
+                            >
+                              <motion.svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={3.5}
+                                stroke="currentColor"
+                                className="w-9 h-9 text-white"
+                              >
+                                <motion.path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M6 18L18 6M6 6l12 12"
+                                  initial={{ pathLength: 0 }}
+                                  animate={{ pathLength: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.1 }}
+                                />
+                              </motion.svg>
+                            </motion.div>
+                          ) : (
+                            <CreditCard size={28} className="text-gold" />
+                          )}
+                        </div>
+                        <p className="text-[11px] uppercase tracking-[0.28em] text-silver-500 mb-2">Step 04 · Payment</p>
+                        <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-heading)] font-semibold tracking-tight text-warm-black mb-2">
+                          {paymentStatus === "creating" ? "Preparing..." : paymentStatus === "verifying" ? "Verifying..." : paymentStatus === "failed" ? "Payment Failed" : "Almost there."}
+                        </h2>
+                        <p className="text-silver-500 text-sm max-w-sm mx-auto mb-7">
+                          {paymentStatus === "verifying"
+                            ? "Verifying your payment securely…"
+                            : paymentStatus === "failed"
+                            ? "Your transaction could not be completed. Please try again or check your payment details."
+                            : "You'll be redirected to Razorpay's secure checkout to complete the transaction."}
+                        </p>
+
+                        {/* Amount */}
+                        <div className="inline-flex flex-col items-center gap-1 px-8 py-5 rounded-2xl bg-gradient-to-br from-silver-50 to-white border border-silver-200/70 mb-3">
+                          <span className="text-[10px] uppercase tracking-[0.24em] text-silver-500">Total Payable</span>
+                          <span className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-semibold tabular-nums text-warm-black">
+                            ₹{total.toLocaleString("en-IN")}
+                          </span>
+                          {discount > 0 && (
+                            <span className="text-[10px] text-emerald-600 font-medium">
+                              (You save ₹{discount.toLocaleString("en-IN")} with {promo.code})
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Error */}
+                        {paymentStatus === "failed" && paymentError && (
+                          <div className="mb-5 flex items-start gap-2.5 bg-red-50 border border-red-200/60 text-red-600 text-xs px-4 py-3 rounded-xl text-left max-w-md mx-auto">
+                            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                            <span>{paymentError}</span>
+                          </div>
+                        )}
+
+                        {/* Pay button */}
+                        <button
+                          id="pay-now-btn"
+                          onClick={handlePay}
+                          disabled={paymentStatus === "creating" || paymentStatus === "verifying" || !razorpayReady}
+                          className="w-full group relative overflow-hidden px-12 py-4 bg-gradient-to-r from-gold via-gold to-gold/85 text-white font-semibold rounded-2xl shadow-[0_18px_40px_-14px_rgba(201,168,76,0.65)] hover:shadow-[0_22px_44px_-14px_rgba(201,168,76,0.75)] transition-all text-base disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <span className="relative z-10 inline-flex items-center justify-center gap-2">
+                            {paymentStatus === "creating" || paymentStatus === "verifying" ? (
+                              <><Loader2 size={18} className="animate-spin" /> Processing…</>
+                            ) : (
+                              <>Pay Securely · ₹{total.toLocaleString("en-IN")} <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" /></>
+                            )}
+                          </span>
+                          <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                        </button>
+
+                        {!razorpayReady && (
+                          <p className="text-[11px] text-silver-400 mt-3 flex items-center justify-center gap-1.5">
+                            <Loader2 size={11} className="animate-spin" /> Loading payment gateway…
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-center gap-4 mt-5 text-[10px] uppercase tracking-[0.22em] text-silver-500">
+                          <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> PCI-DSS</span>
+                          <span className="w-px h-3 bg-silver-200" />
+                          <span>256-bit SSL</span>
+                          <span className="w-px h-3 bg-silver-200" />
+                          <span>Razorpay</span>
+                        </div>
+
+                        <button onClick={() => setStep(2)} className="block mx-auto mt-6 text-xs text-silver-500 hover:text-warm-black transition-colors">
+                          ← Back to Review
+                        </button>
+
+                        {/* Support email for Failed/Cancelled Payments */}
+                        {paymentStatus === "failed" && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-6 p-4 rounded-2xl bg-silver-50 border border-silver-200/60 text-center text-xs text-silver-500 space-y-2 max-w-md mx-auto"
+                          >
+                            <div className="flex items-center justify-center gap-1.5 text-warm-black font-semibold">
+                              <Mail size={13} className="text-gold" />
+                              <span>Need help with your order?</span>
+                            </div>
+                            <p className="leading-relaxed">
+                              If money was deducted from your account during a failed transaction, it will be automatically refunded by Razorpay within 3-5 business days.
+                            </p>
+                            <p className="leading-relaxed">
+                              To manually complete your order or double-check your payment status, please email us at{" "}
+                              <a href="mailto:support@silverishop.in" className="text-gold font-bold hover:underline">
+                                support@silverishop.in
+                              </a>
+                            </p>
+                          </motion.div>
+                        )}
+                      </motion.div>
                     )}
-                  </div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-silver-500 mb-2">Step 04 · Payment</p>
-                  <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-heading)] font-semibold tracking-tight text-warm-black mb-2">
-                    {paymentStatus === "creating" ? "Preparing..." : paymentStatus === "verifying" ? "Verifying..." : "Almost there."}
-                  </h2>
-                  <p className="text-silver-500 text-sm max-w-sm mx-auto mb-7">
-                    {paymentStatus === "verifying"
-                      ? "Verifying your payment securely…"
-                      : "You'll be redirected to Razorpay's secure checkout to complete the transaction."}
-                  </p>
-
-                  {/* Amount */}
-                  <div className="inline-flex flex-col items-center gap-1 px-8 py-5 rounded-2xl bg-gradient-to-br from-silver-50 to-white border border-silver-200/70 mb-3">
-                    <span className="text-[10px] uppercase tracking-[0.24em] text-silver-500">Total Payable</span>
-                    <span className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-semibold tabular-nums text-warm-black">
-                      ₹{total.toLocaleString("en-IN")}
-                    </span>
-                    {discount > 0 && (
-                      <span className="text-[10px] text-emerald-600 font-medium">
-                        (You save ₹{discount.toLocaleString("en-IN")} with {promo.code})
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Error */}
-                  {paymentStatus === "failed" && paymentError && (
-                    <div className="mb-5 flex items-start gap-2.5 bg-red-50 border border-red-200/60 text-red-600 text-xs px-4 py-3 rounded-xl text-left">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                      <span>{paymentError}</span>
-                    </div>
-                  )}
-
-                  {/* Pay button */}
-                  <button
-                    id="pay-now-btn"
-                    onClick={handlePay}
-                    disabled={paymentStatus === "creating" || paymentStatus === "verifying" || paymentStatus === "success" || !razorpayReady}
-                    className="w-full group relative overflow-hidden px-12 py-4 bg-gradient-to-r from-gold via-gold to-gold/85 text-white font-semibold rounded-2xl shadow-[0_18px_40px_-14px_rgba(201,168,76,0.65)] hover:shadow-[0_22px_44px_-14px_rgba(201,168,76,0.75)] transition-all text-base disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <span className="relative z-10 inline-flex items-center justify-center gap-2">
-                      {paymentStatus === "creating" || paymentStatus === "verifying" ? (
-                        <><Loader2 size={18} className="animate-spin" /> Processing…</>
-                      ) : paymentStatus === "success" ? (
-                        <><Check size={18} /> Payment Confirmed!</>
-                      ) : (
-                        <>Pay Securely · ₹{total.toLocaleString("en-IN")} <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" /></>
-                      )}
-                    </span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  </button>
-
-                  {!razorpayReady && (
-                    <p className="text-[11px] text-silver-400 mt-3 flex items-center justify-center gap-1.5">
-                      <Loader2 size={11} className="animate-spin" /> Loading payment gateway…
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-center gap-4 mt-5 text-[10px] uppercase tracking-[0.22em] text-silver-500">
-                    <span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> PCI-DSS</span>
-                    <span className="w-px h-3 bg-silver-200" />
-                    <span>256-bit SSL</span>
-                    <span className="w-px h-3 bg-silver-200" />
-                    <span>Razorpay</span>
-                  </div>
-
-                  <button onClick={() => setStep(2)} className="block mx-auto mt-6 text-xs text-silver-500 hover:text-warm-black transition-colors">
-                    ← Back to Review
-                  </button>
+                  </AnimatePresence>
                 </div>
               </SurfaceCard>
             </div>
