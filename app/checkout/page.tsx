@@ -1336,9 +1336,27 @@ function SummaryCard({
               <h4 className="text-xs font-semibold text-warm-black truncate" title={item.name}>
                 {item.name}
               </h4>
-              <p className="text-[11px] text-silver-500 mt-0.5 tabular-nums">
-                ₹{item.price.toLocaleString("en-IN")}
-              </p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-silver-500">
+                <span className="tabular-nums">₹{item.price.toLocaleString("en-IN")}</span>
+                {item.size && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-silver-300" />
+                    <span>Size: {item.size}</span>
+                  </>
+                )}
+                {item.plating && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-silver-300" />
+                    <span className="capitalize">{item.plating} Plating</span>
+                  </>
+                )}
+                {item.chain && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-silver-300" />
+                    <span>{item.chain === "with" ? "With Chain" : "No Chain"}</span>
+                  </>
+                )}
+              </div>
             </div>
             <div className="text-xs font-semibold text-warm-black tabular-nums pl-2">
               ₹{(item.price * item.quantity).toLocaleString("en-IN")}
