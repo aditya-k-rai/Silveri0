@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthContext } from "@/context/AuthContext";
-import type { UserAddress } from "@/types";
+import type { UserAddress, CartItem } from "@/types";
 import { INDIAN_STATES, DIAL_CODES, DEFAULT_DIAL_CODE } from "@/lib/utils/india";
 import { isValidPincode, lookupPincode } from "@/lib/utils/pincode";
 import { signInWithGoogleIdToken } from "@/lib/firebase/auth";
@@ -99,6 +99,22 @@ function CheckoutInner() {
     const param = searchParams?.get("step");
     return param && STEP_PARAM_TO_INDEX[param] !== undefined ? STEP_PARAM_TO_INDEX[param] : 0;
   });
+
+  const isBuyNowMode = searchParams?.get("buyNow") === "1";
+  const buyNowLineId = searchParams?.get("lineId");
+
+  const checkoutItems = useMemo(() => {
+    if (isBuyNowMode && buyNowLineId) {
+      const buyNowItem = items.find((i) => i.cartLineId === buyNowLineId);
+      if (buyNowItem) return [buyNowItem];
+    }
+    return items;
+  }, [items, isBuyNowMode, buyNowLineId]);
+
+  const otherCartItems = useMemo(() => {
+    if (!isBuyNowMode || !buyNowLineId) return [];
+    return items.filter((i) => i.cartLineId !== buyNowLineId);
+  }, [items, isBuyNowMode, buyNowLineId]);
 
   // Redirect to login if user is not authenticated and is trying to access step > 0
   useEffect(() => {
@@ -270,7 +286,7 @@ function CheckoutInner() {
   };
 
   // ── Totals ─────────────────────────────────────────────────────────────
-  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const subtotal = checkoutItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = promo.status === "valid" ? promo.discountAmount : 0;
   const shipping = subtotal > 2000 ? 0 : 99;
   const total = subtotal - discount + shipping;
@@ -393,7 +409,7 @@ function CheckoutInner() {
           Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          items: items.map((i) => ({
+          items: checkoutItems.map((i) => ({
             productId: i.productId,
             name: i.name,
             price: i.price,
@@ -434,7 +450,7 @@ function CheckoutInner() {
           amount: orderData.amount,
           currency: orderData.currency,
           name: "Silveri Jewellery",
-          description: `Order of ${items.length} item${items.length > 1 ? "s" : ""}`,
+          description: `Order of ${checkoutItems.length} item${checkoutItems.length > 1 ? "s" : ""}`,
           image: "/favicon.ico",
           order_id: orderData.orderId,
           prefill: {
@@ -472,8 +488,12 @@ function CheckoutInner() {
               if (!verifyRes.ok) throw new Error(verifyData.error || "Payment verification failed");
 
               // 5. Clear cart + redirect to order page
-              clearCart();
-              trackPurchase(response.razorpay_order_id, items, total, shipping);
+              if (isBuyNowMode && buyNowLineId) {
+                removeItem(buyNowLineId);
+              } else {
+                clearCart();
+              }
+              trackPurchase(response.razorpay_order_id, checkoutItems, total, shipping);
               setPaymentStatus("success");
               resolve();
               setTimeout(() => {
@@ -503,7 +523,7 @@ function CheckoutInner() {
   }
 
   // ── Empty cart ──────────────────────────────────────────────────────────
-  if (items.length === 0 && step === 0) {
+  if (checkoutItems.length === 0 && step === 0) {
     return (
       <section className="relative max-w-4xl mx-auto px-4 py-20 text-center">
         <div className="relative inline-flex items-center justify-center mb-7">
@@ -723,7 +743,7 @@ function CheckoutInner() {
                 </div>
               </SurfaceCard>
               <div className="lg:sticky lg:top-24 space-y-4">
-                <SummaryCard subtotal={subtotal} shipping={shipping} discount={0} total={subtotal + shipping} />
+                <SummaryCard subtotal={subtotal} shipping={shipping} discount={0} total={subtotal + shipping} items={checkoutItems} />
 
                 {/* Guest upsell inside cart */}
                 {!authLoading && !user && (
@@ -924,7 +944,8 @@ function CheckoutInner() {
                 </SurfaceCard>
               </div>
               <div className="lg:sticky lg:top-24 space-y-4">
-                <SummaryCard subtotal={subtotal} shipping={shipping} discount={0} total={subtotal + shipping} />
+                <SummaryCard subtotal={subtotal} shipping={shipping} discount={0} total={subtotal + shipping} items={checkoutItems} />
+                <SuggestionsBlock otherCartItems={otherCartItems} router={router} />
                 <div className="flex gap-2">
                   <button onClick={() => setStep(0)} className="px-5 py-3.5 border border-silver-200 bg-white rounded-2xl text-sm font-medium hover:bg-silver-50 transition-colors">Back</button>
                   <button
@@ -1044,7 +1065,8 @@ function CheckoutInner() {
                 </SurfaceCard>
               </div>
               <div className="lg:sticky lg:top-24 space-y-4">
-                <SummaryCard subtotal={subtotal} shipping={shipping} discount={discount} total={total} promoCode={promo.status === "valid" ? promo.code : undefined} />
+                <SummaryCard subtotal={subtotal} shipping={shipping} discount={discount} total={total} promoCode={promo.status === "valid" ? promo.code : undefined} items={checkoutItems} />
+                <SuggestionsBlock otherCartItems={otherCartItems} router={router} />
                 <div className="flex gap-2">
                   <button onClick={() => setStep(1)} className="px-5 py-3.5 border border-silver-200 bg-white rounded-2xl text-sm font-medium hover:bg-silver-50 transition-colors">Back</button>
                   <button
@@ -1299,12 +1321,10 @@ function ReviewRow({ label, value, mono = false }: { label: string; value: strin
 }
 
 function SummaryCard({
-  subtotal, shipping, discount, total, promoCode,
+  subtotal, shipping, discount, total, promoCode, items,
 }: {
-  subtotal: number; shipping: number; discount: number; total: number; promoCode?: string;
+  subtotal: number; shipping: number; discount: number; total: number; promoCode?: string; items: CartItem[];
 }) {
-  const { items } = useCartStore();
-
   return (
     <div className="relative overflow-hidden rounded-3xl border border-silver-200/70 bg-gradient-to-br from-white to-silver-50/40 p-6 shadow-[0_8px_28px_-12px_rgba(15,15,15,0.08)]">
       <div aria-hidden className="absolute top-0 right-0 w-32 h-32 rounded-full bg-gold/8 blur-3xl pointer-events-none" />
@@ -1389,6 +1409,67 @@ function SummaryCard({
         <span className="font-[family-name:var(--font-heading)] text-2xl font-semibold text-warm-black tabular-nums transition-all duration-500">
           ₹{total.toLocaleString("en-IN")}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function SuggestionsBlock({
+  otherCartItems,
+  router,
+}: {
+  otherCartItems: CartItem[];
+  router: any;
+}) {
+  if (otherCartItems.length === 0) return null;
+
+  return (
+    <div className="p-5 rounded-3xl border border-gold/20 bg-gradient-to-br from-gold/5 via-white to-white shadow-[0_8px_20px_-12px_rgba(201,168,76,0.15)] space-y-3.5 animate-[fadeIn_0.3s_ease]">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-warm-black">
+        <ShoppingCart size={13} className="text-gold" />
+        <span>Items in your cart</span>
+      </div>
+      <p className="text-[11px] text-silver-500 leading-normal">
+        You also have items in your shopping cart. Would you like to add them to this order?
+      </p>
+      <div className="divide-y divide-silver-100/70 max-h-[160px] overflow-y-auto pr-1">
+        {otherCartItems.map((item) => (
+          <div key={item.productId} className="flex gap-2.5 py-2.5 first:pt-0 last:pb-0 items-center justify-between">
+            <div className="flex gap-2 min-w-0 items-center">
+              <div className="relative w-8 h-8 rounded-lg border border-silver-200/60 overflow-hidden shrink-0 flex items-center justify-center bg-silver-50">
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <ShoppingCart size={12} className="text-silver-400" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h5 className="text-[11px] font-semibold text-warm-black truncate w-24 sm:w-28" title={item.name}>
+                  {item.name}
+                </h5>
+                <p className="text-[10px] text-silver-500">Qty: {item.quantity} · ₹{item.price.toLocaleString("en-IN")}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("buyNow");
+                params.delete("lineId");
+                router.push(`/checkout?${params.toString()}`);
+              }}
+              className="px-2.5 py-1.5 bg-warm-black text-white hover:bg-gold transition-colors rounded-lg text-[10px] font-semibold shrink-0 cursor-pointer"
+            >
+              Add to Order
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

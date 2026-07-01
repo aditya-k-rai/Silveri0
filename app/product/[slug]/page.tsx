@@ -177,13 +177,15 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
       plating: selectedPlating,
     };
 
+    const computedCartLineId = `${product.id}__${requiresSize ? selectedSize : ""}__${showsChainToggle ? selectedChain : ""}__${selectedPlating}`;
+
     addItem(cartItem);
-    if (activityBase) logActivity({ ...activityBase, type: 'cart', action: 'added' });
+    if (activityBase) logActivity({ ...activityBase, type: "cart", action: "added" });
     trackAddToCart({ ...product, price: effectivePrice }, 1);
 
     const redirectPath = user
-      ? '/checkout?step=address'
-      : `/login?redirect=${encodeURIComponent('/checkout?step=address')}`;
+      ? `/checkout?step=address&buyNow=1&lineId=${encodeURIComponent(computedCartLineId)}`
+      : `/login?redirect=${encodeURIComponent(`/checkout?step=address&buyNow=1&lineId=${computedCartLineId}`)}`;
 
     // Wait for the store to reflect the new item before navigating.
     // On fast devices this resolves immediately; on slow mobile it waits
