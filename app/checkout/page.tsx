@@ -1303,11 +1303,51 @@ function SummaryCard({
 }: {
   subtotal: number; shipping: number; discount: number; total: number; promoCode?: string;
 }) {
+  const { items } = useCartStore();
+
   return (
     <div className="relative overflow-hidden rounded-3xl border border-silver-200/70 bg-gradient-to-br from-white to-silver-50/40 p-6 shadow-[0_8px_28px_-12px_rgba(15,15,15,0.08)]">
       <div aria-hidden className="absolute top-0 right-0 w-32 h-32 rounded-full bg-gold/8 blur-3xl pointer-events-none" />
       <p className="text-[10px] uppercase tracking-[0.28em] text-silver-500 mb-4">Order Summary</p>
-      <div className="space-y-2.5 text-sm">
+
+      {/* Cart Items List */}
+      <div className="divide-y divide-silver-100/70 mb-4 max-h-[220px] overflow-y-auto pr-1">
+        {items.map((item) => (
+          <div key={item.productId} className="flex gap-3 py-2.5 first:pt-0 last:pb-2.5 items-center">
+            <div className="relative w-12 h-12 shrink-0">
+              <div className="w-full h-full rounded-xl bg-silver-50 border border-silver-200/50 overflow-hidden relative flex items-center justify-center">
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <ShoppingCart size={16} className="text-silver-400" />
+                )}
+              </div>
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warm-black text-[10px] text-white flex items-center justify-center font-bold font-mono shadow-[0_2px_4px_rgba(0,0,0,0.15)] select-none z-10">
+                {item.quantity}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs font-semibold text-warm-black truncate" title={item.name}>
+                {item.name}
+              </h4>
+              <p className="text-[11px] text-silver-500 mt-0.5 tabular-nums">
+                ₹{item.price.toLocaleString("en-IN")}
+              </p>
+            </div>
+            <div className="text-xs font-semibold text-warm-black tabular-nums pl-2">
+              ₹{(item.price * item.quantity).toLocaleString("en-IN")}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-3.5 border-t border-silver-200/60 space-y-2.5 text-sm">
         <div className="flex justify-between">
           <span className="text-silver-500">Subtotal</span>
           <span className="font-medium text-warm-black tabular-nums">₹{subtotal.toLocaleString("en-IN")}</span>
