@@ -236,10 +236,10 @@ export default function Header() {
                 ) : (
                   <Link
                     href="/login"
-                    className="flex items-center gap-2 text-silver-700 hover:text-silver-900 px-3 py-2 rounded-full hover:bg-silver-100 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 silver-button shine-button text-xs rounded-full"
                   >
-                    <User size={20} />
-                    <span className="text-sm font-medium">Login</span>
+                    <User size={14} />
+                    <span>Login</span>
                   </Link>
                 )}
               </div>

@@ -393,7 +393,7 @@ export default function LoginPage() {
               <div className="text-right">
                 <button type="button" onClick={() => { setView('forgot'); setError(''); setSuccess(''); }} className="text-gold text-xs hover:underline">Forgot password?</button>
               </div>
-              <button type="submit" disabled={submitting} className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="w-full silver-button shine-button py-3 rounded-lg text-sm font-medium disabled:opacity-50">
                 {submitting ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
@@ -443,7 +443,7 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <button type="submit" disabled={submitting} className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="w-full silver-button shine-button py-3 rounded-lg text-sm font-medium disabled:opacity-50">
                 {submitting ? 'Creating account...' : 'Create Account'}
               </button>
             </form>
@@ -466,7 +466,7 @@ export default function LoginPage() {
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <input type="email" placeholder="Enter your email address" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-silver rounded-lg text-sm outline-none focus:border-gold" required />
               </div>
-              <button type="submit" disabled={submitting} className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="w-full silver-button shine-button py-3 rounded-lg text-sm font-medium disabled:opacity-50">
                 {submitting ? 'Sending...' : 'Send Reset Link'}
               </button>
             </form>
@@ -533,7 +533,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-gold text-warm-black py-3 rounded-lg text-sm font-medium hover:bg-gold-light transition-colors disabled:opacity-50"
+                className="w-full silver-button shine-button py-3 rounded-lg text-sm font-medium disabled:opacity-50"
               >
                 {submitting ? 'Saving...' : 'Continue to Silveri'}
               </button>

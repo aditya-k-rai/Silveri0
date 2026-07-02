@@ -446,7 +446,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
               <button
                 onClick={handleBuyNow}
                 disabled={product.stock <= 0}
-                className="flex-1 flex items-center justify-center gap-2 bg-gold text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-gold-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 silver-button shine-button py-3.5 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now
               </button>

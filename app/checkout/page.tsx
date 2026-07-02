@@ -768,13 +768,12 @@ function CheckoutInner() {
                       setStep(1);
                     }
                   }}
-                  className="w-full group relative overflow-hidden py-4 bg-warm-black text-white font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.45)] transition-all"
+                  className="w-full group relative overflow-hidden py-4 silver-button shine-button font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.2)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.25)] transition-all"
                 >
                   <span className="relative z-10 inline-flex items-center gap-2">
                     Proceed to Checkout
                     <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
-                  <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-gold/20 to-gold/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 </button>
                 <p className="text-[11px] text-silver-500 text-center">Taxes &amp; final shipping calculated at next steps.</p>
               </div>
@@ -950,7 +949,7 @@ function CheckoutInner() {
                   <button onClick={() => setStep(0)} className="px-5 py-3.5 border border-silver-200 bg-white rounded-2xl text-sm font-medium hover:bg-silver-50 transition-colors">Back</button>
                   <button
                     onClick={() => canContinue && setStep(2)} disabled={!canContinue}
-                    className="flex-1 group relative overflow-hidden py-3.5 bg-warm-black text-white font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.45)] transition-all disabled:bg-silver-300 disabled:shadow-none disabled:cursor-not-allowed"
+                    className="flex-1 group relative overflow-hidden py-3.5 silver-button shine-button font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.2)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.25)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="relative z-10 inline-flex items-center gap-2 text-sm">Continue <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" /></span>
                   </button>
@@ -1005,7 +1004,7 @@ function CheckoutInner() {
                       <button
                         onClick={handleApplyPromo}
                         disabled={promo.status === "loading" || !promoInput.trim()}
-                        className="px-6 py-3 bg-warm-black text-white text-sm font-medium rounded-2xl hover:bg-warm-black/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-6 py-3 silver-button shine-button text-sm font-medium rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {promo.status === "loading" ? <Loader2 size={14} className="animate-spin" /> : null}
                         Apply
@@ -1055,7 +1054,7 @@ function CheckoutInner() {
                   <button onClick={() => setStep(1)} className="px-5 py-3.5 border border-silver-200 bg-white rounded-2xl text-sm font-medium hover:bg-silver-50 transition-colors">Back</button>
                   <button
                     onClick={() => setStep(3)}
-                    className="flex-1 group relative overflow-hidden py-3.5 bg-warm-black text-white font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.4)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.45)] transition-all"
+                    className="flex-1 group relative overflow-hidden py-3.5 silver-button shine-button font-medium rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.2)] hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.25)] transition-all"
                   >
                     <span className="relative z-10 inline-flex items-center gap-2 text-sm">Proceed to Payment <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" /></span>
                   </button>
@@ -1200,7 +1199,7 @@ function CheckoutInner() {
                           id="pay-now-btn"
                           onClick={handlePay}
                           disabled={paymentStatus === "creating" || paymentStatus === "verifying" || !razorpayReady}
-                          className="w-full group relative overflow-hidden px-12 py-4 bg-gradient-to-r from-gold via-gold to-gold/85 text-white font-semibold rounded-2xl shadow-[0_18px_40px_-14px_rgba(201,168,76,0.65)] hover:shadow-[0_22px_44px_-14px_rgba(201,168,76,0.75)] transition-all text-base disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full group relative overflow-hidden px-12 py-4 silver-button shine-button font-semibold rounded-2xl shadow-[0_18px_40px_-14px_rgba(0,0,0,0.25)] text-base disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <span className="relative z-10 inline-flex items-center justify-center gap-2">
                             {paymentStatus === "creating" || paymentStatus === "verifying" ? (
@@ -1209,7 +1208,6 @@ function CheckoutInner() {
                               <>Pay Securely · ₹{total.toLocaleString("en-IN")} <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" /></>
                             )}
                           </span>
-                          <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                         </button>
 
                         {!razorpayReady && (
