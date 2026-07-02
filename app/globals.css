@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F7F7F8;
-  --foreground: #1C1C1E;
-  --silver-50: #FAFAFA;
-  --silver-100: #F4F4F5;
-  --silver-200: #E4E4E7;
-  --silver-300: #D4D4D8;
-  --silver-400: #A1A1AA;
-  --silver-500: #71717A;
-  --silver-600: #52525B;
-  --silver-700: #3F3F46;
-  --silver-800: #27272A;
-  --silver-900: #18181B;
-  --accent: #9CA3AF;
-  --accent-light: #C0C7D0;
-  --accent-dark: #6B7280;
-  --shimmer: #D1D5DB;
-  --warm-black: #1C1C1E;
-  --muted: #71717A;
+  --background: #181818;          /* Color 1: Base Page Background */
+  --foreground: #F4F4F5;          /* Readable Light Foreground Text */
+  --silver-50: #1f1f1f;           /* Color 2: Card / Surface Panels */
+  --silver-100: #2d2d2d;          /* Color 3: Input / Nested Elements */
+  --silver-200: #3f3f46;          /* Borders / Dividers Tones */
+  --silver-300: #52525b;          /* Darker borders */
+  --silver-400: #71717a;          /* Muted text / placeholders */
+  --silver-500: #a1a1aa;          /* Secondary text color */
+  --silver-600: #d4d4d8;          /* Light gray text */
+  --silver-700: #e4e4e7;          /* High contrast text */
+  --silver-800: #f4f4f5;          /* Near white text */
+  --silver-900: #ffffff;          /* Pure white text */
+  --accent: #a1a1aa;
+  --accent-light: #d4d4d8;
+  --accent-dark: #71717a;
+  --shimmer: #2d2d2d;
+  --warm-black: #ffffff;          /* Pure white headings */
+  --muted: #a1a1aa;
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'Jost', sans-serif;
 }
@@ -26,27 +26,29 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-silver-50: #FAFAFA;
-  --color-silver-100: #F4F4F5;
-  --color-silver-200: #E4E4E7;
-  --color-silver-300: #D4D4D8;
-  --color-silver-400: #A1A1AA;
-  --color-silver-500: #71717A;
-  --color-silver-600: #52525B;
-  --color-silver-700: #3F3F46;
-  --color-silver-800: #27272A;
-  --color-silver-900: #18181B;
-  --color-accent: #9CA3AF;
-  --color-accent-light: #C0C7D0;
-  --color-accent-dark: #6B7280;
-  --color-shimmer: #D1D5DB;
+  --color-silver-50: var(--silver-50);
+  --color-silver-100: var(--silver-100);
+  --color-silver-200: var(--silver-200);
+  --color-silver-300: var(--silver-300);
+  --color-silver-400: var(--silver-400);
+  --color-silver-500: var(--silver-500);
+  --color-silver-600: var(--silver-600);
+  --color-silver-700: var(--silver-700);
+  --color-silver-800: var(--silver-800);
+  --color-silver-900: var(--silver-900);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-dark: var(--accent-dark);
+  --color-shimmer: var(--shimmer);
   --color-gold: #C9A84C;
   --color-gold-light: #D4B96A;
   --color-gold-dark: #8A6E2F;
-  --color-cream: #F7F7F8;
-  --color-warm-black: #1C1C1E;
-  --color-silver: #D4D4D8;
-  --color-muted: #71717A;
+  --color-cream: #181818;          /* Color 1: cream pages backdrops */
+  --color-warm-black: #ffffff;      /* Maps heading text to white */
+  --color-silver: #52525b;
+  --color-muted: var(--muted);
+  --color-white: #1f1f1f;          /* Color 2: Maps Tailwind's bg-white to card surfaces */
+  --color-black: #ffffff;          /* Maps text-black classes to white */
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'Jost', sans-serif;
 }
@@ -55,6 +57,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
+}
+
+/* Global input fields dark-theme overrides */
+input, select, textarea {
+  background-color: var(--silver-100) !important;
+  color: var(--foreground) !important;
+  border-color: var(--silver-200) !important;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--silver-400) !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -141,7 +153,7 @@ html {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(31, 31, 31, 0.65);
   pointer-events: none;
 }
 
@@ -152,8 +164,8 @@ html {
   overflow: hidden;
   pointer-events: none;
   box-shadow:
-    inset 2px 2px 1px 0 rgba(255,255,255,0.5),
-    inset -1px -1px 1px 1px rgba(255,255,255,0.5);
+    inset 1px 1px 1px 0 rgba(255,255,255,0.12),
+    inset -1px -1px 1px 1px rgba(255,255,255,0.05);
 }
 
 .liquidGlass-content {

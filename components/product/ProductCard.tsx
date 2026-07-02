@@ -118,19 +118,11 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
   const views = product.views ?? 0;
 
   return (
-    <div className={`group relative rounded-2xl overflow-hidden transition-all duration-300 ${
-      isDark
-        ? 'bg-silver-800/80 border border-silver-700/50 hover:border-silver-600 hover:shadow-2xl hover:shadow-black/20'
-        : 'bg-white border border-silver-200/80 hover:shadow-2xl hover:shadow-silver-300/40 hover:-translate-y-1'
-    }`}>
+    <div className="group relative rounded-2xl overflow-hidden bg-silver-50 border border-silver-200/80 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1 transition-all duration-300">
 
       {/* ====== IMAGE SECTION ====== */}
       <Link href={`/product/${product.id}`} className="block" onClick={() => trackSelectItem(product, listName)}>
-        <div className={`relative aspect-square overflow-hidden ${
-          isDark
-            ? 'bg-gradient-to-br from-silver-700 to-silver-800'
-            : 'bg-gradient-to-br from-silver-100 to-silver-50'
-        }`}>
+        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-silver-100 to-silver-50">
           {product.primaryImage ? (
             <Image
               src={product.primaryImage}
@@ -142,7 +134,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className={`text-xs ${isDark ? 'text-silver-500' : 'text-silver-400'}`}>
+              <span className="text-xs text-silver-500">
                 Product Image
               </span>
             </div>
@@ -155,9 +147,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
             className={`absolute top-3 right-3 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
               isWishlisted
                 ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-110'
-                : isDark
-                  ? 'bg-black/40 backdrop-blur-md text-white/80 hover:bg-red-500 hover:text-white'
-                  : 'bg-white/80 backdrop-blur-md text-silver-400 shadow-sm hover:bg-red-500 hover:text-white'
+                : 'bg-black/40 backdrop-blur-md text-white/80 hover:bg-red-500 hover:text-white'
             }`}
           >
             <Heart size={16} className={isWishlisted ? 'fill-current' : ''} />
@@ -188,26 +178,20 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
       <div className="p-3 sm:p-4">
         {/* Product Name */}
         <Link href={`/product/${product.id}`}>
-          <h3 className={`font-[family-name:var(--font-heading)] text-sm sm:text-base font-semibold line-clamp-1 transition-colors ${
-            isDark ? 'text-white hover:text-gold-light' : 'text-silver-900 hover:text-gold-dark'
-          }`}>
+          <h3 className="font-[family-name:var(--font-heading)] text-sm sm:text-base font-semibold line-clamp-1 transition-colors text-silver-900 hover:text-gold">
             {product.name}
           </h3>
         </Link>
 
         {/* Details Row: Size + Weight | Carat Badge */}
         <div className="flex items-center justify-between mt-1.5">
-          <div className={`flex items-center gap-1 text-[11px] sm:text-xs ${isDark ? 'text-silver-400' : 'text-silver-500'}`}>
+          <div className="flex items-center gap-1 text-[11px] sm:text-xs text-silver-500">
             {product.size && <span>Size: {product.size}</span>}
             {product.size && product.weight && <span>&middot;</span>}
             {product.weight && <span>Wt: {product.weight}</span>}
           </div>
           {product.carat && (
-            <span className={`text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-              isDark
-                ? 'bg-gold/20 text-gold-light'
-                : 'bg-gold/10 text-gold-dark border border-gold/20'
-            }`}>
+            <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gold/10 text-gold-light border border-gold/20">
               {product.carat}
             </span>
           )}
@@ -216,15 +200,11 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
         {/* Colour Options */}
         {product.colour && (
           <div className="flex items-center gap-1.5 mt-2">
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-              isDark ? 'bg-silver-700 text-silver-300' : 'bg-silver-100 text-silver-600'
-            }`}>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-silver-100 text-silver-600">
               {product.colour}
             </span>
             {product.colour2 && (
-              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                isDark ? 'bg-silver-700 text-silver-300' : 'bg-silver-100 text-silver-600'
-              }`}>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-silver-100 text-silver-600">
                 {product.colour2}
               </span>
             )}
@@ -232,12 +212,12 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
         )}
 
         {/* Price */}
-        <p className={`font-bold text-base sm:text-lg mt-2 ${isDark ? 'text-white' : 'text-silver-900'}`}>
+        <p className="font-bold text-base sm:text-lg mt-2 text-silver-900">
           ₹{product.price.toLocaleString('en-IN')}
         </p>
 
         {/* Stats Row: Views only */}
-        <div className={`flex items-center gap-4 mt-2 text-[11px] ${isDark ? 'text-silver-500' : 'text-silver-400'}`}>
+        <div className="flex items-center gap-4 mt-2 text-[11px] text-silver-500">
           <span className="flex items-center gap-1">
             <Eye size={12} /> {views > 999 ? `${(views / 1000).toFixed(1)}k` : views} views
           </span>
@@ -255,9 +235,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
             className={`shrink-0 w-11 sm:w-auto sm:flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 sm:py-3 px-0 sm:px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
               addedToCart
                 ? 'bg-green-500 text-white border-2 border-green-500'
-                : isDark
-                  ? 'border border-silver-500 text-silver-200 hover:bg-silver-700'
-                  : 'border-2 border-silver-900 text-silver-900 hover:bg-silver-900 hover:text-white'
+                : 'border border-silver-200 text-silver-300 hover:bg-silver-100 hover:text-white'
             }`}
           >
             <ShoppingCart size={16} className="shrink-0" />
@@ -271,11 +249,7 @@ export default function ProductCard({ product, variant = 'light', listName = 'Pr
             onClick={handleBuyNow}
             disabled={product.stock <= 0}
             style={{ touchAction: 'manipulation' }}
-            className={`flex-1 inline-flex items-center justify-center py-2.5 sm:py-3 px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${
-              isDark
-                ? 'bg-gold text-silver-900 hover:bg-gold-light'
-                : 'bg-gold text-white hover:bg-gold-dark'
-            }`}
+            className="flex-1 inline-flex items-center justify-center py-2.5 sm:py-3 px-3 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-gold text-white hover:bg-gold-dark"
           >
             {product.stock <= 0 ? 'Sold Out' : 'Buy Now'}
           </button>

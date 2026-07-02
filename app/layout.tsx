@@ -83,7 +83,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-silver-50 text-silver-900 font-[family-name:var(--font-body)] pb-16 md:pb-0">
+      <body className="min-h-screen flex flex-col bg-background text-silver-900 font-[family-name:var(--font-body)] pb-16 md:pb-0">
         {/*
           GTM noscript — must be the VERY FIRST child of <body>.
           Google Merchant Center checks this placement when verifying via GTM.
