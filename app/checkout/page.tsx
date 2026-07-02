@@ -980,23 +980,7 @@ function CheckoutInner() {
                     <div className="sm:col-span-2"><ReviewRow label="State" value={address.state} /></div>
                   </dl>
                 </SurfaceCard>
-                <SurfaceCard>
-                  <SectionEyebrow label="Items" title={`${items.length} ${items.length === 1 ? "Item" : "Items"}`} />
-                  <div className="mt-5 divide-y divide-silver-200/60">
-                    {items.map((item) => (
-                      <div key={item.productId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
-                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-silver-100 to-silver-50 shrink-0 overflow-hidden relative ring-1 ring-silver-200/60">
-                          {item.image ? (<Image src={item.image} alt={item.name} fill className="object-cover" sizes="64px" />) : (<div className="w-full h-full flex items-center justify-center"><span className="text-[10px] text-silver-400">IMG</span></div>)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-warm-black truncate">{item.name}</h3>
-                          <p className="text-[11px] text-silver-500 uppercase tracking-wider mt-0.5">Qty <strong className="text-silver-700">{item.quantity}</strong></p>
-                        </div>
-                        <span className="font-semibold text-sm tabular-nums">₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
-                      </div>
-                    ))}
-                  </div>
-                </SurfaceCard>
+                {/* Standalone items card removed to prevent duplication. Items list is displayed inside Order Summary. */}
 
                 {/* Promo code — Firestore validated with animation */}
                 <SurfaceCard>
@@ -1331,54 +1315,51 @@ function SummaryCard({
       <p className="text-[10px] uppercase tracking-[0.28em] text-silver-500 mb-4">Order Summary</p>
 
       {/* Cart Items List */}
-      <div className="divide-y divide-silver-100/70 mb-4 max-h-[220px] overflow-y-auto pr-1">
+      <div className="divide-y divide-silver-100/70 mb-5 max-h-[260px] overflow-y-auto pr-1">
         {items.map((item) => (
-          <div key={item.productId} className="flex gap-3 py-2.5 first:pt-0 last:pb-2.5 items-center">
+          <div key={item.productId} className="flex gap-3 py-3 first:pt-0 last:pb-3 items-center group/item hover:bg-silver-50/40 px-2 -mx-2 rounded-2xl transition-all duration-200">
             <div className="relative w-12 h-12 shrink-0">
-              <div className="w-full h-full rounded-xl bg-silver-50 border border-silver-200/50 overflow-hidden relative flex items-center justify-center">
+              <div className="w-full h-full rounded-xl bg-silver-50 border border-silver-200/50 overflow-hidden relative flex items-center justify-center shadow-sm group-hover/item:border-silver-300 transition-colors">
                 {item.image ? (
                   <Image
                     src={item.image}
                     alt={item.name}
                     fill
                     sizes="48px"
-                    className="object-cover"
+                    className="object-cover transition-transform duration-300 group-hover/item:scale-105"
                   />
                 ) : (
                   <ShoppingCart size={16} className="text-silver-400" />
                 )}
               </div>
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warm-black text-[10px] text-white flex items-center justify-center font-bold font-mono shadow-[0_2px_4px_rgba(0,0,0,0.15)] select-none z-10">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-warm-black text-[9px] text-white flex items-center justify-center font-bold font-mono shadow-[0_2px_5px_rgba(0,0,0,0.18)] select-none z-10 ring-2 ring-white">
                 {item.quantity}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <h4 className="text-xs font-semibold text-warm-black truncate" title={item.name}>
+              <h4 className="text-xs font-semibold text-warm-black truncate group-hover/item:text-gold transition-colors" title={item.name}>
                 {item.name}
               </h4>
-              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-silver-500">
-                <span className="tabular-nums">₹{item.price.toLocaleString("en-IN")}</span>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                <span className="text-[10px] font-semibold text-silver-700 tabular-nums">₹{item.price.toLocaleString("en-IN")}</span>
                 {item.size && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-silver-300" />
-                    <span>Size: {item.size}</span>
-                  </>
+                  <span className="bg-silver-100/60 text-silver-600 text-[9px] font-medium px-1.5 py-0.5 rounded border border-silver-200/30">
+                    Size: {item.size}
+                  </span>
                 )}
                 {item.plating && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-silver-300" />
-                    <span className="capitalize">{item.plating} Plating</span>
-                  </>
+                  <span className="bg-gold/5 text-gold text-[9px] font-medium px-1.5 py-0.5 rounded border border-gold/10 capitalize">
+                    {item.plating}
+                  </span>
                 )}
                 {item.chain && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-silver-300" />
-                    <span>{item.chain === "with" ? "With Chain" : "No Chain"}</span>
-                  </>
+                  <span className="bg-silver-100/60 text-silver-600 text-[9px] font-medium px-1.5 py-0.5 rounded border border-silver-200/30">
+                    {item.chain === "with" ? "With Chain" : "No Chain"}
+                  </span>
                 )}
               </div>
             </div>
-            <div className="text-xs font-semibold text-warm-black tabular-nums pl-2">
+            <div className="text-xs font-bold text-warm-black tabular-nums pl-2">
               ₹{(item.price * item.quantity).toLocaleString("en-IN")}
             </div>
           </div>
